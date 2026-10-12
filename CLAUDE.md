@@ -40,6 +40,10 @@ Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase
 - Settings, first-time connect form: the Token input and the "Connect and sync" button sit too close together.
 - Settings: the Sync card is much narrower than the "This device" card; make the cards consistent.
 
+## Later, for a real mobile app version (Ken's idea, not now)
+- Mobile look: Material 3 / Samsung One UI style (Android 17 era): rounded cards, bigger tap targets, One UI-style top area.
+- Animations and transitions come with that version, not in the web app now.
+
 ## Milestones
 - [x] M1: app shell, Home screen with sample data, tests for core logic
 - [x] M2: CSV import into Dexie (dedupe + manual-entry matching), learned merchant rules, Review inbox, Activity list, manual add, month switcher
