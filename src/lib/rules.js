@@ -7,7 +7,7 @@
 //   review     -> goes to the Review inbox for you to categorize
 //
 // match fields (all on the UPPERCASED cleaned description):
-//   startsWith, contains (string or list = any of), sign ('in' | 'out')
+//   startsWith, contains (string or list = any of), sign ('in' | 'out'), maxCents (absolute amount limit)
 
 export const DEFAULT_RULES = [
   // Own savings account (xx2066)
@@ -20,9 +20,15 @@ export const DEFAULT_RULES = [
   // Investing
   { match: { contains: ['BETASHARES', 'COMMSEC'] }, kind: 'investing', categoryId: 'investing' },
 
-  // Rent vs laundry: both contain SCAPE, so rent (direct debit) must come first
-  { match: { startsWith: 'DIRECT DEBIT', contains: 'SCAPE' }, kind: 'spend', categoryId: 'housing', bill: true },
-  { match: { contains: 'SCAPE AUSTRALIA' }, kind: 'spend', categoryId: 'personal-care' },
+  // Rent vs laundry: both contain SCAPE, so rent must come first.
+  // Rent: direct debits (code STRP_BRO, older ones say broadwayx), transfers to SCAPE BROADWAY,
+  // and returned (bounced) rent debits, which reduce Rent.
+  { match: { startsWith: 'DIRECT DEBIT', contains: ['SCAPE', 'STRP_BRO'] }, kind: 'spend', categoryId: 'housing', bill: true },
+  { match: { startsWith: 'RETURN', contains: 'STRP_BRO' }, kind: 'spend', categoryId: 'housing' },
+  { match: { startsWith: 'TRANSFER TO SCAPE' }, kind: 'spend', categoryId: 'housing' },
+  // Laundry = small Scape card purchases; a big one at Scape's desk is rent/fees
+  { match: { contains: 'SCAPE AUSTRALIA', maxCents: 5000 }, kind: 'spend', categoryId: 'personal-care' },
+  { match: { contains: 'SCAPE AUSTRALIA' }, kind: 'spend', categoryId: 'housing' },
 
   // Businesses that are paid by PayID (must come before the people rule below)
   { match: { contains: ['JETSTAR', 'QANTAS', 'VIRGIN AUSTRALIA'] }, kind: 'spend', categoryId: 'travel' },
@@ -37,10 +43,10 @@ export const DEFAULT_RULES = [
   { match: { contains: ['METRO AUTO PHOTO', 'PHOTOBOOTH', 'PHOTO BOOTH'] }, kind: 'spend', categoryId: 'entertainment' },
 
   // Eating out (UBER EATS before plain UBER)
-  { match: { contains: ['UBER EATS', 'DOORDASH', 'MENULOG', 'MCDONALDS', 'KFC', 'HJS ', 'HUNGRY JACK', 'TB_', 'TACO BELL', 'DAVID S KITCHEN', 'ROLL?D', "ROLL'D"] }, kind: 'spend', categoryId: 'eating-out' },
+  { match: { contains: ['UBER EATS', 'DOORDASH', 'MENULOG', 'MCDONALDS', 'KFC', 'HJS ', 'HUNGRY JACK', 'TB_', 'TACO BELL', 'DAVID S KITCHEN', 'ROLL?D', "ROLL'D", 'SUBWAY'] }, kind: 'spend', categoryId: 'eating-out' },
 
   // Transport
-  { match: { contains: ['OPAL', 'MYKI', 'SKYBUS', 'UBER', 'DIDI'] }, kind: 'spend', categoryId: 'transport' },
+  { match: { contains: ['OPAL', 'TRANSPORTFORNSW', 'MYKI', 'SKYBUS', 'UBER', 'DIDI'] }, kind: 'spend', categoryId: 'transport' },
 
   // Travel
   { match: { contains: ['AIRBNB', 'BOOKING.COM'] }, kind: 'spend', categoryId: 'travel' },
@@ -86,8 +92,9 @@ function asList(v) {
 
 export function ruleMatches(rule, desc, amountCents) {
   const d = ` ${desc.toUpperCase()} `;
-  const { startsWith, contains, sign } = rule.match;
+  const { startsWith, contains, sign, maxCents } = rule.match;
   if (startsWith && !desc.toUpperCase().startsWith(startsWith)) return false;
+  if (maxCents != null && Math.abs(amountCents) > maxCents) return false;
   const any = asList(contains);
   if (any.length && !any.some((c) => d.includes(c))) return false;
   if (sign === 'in' && amountCents <= 0) return false;

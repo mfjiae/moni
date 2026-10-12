@@ -24,6 +24,27 @@ describe('rules from Ken', () => {
   });
 });
 
+describe('rent rules from the older CSV', () => {
+  const c = (d, a) => categorize(d, a).categoryId;
+  it('older rent direct debits (broadwayx) are rent', () => {
+    expect(c('Direct Debit 507156 STRP_BRO broadwayx_ABC123', -95400)).toBe('housing');
+  });
+  it('a bounced rent debit coming back reduces rent', () => {
+    expect(c('Return 10/02/26 Direct Debit 507156 STRP_BRO broadwayx_XYZ', 93500)).toBe('housing');
+  });
+  it('a transfer to SCAPE BROADWAY is rent', () => {
+    expect(c("Transfer To SCAPE BROADWAY CommBank App rent", -190800)).toBe('housing');
+  });
+  it('small Scape card purchase is laundry, big one is rent', () => {
+    expect(c('SCAPE AUSTRALIA BROADW ULTIMO AUS', -900)).toBe('personal-care');
+    expect(c('SCAPE AUSTRALIA BROADW SYDNEY AU', -98300)).toBe('housing');
+  });
+  it('transport tap and Subway', () => {
+    expect(c('TRANSPORTFORNSW TAP SYDNEY AUS', -231)).toBe('transport');
+    expect(c('Subway Broadway Ultimo NS AUS', -1495)).toBe('eating-out');
+  });
+});
+
 describe('helpers', () => {
   it('detects transfers to and from people', () => {
     expect(isPersonTransfer('Transfer To A SMITH PayID Phone from CommBank App movie')).toBe(true);
