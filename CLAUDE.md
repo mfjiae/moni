@@ -38,11 +38,18 @@ Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
 - Settings, first-time connect form: the Token input and the "Connect and sync" button sit too close together.
+- Settings: the Sync card is much narrower than the "This device" card; make the cards consistent.
 
 ## Milestones
 - [x] M1: app shell, Home screen with sample data, tests for core logic
 - [x] M2: CSV import into Dexie (dedupe + manual-entry matching), learned merchant rules, Review inbox, Activity list, manual add, month switcher
 - [x] Desktop layout (sidebar from 900px) and sync between devices via moni-data
+- [ ] M2.5 (planning with Ken, not started):
+  - Scale type and sizes up 10–15%; card headings highlighted and bigger; fix the visual bug list
+  - Home: overview of 4 boxes (Money in, Spent, Saved, Invested), color-coded; Recent = 10 items
+  - Tap a box -> detail page with charts (CommBank-style), color per type; overlaps M4
+  - Category picker as a dropdown instead of all chips
+  - Add / rename / hide categories (synced); new categories + rules from the 600-row CSV
 - [ ] M3: Budgets page (all categories, edit limits)
 - [ ] M4: Cash flow page (income / spending / bills / saving / investing; 6-month category bars)
 - [ ] M5: bills (weekly/fortnightly/monthly), install polish (backup is covered by moni-data history)
