@@ -86,10 +86,12 @@ export default function App() {
 
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
+          <div className="nav-brand">moni</div>
           <NavItem id="home" label="Home" tab={tab} go={go} />
           <NavItem id="budgets" label="Budgets" tab={tab} go={go} />
           <button type="button" className="add-btn" aria-label="Add transaction" onClick={() => go('add')}>
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            <span className="add-label">Add transaction</span>
           </button>
           <NavItem id="cashflow" label="Cash flow" tab={tab} go={go} />
           <NavItem id="activity" label="Activity" tab={tab} go={go} badge={reviewCount} />

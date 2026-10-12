@@ -4,7 +4,7 @@ import { monthKey, monthLabel, monthPace, shiftMonth, shortDay, daysInMonth } fr
 import { categoryById } from '../lib/categories.js';
 import { summarizeMonth } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
-import { Bar, ImportButton } from './ui.jsx';
+import { Bar, ImportButton, useWide } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
 
 function MonthSwitch({ month, setMonth, current }) {
@@ -23,6 +23,7 @@ function MonthSwitch({ month, setMonth, current }) {
 }
 
 export default function Home({ txns, today, month, setMonth, balance, onNavigate, onOpen, onToast }) {
+  const wide = useWide();
   const current = monthKey(today);
   const summary = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const reviewCount = useMemo(() => txns.filter((t) => t.kind === 'review').length, [txns]);
@@ -42,7 +43,7 @@ export default function Home({ txns, today, month, setMonth, balance, onNavigate
   const recent = useMemo(() => txns
     .filter((t) => monthKey(t.date) === month && t.kind !== 'saving' && t.kind !== 'internal')
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
-    .slice(0, 5), [txns, month]);
+    .slice(0, wide ? 12 : 5), [txns, month, wide]);
 
   if (!txns.length) {
     return (
@@ -63,7 +64,7 @@ export default function Home({ txns, today, month, setMonth, balance, onNavigate
       <header className="header">
         <div>
           <MonthSwitch month={month} setMonth={setMonth} current={current} />
-          <div className="title">moni</div>
+          <div className="title home-title">moni</div>
         </div>
         {bal != null && (
           <div className="balance">
@@ -73,6 +74,8 @@ export default function Home({ txns, today, month, setMonth, balance, onNavigate
         )}
       </header>
 
+      <div className="home-grid">
+      <div className="col">
       {reviewCount > 0 && (
         <button type="button" className="banner action" onClick={() => onNavigate('activity', 'review')}>
           <span><strong>{reviewCount}</strong> {reviewCount === 1 ? 'transaction needs' : 'transactions need'} a category</span>
@@ -127,6 +130,8 @@ export default function Home({ txns, today, month, setMonth, balance, onNavigate
         </section>
       )}
 
+      </div>
+      <div className="col">
       <section className="card list" aria-label="Recent transactions">
         <div className="card-head">
           <span className="card-title">Recent</span>
@@ -136,6 +141,8 @@ export default function Home({ txns, today, month, setMonth, balance, onNavigate
           ? recent.map((t) => <TxnRow key={t.id} t={t} meta={shortDay(t.date, today)} onOpen={onOpen} />)
           : <div className="empty small-empty">Nothing in {monthLabel(month)} yet.</div>}
       </section>
+      </div>
+      </div>
     </main>
   );
 }

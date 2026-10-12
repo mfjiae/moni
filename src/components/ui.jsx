@@ -1,5 +1,18 @@
 // Small shared pieces.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+// True on desktop-width screens (matches the CSS breakpoint).
+const WIDE = '(min-width: 900px)';
+export function useWide() {
+  const [wide, setWide] = useState(() => window.matchMedia(WIDE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE);
+    const on = () => setWide(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
 import { pickerCategories } from '../lib/categories.js';
 import { importCsvText } from '../lib/store.js';
 
