@@ -89,7 +89,7 @@ export default function Settings({ sync, onToast }) {
               <li>Open <a href={TOKEN_URL} target="_blank" rel="noreferrer">GitHub → new fine-grained token</a> (sign in if asked).</li>
               <li>Name it <em>moni</em>. Set an expiration (moni will tell you when it runs out).</li>
               <li>Repository access: <strong>Only select repositories</strong> → <strong>moni-data</strong>.</li>
-              <li>Permissions → Repository → <strong>Contents: Read and write</strong>. Nothing else.</li>
+              <li>Permissions → <strong>Add permissions</strong> → search <em>contents</em> → pick <strong>Contents</strong>, then set it to <strong>Read and write</strong>. Nothing else.</li>
               <li>Generate, copy the token, and paste it below.</li>
             </ol>
             {!connected && (
