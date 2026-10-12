@@ -97,6 +97,14 @@ describe('rules', () => {
     expect(cat('Transfer To A SMITH PayID Phone from CommBank App movie').kind).toBe('review');
     expect(cat('Fast Transfer From B JONES to PayID Phone Pho', 1240).kind).toBe('review');
   });
+  it('treats a business paid by PayID as travel, not a person', () => {
+    const r = cat('Transfer To Jetstar Airways Pty Ltd - $3 PayID Email from CommBank App', -30800);
+    expect(r.kind).toBe('spend');
+    expect(r.categoryId).toBe('travel');
+  });
+  it('knows Roll’d (bank shows it as ROLL?D)', () => {
+    expect(cat('SQ *ROLL?D MELBOURNE A Melbourne Air VI AUS').categoryId).toBe('eating-out');
+  });
   it('knows common merchants', () => {
     expect(cat('TB_Haymarket_3114 Pyrmont AU AUS').categoryId).toBe('eating-out');
     expect(cat('TFNSW OPAL FARE SYDNEY AUS').categoryId).toBe('transport');

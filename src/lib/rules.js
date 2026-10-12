@@ -24,6 +24,9 @@ export const DEFAULT_RULES = [
   { match: { startsWith: 'DIRECT DEBIT', contains: 'SCAPE' }, kind: 'spend', categoryId: 'housing', bill: true },
   { match: { contains: 'SCAPE AUSTRALIA' }, kind: 'spend', categoryId: 'personal-care' },
 
+  // Businesses that are paid by PayID (must come before the people rule below)
+  { match: { contains: ['JETSTAR', 'QANTAS', 'VIRGIN AUSTRALIA'] }, kind: 'spend', categoryId: 'travel' },
+
   // Payments to and from people: you decide each time
   { match: { contains: ['PAYID', 'FAST TRANSFER FROM'] }, kind: 'review' },
 
@@ -31,13 +34,13 @@ export const DEFAULT_RULES = [
   { match: { contains: ['ALDI', 'COLES', 'WOOLWORTHS', ' IGA ', 'IGA SUPERMA', 'BUTCHERY'] }, kind: 'spend', categoryId: 'groceries' },
 
   // Eating out (UBER EATS before plain UBER)
-  { match: { contains: ['UBER EATS', 'DOORDASH', 'MENULOG', 'MCDONALDS', 'KFC', 'HJS ', 'HUNGRY JACK', 'TB_', 'TACO BELL', 'DAVID S KITCHEN'] }, kind: 'spend', categoryId: 'eating-out' },
+  { match: { contains: ['UBER EATS', 'DOORDASH', 'MENULOG', 'MCDONALDS', 'KFC', 'HJS ', 'HUNGRY JACK', 'TB_', 'TACO BELL', 'DAVID S KITCHEN', 'ROLL?D', "ROLL'D"] }, kind: 'spend', categoryId: 'eating-out' },
 
   // Transport
   { match: { contains: ['OPAL', 'MYKI', 'SKYBUS', 'UBER', 'DIDI'] }, kind: 'spend', categoryId: 'transport' },
 
   // Travel
-  { match: { contains: ['JETSTAR', 'QANTAS', 'VIRGIN AUSTRALIA', 'AIRBNB'] }, kind: 'spend', categoryId: 'travel' },
+  { match: { contains: ['AIRBNB', 'BOOKING.COM'] }, kind: 'spend', categoryId: 'travel' },
 
   // Health
   { match: { contains: ['CHEMIST WAREHOUSE', 'PRICELINE', 'PHARMACY'] }, kind: 'spend', categoryId: 'health' },
