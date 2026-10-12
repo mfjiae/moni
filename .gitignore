@@ -1,0 +1,24 @@
+# Allowlist: ignore everything, then allow only website code and config.
+# Real bank exports, backups and personal files can never be committed by accident.
+*
+
+!.gitignore
+!.github/
+!.github/**
+!CLAUDE.md
+!README.md
+!index.html
+!package.json
+!package-lock.json
+!vite.config.js
+!.oxlintrc.json
+!public/
+!public/**
+!src/
+!src/**
+
+# Even inside src/public, never real data files
+*.csv
+!src/lib/__tests__/fixtures/*.csv
+*.json.bak
+*backup*.json

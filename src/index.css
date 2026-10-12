@@ -1,0 +1,90 @@
+/* moni is dark only. Tokens match the v1 spec's design direction. */
+:root {
+  --bg: #0F1216;
+  --surface: #171B21;
+  --surface-raised: #1F242C;
+  --track: #262C35;
+  --border: #2A3039;
+  --text: #E8EBEF;
+  --muted: #9AA3AE;
+  --good: #6CC4A1;
+  --near: #E0B25C;
+  --over: #E5787A;
+  --accent: #7AA7E0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: var(--accent); text-decoration: none; }
+
+.app { max-width: 480px; margin: 0 auto; min-height: 100dvh; position: relative; }
+.screen { padding: 20px 20px calc(112px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 16px; }
+
+.header { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+.header .month { font-size: 13px; color: var(--muted); }
+.header .title { font-size: 20px; font-weight: 600; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; }
+.card-title { font-size: 15px; font-weight: 600; }
+.link { font-size: 13px; padding: 12px 0; background: none; border: 0; color: var(--accent); }
+.label { font-size: 13px; color: var(--muted); }
+.small { font-size: 12px; color: var(--muted); }
+.row { display: flex; justify-content: space-between; align-items: baseline; }
+
+.hero-amount { display: flex; align-items: baseline; gap: 8px; }
+.hero-amount .big { font-size: 40px; font-weight: 600; letter-spacing: -0.5px; }
+
+.bar { position: relative; height: 6px; background: var(--track); border-radius: 3px; }
+.bar.thick { height: 8px; border-radius: 4px; }
+.bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; }
+.bar .pace { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 1px; background: var(--accent); transform: translateX(-1px); }
+.fill.ok { background: var(--good); }
+.fill.near { background: var(--near); }
+.fill.over { background: var(--over); }
+.text-near { color: var(--near); }
+.text-over { color: var(--over); }
+.text-good { color: var(--good); }
+
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--surface-raised); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+.tile .value { font-size: 20px; font-weight: 600; }
+
+.budget { display: flex; flex-direction: column; gap: 8px; }
+.budget .name { font-size: 14px; font-weight: 500; }
+
+.list { padding: 8px 20px; gap: 0; }
+.list .card-head { padding-top: 12px; }
+.txn { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); gap: 12px; }
+.txn .merchant { font-size: 14px; font-weight: 500; }
+.txn .amount { font-size: 14px; font-weight: 500; white-space: nowrap; }
+.txn > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.txn .merchant, .txn .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.legend { display: flex; align-items: center; gap: 8px; }
+.legend .tick { width: 2px; height: 12px; background: var(--accent); border-radius: 1px; }
+
+.banner { background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--muted); }
+
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 0 8px env(safe-area-inset-bottom);
+}
+.nav-inner { max-width: 480px; margin: 0 auto; height: 72px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; }
+.nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); background: none; border: 0; padding: 8px 0; min-height: 44px; }
+.nav-item.active { color: var(--accent); }
+.add-btn { justify-self: center; width: 52px; height: 52px; border-radius: 26px; border: 0; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; }
+
+.empty { text-align: center; padding: 48px 12px; color: var(--muted); font-size: 14px; }
