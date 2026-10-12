@@ -16,10 +16,10 @@ export default function TxnSheet({ txn, onClose, onToast }) {
 
   async function save() {
     if (!categoryId) return;
-    await setCategory(txn.id, categoryId, note);
+    await setCategory(txn.uid, categoryId, note);
     let msg = 'Saved';
     if (canLearn && always && keyword.trim()) {
-      const n = await saveRule(keyword, categoryId, txn.id);
+      const n = await saveRule(keyword, categoryId, txn.uid);
       msg = n ? `Saved. Also sorted ${n} more from ${keyword.trim().toUpperCase()}` : `Saved. ${keyword.trim().toUpperCase()} will be sorted automatically`;
     }
     onToast(msg);
@@ -28,7 +28,7 @@ export default function TxnSheet({ txn, onClose, onToast }) {
 
   async function remove() {
     if (!confirmDelete) { setConfirmDelete(true); return; }
-    await deleteTxn(txn.id);
+    await deleteTxn(txn.uid);
     onToast('Deleted');
     onClose();
   }

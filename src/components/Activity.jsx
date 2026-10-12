@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react';
 import { categoryById } from '../lib/categories.js';
 import { longDay, shortDay } from '../lib/dates.js';
-import { clearAll } from '../lib/store.js';
 import { ImportButton } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
 
 export default function Activity({ txns, today, filter, setFilter, onOpen, onToast }) {
   const [q, setQ] = useState('');
-  const [confirmClear, setConfirmClear] = useState(false);
   const [showSavings, setShowSavings] = useState(false);
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
 
@@ -20,7 +18,7 @@ export default function Activity({ txns, today, filter, setFilter, onOpen, onToa
         t.description.toUpperCase().includes(qq) ||
         (t.note ?? '').toUpperCase().includes(qq) ||
         (categoryById[t.categoryId]?.name ?? '').toUpperCase().includes(qq))
-      .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0));
     const out = [];
     for (const t of list) {
       const last = out[out.length - 1];
@@ -29,13 +27,6 @@ export default function Activity({ txns, today, filter, setFilter, onOpen, onToa
     }
     return out;
   }, [txns, filter, q, showSavings]);
-
-  async function clear() {
-    if (!confirmClear) { setConfirmClear(true); return; }
-    await clearAll();
-    setConfirmClear(false);
-    onToast('All data deleted from this device');
-  }
 
   const dayLabel = (iso) => {
     const s = shortDay(iso, today);
@@ -75,17 +66,10 @@ export default function Activity({ txns, today, filter, setFilter, onOpen, onToa
       {groups.map((g) => (
         <section className="card list" key={g.date} aria-label={longDay(g.date)}>
           <div className="day-head small">{dayLabel(g.date)}</div>
-          {g.items.map((t) => <TxnRow key={t.id} t={t} onOpen={onOpen} />)}
+          {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} />)}
         </section>
       ))}
 
-      {txns.length > 0 && filter === 'all' && !q && (
-        <div className="footer-actions">
-          <button type="button" className="btn ghost danger" onClick={clear} onBlur={() => setConfirmClear(false)}>
-            {confirmClear ? 'Tap again to delete everything on this device' : 'Delete all data'}
-          </button>
-        </div>
-      )}
     </main>
   );
 }

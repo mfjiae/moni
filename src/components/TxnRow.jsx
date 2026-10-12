@@ -11,7 +11,7 @@ export default function TxnRow({ t, meta, onOpen }) {
   const cat = t.kind === 'review' ? 'To review' : (categoryById[t.categoryId]?.name ?? 'Other');
   const muted = t.kind === 'saving' || t.kind === 'internal';
   return (
-    <button type="button" className={`txn${muted ? ' muted-row' : ''}`} onClick={() => onOpen(t.id)}>
+    <button type="button" className={`txn${muted ? ' muted-row' : ''}`} onClick={() => onOpen(t.uid)}>
       <div>
         <span className="merchant">{displayName(t)}</span>
         <span className="small">

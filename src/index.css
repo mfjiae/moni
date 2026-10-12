@@ -190,3 +190,19 @@ a { color: var(--accent); text-decoration: none; }
   .form, .welcome { max-width: 560px; }
   .txn:hover { background: rgba(255,255,255,0.02); }
 }
+
+/* ---------- Sync / Settings ---------- */
+.header-right { display: flex; align-items: center; gap: 4px; }
+.header-right .icon-btn { margin-right: -10px; }
+.desktop-only { display: none !important; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; color: var(--text); }
+.steps a { text-decoration: underline; }
+.hint strong, .steps strong { color: var(--text); font-weight: 600; }
+.banner .text-over { color: var(--over); }
+@media (min-width: 900px) {
+  .desktop-only { display: flex !important; }
+  .mobile-only { display: none !important; }
+  .nav-item.desktop-only { margin-top: auto; }
+  .nav-inner { height: 100%; }
+}

@@ -66,6 +66,8 @@ describe('import', () => {
     expect(p.toAdd).toHaveLength(rows.length);
     expect(p.duplicates).toBe(0);
     expect(p.reviewCount).toBe(2); // two PayID transfers with people
+    expect(p.toAdd[0].uid).toBe(`csv|${rows[0].importKey}`);
+    expect(new Set(p.toAdd.map((t) => t.uid)).size).toBe(rows.length);
   });
   it('skips rows already imported', () => {
     const existingKeys = new Set(rows.slice(5).map((r) => r.importKey));
@@ -75,20 +77,20 @@ describe('import', () => {
   });
   it('replaces a matching manual entry instead of double counting', () => {
     const manualTxns = [
-      { id: 7, date: '2026-09-29', amountCents: -3252, kind: 'spend', categoryId: 'shopping', note: '', description: 'Aldi run' },
+      { uid: 'm7', date: '2026-09-29', amountCents: -3252, kind: 'spend', categoryId: 'shopping', note: '', description: 'Aldi run' },
     ];
     const p = prepareImport(rows, { manualTxns, rules: DEFAULT_RULES });
-    expect(p.mergedManualIds).toEqual([7]);
+    expect(p.mergedManualIds).toEqual(['m7']);
     const aldi = p.toAdd.find((t) => t.amountCents === -3252);
     expect(aldi.categoryId).toBe('shopping'); // keeps the category you chose
     expect(aldi.note).toBe('Aldi run');
   });
   it('does not match a manual entry more than 4 days away', () => {
-    const manualTxns = [{ id: 8, date: '2026-09-20', amountCents: -3252, kind: 'spend', categoryId: 'groceries' }];
+    const manualTxns = [{ uid: 'm8', date: '2026-09-20', amountCents: -3252, kind: 'spend', categoryId: 'groceries' }];
     expect(prepareImport(rows, { manualTxns, rules: DEFAULT_RULES }).mergedManualIds).toEqual([]);
   });
   it('never matches a manual entry to a savings transfer', () => {
-    const manualTxns = [{ id: 9, date: '2026-10-01', amountCents: -1000, kind: 'spend', categoryId: 'other' }];
+    const manualTxns = [{ uid: 'm9', date: '2026-10-01', amountCents: -1000, kind: 'spend', categoryId: 'other' }];
     expect(prepareImport(rows, { manualTxns, rules: DEFAULT_RULES }).mergedManualIds).toEqual([]);
   });
 });

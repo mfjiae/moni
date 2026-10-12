@@ -1,0 +1,117 @@
+// Sync this device with moni.json in the private moni-data repo.
+// Flow: read remote -> merge with local -> save merged locally -> write remote if it changed.
+import { db } from './db.js';
+import { mergeSnapshots, normalize, sameSnapshot, stableStringify } from './merge.js';
+import { checkRepo, readFile, writeFile, SyncError } from './github.js';
+
+export const DATA_PATH = 'moni.json';
+export const DEFAULT_REPO = 'mfjiae/moni-data';
+
+export const getSyncConfig = () => db.meta.get('sync');
+
+async function readLocal() {
+  const [txns, rules, tombs, balance] = await Promise.all([
+    db.txns.toArray(),
+    db.userRules.toArray(),
+    db.tombstones.toArray(),
+    db.meta.get('balance'),
+  ]);
+  return normalize({
+    txns,
+    rules,
+    tombstones: Object.fromEntries(tombs.map((t) => [t.key, t.deletedAt])),
+    balance: balance ?? null,
+  });
+}
+
+// Apply the merged snapshot without losing edits made while the sync was running:
+// a record is only overwritten by a version at least as new, and only deleted by a newer delete.
+async function writeLocal(merged) {
+  await db.transaction('rw', db.txns, db.userRules, db.tombstones, db.meta, async () => {
+    for (const [table, list] of [[db.txns, merged.txns], [db.userRules, merged.rules]]) {
+      const current = new Map((await table.toArray()).map((r) => [r.uid, r]));
+      const puts = list.filter((r) => {
+        const cur = current.get(r.uid);
+        return !cur || ((cur.updatedAt ?? 0) <= (r.updatedAt ?? 0) && stableStringify(cur) !== stableStringify(r));
+      });
+      if (puts.length) await table.bulkPut(puts);
+      const dels = [...current.values()]
+        .filter((r) => merged.tombstones[r.uid] != null && merged.tombstones[r.uid] >= (r.updatedAt ?? 0))
+        .map((r) => r.uid);
+      if (dels.length) await table.bulkDelete(dels);
+    }
+    await db.tombstones.bulkPut(Object.entries(merged.tombstones).map(([key, deletedAt]) => ({ key, deletedAt })));
+    if (merged.balance) {
+      const cur = await db.meta.get('balance');
+      if (!cur || stableStringify(cur) !== stableStringify(merged.balance)) {
+        await db.meta.put({ ...merged.balance, key: 'balance' });
+      }
+    }
+  });
+}
+
+const deviceName = () =>
+  (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches ? 'desktop' : 'phone');
+
+async function setStatus(changes) {
+  const cfg = await db.meta.get('sync');
+  if (cfg) await db.meta.put({ ...cfg, ...changes });
+}
+
+async function runSync() {
+  const cfg = await db.meta.get('sync');
+  if (!cfg?.token) return { status: 'off' };
+  await setStatus({ syncing: true });
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const remote = await readFile(cfg.token, cfg.repo, DATA_PATH);
+      const local = await readLocal();
+      const merged = mergeSnapshots(local, remote?.data);
+      if (!sameSnapshot(merged, local)) await writeLocal(merged);
+      if (!remote || !sameSnapshot(merged, remote.data)) {
+        try {
+          await writeFile(cfg.token, cfg.repo, DATA_PATH, merged, remote?.sha, `moni sync from ${deviceName()}`);
+        } catch (e) {
+          if (e.kind === 'conflict' && attempt < 2) continue; // another device saved first: merge again
+          throw e;
+        }
+      }
+      await setStatus({ syncing: false, lastSyncAt: Date.now(), lastError: null });
+      return { status: 'ok' };
+    }
+    throw new SyncError('conflict', 'Kept clashing with another device. Will try again shortly.');
+  } catch (e) {
+    const kind = e.kind ?? 'other';
+    // Being offline isn't an error worth showing; everything else is.
+    await setStatus({ syncing: false, lastError: kind === 'offline' ? null : { kind, message: e.message, at: Date.now() } });
+    return { status: 'error', kind, message: e.message };
+  }
+}
+
+let running = null;
+let again = false;
+export function syncNow() {
+  if (running) { again = true; return running; }
+  running = runSync().finally(() => {
+    running = null;
+    if (again) { again = false; syncNow(); }
+  });
+  return running;
+}
+
+let timer = null;
+export function requestSync(delayMs = 1500) {
+  clearTimeout(timer);
+  timer = setTimeout(() => { syncNow(); }, delayMs);
+}
+
+// Connect: verify the token can see a PRIVATE repo, save it on this device, then sync.
+export async function connect(token, repo) {
+  const t = token.trim();
+  const r = repo.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
+  await checkRepo(t, r);
+  await db.meta.put({ key: 'sync', token: t, repo: r, connectedAt: Date.now(), lastSyncAt: null, lastError: null });
+  return syncNow();
+}
+
+export const disconnect = () => db.meta.delete('sync');

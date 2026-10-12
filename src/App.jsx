@@ -6,17 +6,20 @@ import Home from './components/Home.jsx';
 import Activity from './components/Activity.jsx';
 import AddTxn from './components/AddTxn.jsx';
 import TxnSheet from './components/TxnSheet.jsx';
+import Settings from './components/Settings.jsx';
+import { syncNow } from './lib/sync.js';
 
 const Icon = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
   budgets: <path d="M4 7h16M4 12h10M4 17h6" />,
   cashflow: <path d="M6 20V10M12 20V4M18 20v-7" />,
   activity: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
+  settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" /></>,
 };
 
-function NavItem({ id, label, tab, go, badge }) {
+function NavItem({ id, label, tab, go, badge, className = '' }) {
   return (
-    <button type="button" className={`nav-item${tab === id ? ' active' : ''}`} onClick={() => go(id)}
+    <button type="button" className={`nav-item${tab === id ? ' active' : ''} ${className}`} onClick={() => go(id)}
       aria-current={tab === id ? 'page' : undefined}
       aria-label={badge ? `${label}, ${badge} to review` : label}>
       <span className="nav-icon">
@@ -46,10 +49,23 @@ export default function App() {
   const [openId, setOpenId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const txns = useLiveQuery(() => db.transactions.toArray(), []);
+  const txns = useLiveQuery(() => db.txns.toArray(), []);
   const balance = useLiveQuery(() => db.meta.get('balance'), []);
+  const sync = useLiveQuery(() => db.meta.get('sync'), []);
 
   useEffect(() => { requestPersistentStorage(); }, []);
+
+  // Sync when the app opens, when it comes back to the screen, and when the connection returns.
+  useEffect(() => {
+    syncNow();
+    const onVisible = () => { if (document.visibilityState === 'visible') syncNow(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', syncNow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', syncNow);
+    };
+  }, []);
   useEffect(() => {
     if (!toast) return undefined;
     const id = setTimeout(() => setToast(null), 4000);
@@ -65,12 +81,12 @@ export default function App() {
   if (txns === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
 
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
-  const open = openId != null ? txns.find((t) => t.id === openId) : null;
+  const open = openId != null ? txns.find((t) => t.uid === openId) : null;
 
   return (
     <div className="app">
       {tab === 'home' && (
-        <Home txns={txns} today={today} month={month} setMonth={setMonth} balance={balance}
+        <Home txns={txns} today={today} month={month} setMonth={setMonth} balance={balance} sync={sync}
           onNavigate={go} onOpen={setOpenId} onToast={setToast} />
       )}
       {tab === 'activity' && (
@@ -79,8 +95,9 @@ export default function App() {
       {tab === 'add' && <AddTxn today={today} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && <Placeholder title="Budgets" milestone="M3" />}
       {tab === 'cashflow' && <Placeholder title="Cash flow" milestone="M4" />}
+      {tab === 'settings' && <Settings sync={sync} onToast={setToast} />}
 
-      {open && <TxnSheet key={open.id} txn={open} onClose={() => setOpenId(null)} onToast={setToast} />}
+      {open && <TxnSheet key={open.uid} txn={open} onClose={() => setOpenId(null)} onToast={setToast} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
 
@@ -95,6 +112,7 @@ export default function App() {
           </button>
           <NavItem id="cashflow" label="Cash flow" tab={tab} go={go} />
           <NavItem id="activity" label="Activity" tab={tab} go={go} badge={reviewCount} />
+          <NavItem id="settings" label="Settings" tab={tab} go={go} className="desktop-only" />
         </div>
       </nav>
     </div>

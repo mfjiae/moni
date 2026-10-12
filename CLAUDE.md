@@ -6,13 +6,16 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 
 ## Stack
 - React + Vite, static PWA, hosted on GitHub Pages at https://mfjiae.github.io/moni/ (base `/moni/`)
-- IndexedDB via Dexie (`src/lib/db.js`). All data stays on the device; no server, no bank login.
+- IndexedDB via Dexie (`src/lib/db.js`) is each device's copy. No server, no bank login.
+- Sync (`src/lib/sync.js`, `merge.js`, `github.js`): the app reads/writes `moni.json` in Ken's PRIVATE repo `mfjiae/moni-data` with a fine-grained token (Contents read/write on that repo only) stored on each device. Newest edit wins per record; deletes leave tombstones. The app refuses a public data repo.
 - Tests: Vitest (`npm test`). The GitHub Action runs tests, builds and deploys on every push to `main`.
 
 ## Hard rules
 - Money = integer cents (`src/lib/money.js`). Never floats.
 - Dates = `YYYY-MM-DD` strings in Sydney local time (`src/lib/dates.js`). Never `new Date("DD/MM/YYYY")`.
-- `.gitignore` is an allowlist. Never commit real CSVs, backups or personal data. Test fixtures use fake names.
+- `.gitignore` is an allowlist. Never commit real CSVs, backups or personal data to this public repo. Test fixtures use fake names.
+- Every record has a stable `uid` (bank rows: `csv|<importKey>`) and `updatedAt`. Any write must stamp `updatedAt` and call `requestSync()` (store.js does this).
+- Claude has no access to moni-data and shouldn't need it.
 - Dark theme only, no toggle. Color tokens live in `src/index.css`.
 - Budget period: calendar month.
 
@@ -36,6 +39,7 @@ Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase
 ## Milestones
 - [x] M1: app shell, Home screen with sample data, tests for core logic
 - [x] M2: CSV import into Dexie (dedupe + manual-entry matching), learned merchant rules, Review inbox, Activity list, manual add, month switcher
+- [x] Desktop layout (sidebar from 900px) and sync between devices via moni-data
 - [ ] M3: Budgets page (all categories, edit limits)
 - [ ] M4: Cash flow page (income / spending / bills / saving / investing; 6-month category bars)
-- [ ] M5: bills (weekly/fortnightly/monthly), backup/restore JSON + 30-day reminder, install polish
+- [ ] M5: bills (weekly/fortnightly/monthly), install polish (backup is covered by moni-data history)

@@ -1,5 +1,6 @@
 // Pure import logic (no database), so it can be tested.
 import { categorize } from './rules.js';
+import { csvUid } from './ids.js';
 
 const dayNumber = (iso) => {
   const [y, m, d] = iso.split('-').map(Number);
@@ -10,7 +11,7 @@ const dayNumber = (iso) => {
 // manualTxns: unmatched manual entries; a bank row with the same amount within
 // 4 days replaces the manual entry (keeping its category and note), so a purchase
 // you typed in by hand isn't counted twice once the bank CSV arrives.
-export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [], rules } = {}) {
+export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [], rules, now = Date.now() } = {}) {
   const seen = new Set(existingKeys);
   const usedManual = new Set();
   const toAdd = [];
@@ -23,6 +24,8 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
 
     const c = categorize(r.description, r.amountCents, rules);
     let txn = {
+      uid: csvUid(r.importKey),
+      updatedAt: now,
       date: r.date,
       postedDate: r.postedDate,
       amountCents: r.amountCents,
@@ -39,12 +42,12 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
     };
 
     if (c.kind !== 'saving') {
-      const m = manualTxns.find((t) => !usedManual.has(t.id) &&
+      const m = manualTxns.find((t) => !usedManual.has(t.uid) &&
         t.amountCents === r.amountCents &&
         Math.abs(dayNumber(t.date) - dayNumber(r.date)) <= 4);
       if (m) {
-        usedManual.add(m.id);
-        mergedManualIds.push(m.id);
+        usedManual.add(m.uid);
+        mergedManualIds.push(m.uid);
         txn = { ...txn, kind: m.kind, categoryId: m.categoryId, note: m.note || m.description };
       }
     }
