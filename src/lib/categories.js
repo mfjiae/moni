@@ -16,6 +16,18 @@ export const DEFAULT_CATEGORIES = [
   { id: 'investing', name: 'Investing', type: 'investing' },
   { id: 'income', name: 'Income', type: 'income' },
   { id: 'saving', name: 'Savings transfers', type: 'saving' },
+  { id: 'internal', name: 'Excluded', type: 'internal' },
 ];
 
 export const categoryById = Object.fromEntries(DEFAULT_CATEGORIES.map((c) => [c.id, c]));
+
+// How a transaction counts follows from its category's type.
+export const kindForCategory = (id) => categoryById[id]?.type ?? 'spend';
+
+// Picker order: money in shows Income first; money out shows spending first.
+export function pickerCategories(amountCents) {
+  const by = (t) => DEFAULT_CATEGORIES.filter((c) => c.type === t);
+  return amountCents > 0
+    ? [...by('income'), ...by('spend'), ...by('saving'), ...by('investing'), ...by('internal')]
+    : [...by('spend'), ...by('investing'), ...by('saving'), ...by('internal'), ...by('income')];
+}

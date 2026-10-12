@@ -1,113 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
-import { formatCents } from './lib/money.js';
-import { monthKey, monthLabel, monthPace, shortDay } from './lib/dates.js';
-import { categoryById } from './lib/categories.js';
-import { summarizeMonth, budgetRows, leftToSpend, budgetStatus } from './lib/summary.js';
-import { SAMPLE_TODAY, SAMPLE_BUDGETS, SAMPLE_TXNS } from './lib/sample.js';
-import { requestPersistentStorage } from './lib/db.js';
+import { useEffect, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, requestPersistentStorage } from './lib/db.js';
+import { todaySydney, monthKey } from './lib/dates.js';
+import Home from './components/Home.jsx';
+import Activity from './components/Activity.jsx';
+import AddTxn from './components/AddTxn.jsx';
+import TxnSheet from './components/TxnSheet.jsx';
 
-const pct = (x) => `${(Math.min(Math.max(x, 0), 1) * 100).toFixed(1)}%`;
+const Icon = {
+  home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
+  budgets: <path d="M4 7h16M4 12h10M4 17h6" />,
+  cashflow: <path d="M6 20V10M12 20V4M18 20v-7" />,
+  activity: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
+};
 
-function PaceBar({ ratio, status = 'ok', pace, thick = false }) {
+function NavItem({ id, label, tab, go, badge }) {
   return (
-    <div className={`bar${thick ? ' thick' : ''}`} role="img"
-      aria-label={`${Math.round(ratio * 100)}% used, ${Math.round(pace * 100)}% of the month gone`}>
-      <div className={`fill ${status}`} style={{ width: pct(ratio) }} />
-      <div className="pace" style={{ left: pct(pace) }} />
-    </div>
-  );
-}
-
-function Home({ today, txns, budgets, onNavigate }) {
-  const key = monthKey(today);
-  const pace = monthPace(today);
-  const [, , dayStr] = today.split('-');
-  const summary = useMemo(() => summarizeMonth(txns, key), [txns, key]);
-  const rows = useMemo(() => budgetRows(summary, budgets), [summary, budgets]);
-  const totals = leftToSpend(rows);
-  const topRows = [...rows].sort((a, b) => b.ratio - a.ratio).slice(0, 4);
-  const recent = [...txns].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
-  const daysInMonth = Math.round(Number(dayStr) / pace);
-
-  return (
-    <main className="screen">
-      <header className="header">
-        <div>
-          <div className="month">{monthLabel(key)}</div>
-          <div className="title">moni</div>
-        </div>
-      </header>
-
-      <div className="banner">Sample data. Importing your NetBank CSV comes in the next update.</div>
-
-      <section className="card" aria-label="Left to spend">
-        <span className="label">Left to spend this month</span>
-        <div className="hero-amount">
-          <span className={`big${totals.left < 0 ? ' text-over' : ''}`}>{formatCents(totals.left)}</span>
-          <span className="label">of {formatCents(totals.total)}</span>
-        </div>
-        <PaceBar thick ratio={totals.total ? totals.spent / totals.total : 0}
-          status={budgetStatus(totals.total ? totals.spent / totals.total : 0)} pace={pace} />
-        <div className="row label">
-          <span>{formatCents(totals.spent)} spent</span>
-          <span>Day {Number(dayStr)} of {daysInMonth}</span>
-        </div>
-      </section>
-
-      <section className="card" aria-label="Cash flow">
-        <div className="card-head">
-          <span className="card-title">Cash flow</span>
-          <button className="link" onClick={() => onNavigate('cashflow')}>Details</button>
-        </div>
-        <div className="tiles">
-          <div className="tile"><span className="small">Money in</span><span className="value text-good">{formatCents(summary.income)}</span></div>
-          <div className="tile"><span className="small">Money out</span><span className="value">{formatCents(summary.spent)}</span></div>
-        </div>
-        <div className="row label">
-          <span>Net <span style={{ color: 'var(--text)', fontWeight: 500 }}>{formatCents(summary.net, { sign: true })}</span></span>
-          <span>Saved {formatCents(summary.savedNet)}</span>
-        </div>
-      </section>
-
-      <section className="card" aria-label="Budgets">
-        <div className="card-head">
-          <span className="card-title">Budgets</span>
-          <button className="link" onClick={() => onNavigate('budgets')}>All budgets</button>
-        </div>
-        {topRows.map((r) => {
-          const status = budgetStatus(r.ratio);
-          return (
-            <div className="budget" key={r.categoryId}>
-              <div className="row">
-                <span className="name">{r.name}</span>
-                <span className={`label ${status === 'over' ? 'text-over' : status === 'near' ? 'text-near' : ''}`}>
-                  {r.left < 0 ? `${formatCents(-r.left)} over` : `${formatCents(r.left)} left`}
-                </span>
-              </div>
-              <PaceBar ratio={r.ratio} status={status} pace={pace} />
-              <span className="small">{formatCents(r.spent)} of {formatCents(r.limitCents)}</span>
-            </div>
-          );
-        })}
-        <div className="legend small"><span className="tick" />Where you should be by today</div>
-      </section>
-
-      <section className="card list" aria-label="Recent transactions">
-        <div className="card-head">
-          <span className="card-title">Recent</span>
-          <button className="link" onClick={() => onNavigate('activity')}>See all</button>
-        </div>
-        {recent.map((t, i) => (
-          <div className="txn" key={i}>
-            <div>
-              <span className="merchant">{t.description}</span>
-              <span className="small">{categoryById[t.categoryId]?.name ?? 'To review'} · {shortDay(t.date, today)}</span>
-            </div>
-            <span className={`amount${t.amountCents > 0 ? ' text-good' : ''}`}>{formatCents(t.amountCents, { sign: true })}</span>
-          </div>
-        ))}
-      </section>
-    </main>
+    <button type="button" className={`nav-item${tab === id ? ' active' : ''}`} onClick={() => go(id)}
+      aria-current={tab === id ? 'page' : undefined}
+      aria-label={badge ? `${label}, ${badge} to review` : label}>
+      <span className="nav-icon">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{Icon[id]}</svg>
+        {badge > 0 && <span className="badge" aria-hidden="true">{badge > 99 ? '99+' : badge}</span>}
+      </span>
+      <span>{label}</span>
+    </button>
   );
 }
 
@@ -120,45 +38,61 @@ function Placeholder({ title, milestone }) {
   );
 }
 
-const Icon = {
-  home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
-  budgets: <path d="M4 7h16M4 12h10M4 17h6" />,
-  cashflow: <path d="M6 20V10M12 20V4M18 20v-7" />,
-  activity: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
-};
-
-function NavItem({ id, label, tab, setTab }) {
-  return (
-    <button className={`nav-item${tab === id ? ' active' : ''}`} onClick={() => setTab(id)}
-      aria-current={tab === id ? 'page' : undefined}>
-      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{Icon[id]}</svg>
-      <span>{label}</span>
-    </button>
-  );
-}
-
 export default function App() {
+  const today = todaySydney();
   const [tab, setTab] = useState('home');
+  const [month, setMonth] = useState(monthKey(today));
+  const [filter, setFilter] = useState('all');
+  const [openId, setOpenId] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const txns = useLiveQuery(() => db.transactions.toArray(), []);
+  const balance = useLiveQuery(() => db.meta.get('balance'), []);
+
   useEffect(() => { requestPersistentStorage(); }, []);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  const go = (t, f) => {
+    if (f) setFilter(f);
+    setTab(t);
+    window.scrollTo(0, 0);
+  };
+
+  if (txns === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
+
+  const reviewCount = txns.filter((t) => t.kind === 'review').length;
+  const open = openId != null ? txns.find((t) => t.id === openId) : null;
 
   return (
     <div className="app">
-      {tab === 'home' && <Home today={SAMPLE_TODAY} txns={SAMPLE_TXNS} budgets={SAMPLE_BUDGETS} onNavigate={setTab} />}
+      {tab === 'home' && (
+        <Home txns={txns} today={today} month={month} setMonth={setMonth} balance={balance}
+          onNavigate={go} onOpen={setOpenId} onToast={setToast} />
+      )}
+      {tab === 'activity' && (
+        <Activity txns={txns} today={today} filter={filter} setFilter={setFilter} onOpen={setOpenId} onToast={setToast} />
+      )}
+      {tab === 'add' && <AddTxn today={today} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && <Placeholder title="Budgets" milestone="M3" />}
       {tab === 'cashflow' && <Placeholder title="Cash flow" milestone="M4" />}
-      {tab === 'activity' && <Placeholder title="Activity" milestone="M2" />}
-      {tab === 'add' && <Placeholder title="Add transaction" milestone="M2" />}
+
+      {open && <TxnSheet key={open.id} txn={open} onClose={() => setOpenId(null)} onToast={setToast} />}
+
+      {toast && <div className="toast" role="status">{toast}</div>}
 
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
-          <NavItem id="home" label="Home" tab={tab} setTab={setTab} />
-          <NavItem id="budgets" label="Budgets" tab={tab} setTab={setTab} />
-          <button className="add-btn" aria-label="Add transaction" onClick={() => setTab('add')}>
+          <NavItem id="home" label="Home" tab={tab} go={go} />
+          <NavItem id="budgets" label="Budgets" tab={tab} go={go} />
+          <button type="button" className="add-btn" aria-label="Add transaction" onClick={() => go('add')}>
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           </button>
-          <NavItem id="cashflow" label="Cash flow" tab={tab} setTab={setTab} />
-          <NavItem id="activity" label="Activity" tab={tab} setTab={setTab} />
+          <NavItem id="cashflow" label="Cash flow" tab={tab} go={go} />
+          <NavItem id="activity" label="Activity" tab={tab} go={go} badge={reviewCount} />
         </div>
       </nav>
     </div>

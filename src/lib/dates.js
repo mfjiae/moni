@@ -36,6 +36,29 @@ export function monthPace(iso) {
   return d / daysInMonth(y, m);
 }
 
+// "2026-10", -1 -> "2026-09"; "2026-12", 1 -> "2027-01"
+export function shiftMonth(key, delta) {
+  const [y, m] = key.split('-').map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
+}
+
+// Current Sydney time as "HH:mm"
+export function nowSydneyTime(now = new Date()) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(now);
+}
+
+// "2026-10-01" -> "Thu 1 Oct"
+export function longDay(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const wd = dt.toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' });
+  const mon = dt.toLocaleDateString('en-AU', { month: 'short', timeZone: 'UTC' });
+  return `${wd} ${d} ${mon}`;
+}
+
 // "2026-10" -> "October 2026"
 export function monthLabel(key) {
   const [y, m] = key.split('-').map(Number);

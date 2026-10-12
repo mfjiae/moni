@@ -120,7 +120,7 @@ describe('rules', () => {
     expect(r.categoryId).toBe('groceries');
   });
   it('sends unknown merchants to review', () => {
-    expect(cat('ZETCITI BROADWAY GLEBE AU').kind).toBe('review');
+    expect(cat('SOME NEW SHOP NEWTOWN AU').kind).toBe('review');
   });
 });
 

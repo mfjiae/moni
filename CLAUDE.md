@@ -23,13 +23,19 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 - PayID to/from people and unknown merchants go to the Review inbox for Ken to categorize.
 - Merchant rules (`src/lib/rules.js`) are checked top to bottom, most specific first. Rent = "Direct Debit … SCAPE"; laundry = "SCAPE AUSTRALIA".
 
+## Code map
+- `src/lib/`: pure logic (money, dates, csv, rules, importer, summary), all tested; `store.js` = database actions
+- `src/components/`: screens (Home, Activity, AddTxn, TxnSheet) and shared UI
+- Learned rules live in the `rules` table and run before `DEFAULT_RULES`
+- Savings transfers are hidden from Home's Recent and from Activity unless toggled on
+
 ## NetBank CSV
 No header; columns: date DD/MM/YYYY, signed amount, description, running balance; newest first.
 Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase date. Dedupe on `importKey`.
 
 ## Milestones
 - [x] M1: app shell, Home screen with sample data, tests for core logic
-- [ ] M2: CSV import into Dexie, merchant rules, Review inbox, Activity list, manual add
+- [x] M2: CSV import into Dexie (dedupe + manual-entry matching), learned merchant rules, Review inbox, Activity list, manual add, month switcher
 - [ ] M3: Budgets page (all categories, edit limits)
 - [ ] M4: Cash flow page (income / spending / bills / saving / investing; 6-month category bars)
 - [ ] M5: bills (weekly/fortnightly/monthly), backup/restore JSON + 30-day reminder, install polish

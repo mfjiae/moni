@@ -31,7 +31,10 @@ export const DEFAULT_RULES = [
   { match: { contains: ['PAYID', 'FAST TRANSFER FROM'] }, kind: 'review' },
 
   // Groceries
-  { match: { contains: ['ALDI', 'COLES', 'WOOLWORTHS', ' IGA ', 'IGA SUPERMA', 'BUTCHERY'] }, kind: 'spend', categoryId: 'groceries' },
+  { match: { contains: ['ALDI', 'COLES', 'WOOLWORTHS', ' IGA ', 'IGA SUPERMA', 'BUTCHERY', 'ZETCITI'] }, kind: 'spend', categoryId: 'groceries' },
+
+  // Entertainment
+  { match: { contains: ['METRO AUTO PHOTO', 'PHOTOBOOTH', 'PHOTO BOOTH'] }, kind: 'spend', categoryId: 'entertainment' },
 
   // Eating out (UBER EATS before plain UBER)
   { match: { contains: ['UBER EATS', 'DOORDASH', 'MENULOG', 'MCDONALDS', 'KFC', 'HJS ', 'HUNGRY JACK', 'TB_', 'TACO BELL', 'DAVID S KITCHEN', 'ROLL?D', "ROLL'D"] }, kind: 'spend', categoryId: 'eating-out' },
@@ -46,11 +49,36 @@ export const DEFAULT_RULES = [
   { match: { contains: ['CHEMIST WAREHOUSE', 'PRICELINE', 'PHARMACY'] }, kind: 'spend', categoryId: 'health' },
 
   // Utilities and subscriptions
-  { match: { contains: ['YOMOJO', 'GOOGLE', 'SPOTIFY', 'NETFLIX', 'APPLE.COM'] }, kind: 'spend', categoryId: 'utilities' },
+  // (Moose Mobile refunds arrive as money in and reduce Utilities)
+  { match: { contains: ['YOMOJO', 'MOOSE', 'GOOGLE', 'SPOTIFY', 'NETFLIX', 'APPLE.COM'] }, kind: 'spend', categoryId: 'utilities' },
 
   // Shopping
   { match: { contains: ['OFFICEWORKS', 'KMART', 'TARGET', 'JB HI-FI', 'AMAZON'] }, kind: 'spend', categoryId: 'shopping' },
 ];
+
+// Payments to or from a person (always reviewed by hand, never auto-learned)
+export function isPersonTransfer(description) {
+  return /PAYID|FAST TRANSFER FROM/i.test(description) &&
+    categorize(description, -1).kind === 'review';
+}
+
+// A short keyword to learn from a merchant description:
+// "WOOLWORTHS 1248 SYDNEY NS AUS" -> "WOOLWORTHS", "SQ *ROLL?D MELBOURNE" -> "ROLL?D MELBOURNE"
+export function merchantKey(description) {
+  const s = description.toUpperCase().replace(/^(SQ|DD|SP|LS|ZLR)\s*\*\s*/, '').trim();
+  const tokens = s.split(/\s+/).filter(Boolean);
+  const out = [];
+  for (const t of tokens) {
+    if (/\d/.test(t) || out.length >= 2) break;
+    out.push(t);
+  }
+  return out.length ? out.join(' ') : (tokens[0] ?? '');
+}
+
+// A rule learned from the user: "always put KEYWORD in CATEGORY"
+export function makeUserRule(keyword, categoryId, kind) {
+  return { match: { contains: keyword.toUpperCase().trim() }, kind, categoryId, createdBy: 'user' };
+}
 
 function asList(v) {
   return v == null ? [] : Array.isArray(v) ? v : [v];
