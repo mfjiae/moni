@@ -36,6 +36,9 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 No header; columns: date DD/MM/YYYY, signed amount, description, running balance; newest first.
 Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase date. Dedupe on `importKey`.
 
+## Visual bugs to fix later (Ken's list, don't fix until asked)
+- Settings, first-time connect form: the Token input and the "Connect and sync" button sit too close together.
+
 ## Milestones
 - [x] M1: app shell, Home screen with sample data, tests for core logic
 - [x] M2: CSV import into Dexie (dedupe + manual-entry matching), learned merchant rules, Review inbox, Activity list, manual add, month switcher
