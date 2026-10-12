@@ -48,12 +48,21 @@ Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase
 - [x] M1: app shell, Home screen with sample data, tests for core logic
 - [x] M2: CSV import into Dexie (dedupe + manual-entry matching), learned merchant rules, Review inbox, Activity list, manual add, month switcher
 - [x] Desktop layout (sidebar from 900px) and sync between devices via moni-data
-- [ ] M2.5 (planning with Ken, not started):
-  - Scale type and sizes up 10–15%; card headings highlighted and bigger; fix the visual bug list
-  - Home: overview of 4 boxes (Money in, Spent, Saved, Invested), color-coded; Recent = 10 items
-  - Tap a box -> detail page with charts (CommBank-style), color per type; overlaps M4
-  - Category picker as a dropdown instead of all chips
-  - Add / rename / hide categories (synced); new categories + rules from the 600-row CSV
-- [ ] M3: Budgets page (all categories, edit limits)
+- [ ] M2.5 (planned with Ken, not started; waiting on his category answers):
+  - Look: type and sizes up 10–15%; card headings bigger and highlighted; fix the visual bug list
+  - Home: 4 color-coded boxes (Money in, Spent, Saved, Invested); Recent = 10 items
+  - Balance as a highlighted box; tapping it opens an account page (balance-over-time chart + all transactions)
+  - Tap any box -> detail page with charts (CommBank-style), colors per type
+  - Spending detail has a "without tuition" view; the headline total still includes tuition
+  - Month switcher: a "This month" button to jump back; no months before the first month with data (never before Jan 2024)
+  - Category picker as a dropdown (most-used first + search) instead of all chips
+  - Add / rename / hide categories (synced); new categories + rules from Ken's CSVs
+  - Tuition: its own category, auto-detected (UTS ... BPAY tuition payments only; small education costs like kits are not tuition)
+  - "Re-sort Review with the latest rules" button (rules only apply at import time today)
+- [ ] M2.6 Accounts (planned): Smart Access (main) balance box + a box per savings account (xx2066, xx2103).
+  Import a CSV per account (choose the account on import); pair transfers between Ken's own accounts so nothing is double counted.
+  Balance shown = last balance in that account's newest CSV (+ manual entries after it). Pending bank transactions aren't in CSV exports.
+- [ ] Tuition page (M4): all tuition payments by semester
+- [ ] M3: Budgets page (all categories, edit limits, vertical month-progress marker on each bar)
 - [ ] M4: Cash flow page (income / spending / bills / saving / investing; 6-month category bars)
 - [ ] M5: bills (weekly/fortnightly/monthly), install polish (backup is covered by moni-data history)
