@@ -75,6 +75,18 @@ Build in steps, test each. Home layout = the prototype Ken picks (5 shown in cha
   - "who" filter: pick a person or merchant
   - result count and total of what's shown
 
+## Model per update (Ken, 13 Oct 2026)
+At the start of every session and every stage, tell Ken which update and stage we're in, and which model and effort it needs. If he's on a different one, say so before starting.
+- M2.5b step 1, look + Home layout + icons + wide screen + month picker: Sonnet, medium
+- M2.5b step 2, detail and account pages (stats first, day-grouped transactions, 1W chart): Sonnet, medium
+- M2.5b step 3, Activity search and filters (decides which transactions are shown and totaled): Opus, high
+- Quick sort: Sonnet, medium. Clean names / nicknames (synced data): Opus, high
+- M2.6 accounts (transfer pairing, double-count risk): Opus, high
+- M3 budgets: Sonnet, medium
+- M4 cash flow + investment page: Opus, high for the numbers; Sonnet for the charts if split
+- M5 bills (recurring detection, next dates): Opus, high
+- Small visual fixes or notes: Sonnet, low or medium. A session mixing money logic and UI: start on Opus, high.
+
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
 - Home's 4 boxes (In / Spent / Saved / Invested): the colored line along the top looks ugly and doesn't reach the corners (the rounded corners cut it off). Replace it with a colored icon per box (e.g. arrow in, bag/arrow out, piggy bank, chart). Keep the amount in its color. Next update (Ken, 13 Oct 2026).
 - Desktop doesn't use the space on Ken's wide screen: content is capped at ~1140px and centered, leaving big empty margins. Let it grow to ~1600px and use 3 columns on wide screens (layout from the Home prototype Ken picks; no Recent list on Home). Next update, with the box icons (Ken, 13 Oct 2026).
