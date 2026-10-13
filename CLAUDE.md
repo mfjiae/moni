@@ -39,6 +39,7 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 - `src/components/`: screens (Home, Detail = Spending/Income/Saved/Invested/account pages, Activity, AddTxn, TxnSheet, Settings) and shared UI (`ui.jsx`: Bar, MonthSwitch, CategorySelect dropdown)
 - Learned rules live in the `rules` table and run before `DEFAULT_RULES`
 - Savings transfers are hidden from Home's Recent and from Activity unless toggled on
+- `.claude/skills/`: design and review helpers (see "Design helpers" below). Origins and licences in `.claude/skills/SOURCES.md`.
 
 ## NetBank CSV
 No header; columns: date DD/MM/YYYY, signed amount, description, running balance; newest first.
@@ -85,6 +86,14 @@ Build in steps, test each. Home layout = PICKED (Ken, 13 Oct 2026): prototype 1 
   - category filter (pick several); type filter: card purchase, direct debit, BPAY, transfer/PayID to a person, to/from savings, income, refund
   - "who" filter: pick a person or merchant
   - result count and total of what's shown
+
+## Design helpers (installed 13 Oct 2026)
+Three skills in `.claude/skills/`, copied from public repos (not auto-updated; see `SOURCES.md`):
+- `ui-ux-pro-max/`: gives design OPTIONS (palettes, layouts, fonts, chart types). Its default answers are generic and not finance-specific: its first test for "personal finance dashboard" suggested glassmorphism, a handwritten font and blue/green. Treat its output as options only. Ken's rules below win: money colours (spent red/orange, income green, Saved blue, Invested purple), dark near-black background, no yellow, no handwriting or decorative fonts, no glass or blur effects.
+- `web-design-guidelines/`: run it as a review on UI changes before pushing (accessibility, focus states, forms, reduced motion, dark mode). Report what it finds in a few lines; fix only what Ken asks for, or note it in the visual bug list.
+- `react-best-practices/`: a reference when writing or reviewing components. Don't refactor for performance unless there is a real slowdown; the app is small.
+- Not installed on purpose: Vercel deploy and optimise skills (moni deploys to GitHub Pages), React Native rules (no native app yet), writing and view-transition skills, and the other UI UX Pro Max extras (banner, brand, slides, design-system).
+- `.gitignore` is an allowlist. It now lets through `.claude/skills/` only (not `.claude/` in general, so local settings stay ignored). The skill's data CSVs are generic reference tables and are allowed under that folder only; real CSVs elsewhere stay blocked.
 
 ## Model per update (Ken, 13 Oct 2026)
 At the start of every session and every stage, tell Ken which update and stage we're in, and which model and effort it needs. If he's on a different one, say so before starting.

@@ -22,3 +22,11 @@
 !src/lib/__tests__/fixtures/*.csv
 *.json.bak
 *backup*.json
+
+# Installed Claude skills (see .claude/skills/SOURCES.md). Only this folder; local settings stay ignored.
+!.claude/
+!.claude/skills/
+!.claude/skills/**
+# Skill data tables are CSVs; allow them under the skills folder only
+!.claude/skills/ui-ux-pro-max/data/**/*.csv
+!.claude/skills/ui-ux-pro-max/data/*.csv
