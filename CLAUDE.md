@@ -62,7 +62,18 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Big visual changes: show prototypes in chat first, Ken picks, then build. Point out UX problems proactively and suggest ideas.
 
 ## NEXT UPDATE: M2.5b Layout, look and search (Ken, 13 Oct 2026; before M2.6 accounts)
-Build in steps, test each. Home layout = the prototype Ken picks (5 shown in chat 13 Oct 2026; record his pick here).
+Build in steps, test each. Home layout = PICKED (Ken, 13 Oct 2026): prototype 1 as the base, mixed with parts of 2, 3, 4, 5. Ken's pick:
+- Home pick details (Ken, 13 Oct 2026):
+  - Base = prototype 1 (command center): month-dropdown, top categories with icons, small "last month" reflection (graph), search box, small "N to sort" chip (its own small separate box, not a big one).
+  - Balance: Smart Access balance with the savings balance beside it, in prototype 1's style, but it must POP: bigger and a distinctive color. Palette = palette 1.
+  - 4 boxes (In / Spent / Saved / Invested) with icons like prototype 2, but with BIGGER numbers.
+  - "Where it went" with % per category, "more or less than last month by this date", and month total with progress bar (from prototype 2); draw the bars in prototype 1's style. Avoid clutter.
+  - Per-day spending bars for the month (prototype 4) and a COMPACT heat-scale calendar (prototype 5, left side only). Ken said yes to both.
+  - Bill warning banner (rent due soon) from prototype 3.
+  - Drop: pie chart, prototype 5's right side, prototype 3's other parts.
+  - Background brightness between prototype 1 and 2 (near-black neutral).
+  - Reword the "spent X% of September's total so far" line: show "$X so far, X% of September's $Y" so it is clear.
+  - Saved and Invested colors: Ken said "ye sure" to my suggestion: Saved = blue, Invested = purple (spent red/orange, income green).
 - Look: Claude-like near-black background (no purple tint), better contrast, new palette (spent red/orange, income green), less white text, colored icons instead of the top lines on the 4 boxes, use the space on wide screens (see visual bug list).
 - Month picking: no arrows on Home (it shows this month). On other pages: arrows stay in fixed positions; tapping the month name opens a picker (years and months grid, "This month" inside it) to jump straight to any month.
 - Home: remove Recent; link to Activity instead (or a tiny one-liner).
