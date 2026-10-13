@@ -345,9 +345,6 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
               foot={foot(formatCents(cmp.prevTotal.invested))} onClick={() => onDetail('invested')} />
           </div>
           <PaceCard month={month} isCurrent={month === current} compare={compare} spent={summary.spent} />
-        </div>
-
-        <div className="col third">
           <DayByDay key={month} txns={txns} month={month} today={today} byDay={byDay} />
         </div>
       </div>
