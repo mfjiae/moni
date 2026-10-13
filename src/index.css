@@ -212,7 +212,8 @@ a { color: var(--accent); text-decoration: none; }
 .daybar.top i { background: color-mix(in srgb, var(--out) 60%, white); }
 .dayaxis { display: flex; gap: 2px; font-size: 11px; color: var(--muted); margin: -8px 0 14px; }
 .dayaxis span { flex: 1; min-width: 0; display: flex; justify-content: center; white-space: nowrap; }
-.cal-row { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+/* Calendar on top, "Busiest day" and the picked day underneath it (side by side when there is room) */
+.cal-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .cal-wrap { min-width: 0; }
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .cal-wd { font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 2px; }
@@ -227,7 +228,7 @@ a { color: var(--accent); text-decoration: none; }
 .cal-day.today { outline: 2px solid var(--text); outline-offset: 1px; }
 .cal-day.picked { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cal-day:not(:disabled):hover { filter: brightness(1.15); }
-.cal-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.cal-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; min-width: 0; }
 .side-box { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--surface-raised); border: 1px solid var(--border); }
 .side-box:first-child:not(.day-detail) { flex-direction: row; align-items: center; gap: 12px; }
 .side-icon { width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--out); background: color-mix(in srgb, var(--out) 16%, transparent); }
@@ -235,7 +236,12 @@ a { color: var(--accent); text-decoration: none; }
 .side-amount { font-size: 26px; font-weight: 600; color: var(--out); letter-spacing: -0.4px; }
 .day-line { font-size: 14px; gap: 8px; }
 .day-line .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 480px) { .cal-row { grid-template-columns: minmax(0, 1fr); } .cal-day { min-height: 46px; padding: 4px 5px; } .cal-amt { font-size: 12px; } }
+@media (max-width: 480px) { .cal-side { grid-template-columns: minmax(0, 1fr); } .cal-day { min-height: 46px; padding: 4px 5px; } .cal-amt { font-size: 12px; } }
+/* Two-column Home (900-1279px): Day by day is full width, so calendar and boxes sit side by side again */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .cal-row { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); }
+  .cal-side { grid-template-columns: minmax(0, 1fr); }
+}
 .heat-legend { display: flex; align-items: center; gap: 4px; }
 
 /* Rent / bill warning */
@@ -424,6 +430,8 @@ select.input { appearance: auto; }
   .home-grid .col.third { grid-column: auto; }
 }
 .detail-grid { display: flex; flex-direction: column; gap: 16px; }
+/* Cards stacked inside a detail-page column (big number, comparison, categories) need a gap like everywhere else */
+.detail-grid .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 @media (min-width: 900px) {
   .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; gap: 20px; }
 }
