@@ -176,4 +176,5 @@ At the start of every session and every stage, tell Ken which update and stage w
   - Saved: per savings account breakdown, total on a graph, progress
   - Invested page (Ken, 13 Oct 2026): line chart of contributions per month and cumulative total, ranges month / quarter / year / 3y / 5y / 10y / all; optional "potential growth" line at a return rate Ken sets (clearly labelled as an estimate, not Betashares data). Goes in M4 because it needs M2.6 (investing paid from savings must count once) and a few months of contributions to be worth charting.
   - Tuition page: all tuition payments by semester
+- [ ] M5: (Ken, 13 Oct 2026) when the Bills tab is built, the "Rent due in N days" pill in the top right of Home opens the Bills page (it is only a warning until then).
 - [ ] M5: Bills tab: bills this month, next bill date, bill calendar, 3-month bar overview, expand to all months, review option; weekly/fortnightly/monthly bills; install polish

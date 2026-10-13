@@ -234,7 +234,7 @@ a { color: var(--accent); text-decoration: none; }
 .cal-day.today { outline: 2px solid var(--text); outline-offset: 1px; }
 .cal-day.picked { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cal-day:not(:disabled):hover { filter: brightness(1.15); }
-.cal-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; min-width: 0; }
+.cal-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; min-width: 0; }
 .side-box { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--surface-raised); border: 1px solid var(--border); }
 .side-amount { font-size: 26px; font-weight: 600; color: var(--out); letter-spacing: -0.4px; }
 .day-line { font-size: 14px; gap: 8px; }
