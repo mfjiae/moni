@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { parseNetBankCsv } from '../csv.js';
 import { categorize, merchantKey, isPersonTransfer, makeUserRule, DEFAULT_RULES } from '../rules.js';
 import { prepareImport, nextBalance, currentBalance } from '../importer.js';
-import { kindForCategory, pickerCategories } from '../categories.js';
+import { kindForCategory, pickerGroups } from '../categories.js';
 import { shiftMonth, nowSydneyTime, longDay } from '../dates.js';
 
 const fixture = readFileSync(fileURLToPath(new URL('./fixtures/netbank-sample.csv', import.meta.url)), 'utf8');
@@ -69,8 +69,8 @@ describe('helpers', () => {
     expect(kindForCategory('internal')).toBe('internal');
   });
   it('orders picker by direction', () => {
-    expect(pickerCategories(100)[0].id).toBe('income');
-    expect(pickerCategories(-100)[0].type).toBe('spend');
+    expect(pickerGroups(100).groups[0].type).toBe('income');
+    expect(pickerGroups(-100).groups[0].type).toBe('spend');
   });
   it('dates', () => {
     expect(shiftMonth('2026-10', -1)).toBe('2026-09');

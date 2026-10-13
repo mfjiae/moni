@@ -10,15 +10,23 @@
 //   startsWith, contains (string or list = any of), sign ('in' | 'out'), maxCents (absolute amount limit)
 
 export const DEFAULT_RULES = [
-  // Own savings account (xx2066)
-  { match: { contains: 'TRANSFER TO XX2066' }, kind: 'saving', categoryId: 'saving' },
-  { match: { contains: 'TRANSFER FROM XX2066' }, kind: 'saving', categoryId: 'saving' },
+  // Own savings accounts (xx2066 main savings, xx2103 2nd savings)
+  { match: { contains: ['TRANSFER TO XX2066', 'TRANSFER TO XX2103'] }, kind: 'saving', categoryId: 'saving' },
+  { match: { contains: ['TRANSFER FROM XX2066', 'TRANSFER FROM XX2103'] }, kind: 'saving', categoryId: 'saving' },
 
   // Income
-  { match: { startsWith: 'SALARY' }, kind: 'income', categoryId: 'income' },
+  { match: { startsWith: 'SALARY' }, kind: 'income', categoryId: 'job-income' },
+  // Family money: transfers marked "living fee/expenses" and the ATM cash deposits (Ken, Oct 2026)
+  { match: { contains: ['LIVING FEE', 'LIVING EXPENSES'], sign: 'in' }, kind: 'income', categoryId: 'family' },
+  { match: { startsWith: 'CASH DEPOSIT', sign: 'in' }, kind: 'income', categoryId: 'family' },
+  { match: { startsWith: 'CREDIT INTEREST', sign: 'in' }, kind: 'income', categoryId: 'interest' },
 
   // Investing
   { match: { contains: ['BETASHARES', 'COMMSEC'] }, kind: 'investing', categoryId: 'investing' },
+
+  // Uni: tuition is only the UTS BPAY payments; UTS card charges (kits, printing) are Education
+  { match: { startsWith: 'UTS SYDNEY', contains: 'BPAY' }, kind: 'spend', categoryId: 'tuition', bill: true },
+  { match: { contains: 'UNIVERSITY OF TECHNO' }, kind: 'spend', categoryId: 'education' },
 
   // Rent vs laundry: both contain SCAPE, so rent must come first.
   // Rent: direct debits (code STRP_BRO, older ones say broadwayx), transfers to SCAPE BROADWAY,
@@ -29,6 +37,17 @@ export const DEFAULT_RULES = [
   // Laundry = small Scape card purchases; a big one at Scape's desk is rent/fees
   { match: { contains: 'SCAPE AUSTRALIA', maxCents: 5000 }, kind: 'spend', categoryId: 'personal-care' },
   { match: { contains: 'SCAPE AUSTRALIA' }, kind: 'spend', categoryId: 'housing' },
+
+  // Sport & fitness (badminton is often paid by PayID, so this comes before the people rule)
+  { match: { startsWith: 'DIRECT DEBIT', contains: 'BROADWAY GYM' }, kind: 'spend', categoryId: 'sport', bill: true },
+  { match: { contains: ['ACTIVATEUTS', 'ACTIVATE UTS', 'BROADWAY GYM', 'BADMINTON'] }, kind: 'spend', categoryId: 'sport' },
+
+  // Phone (Moose Mobile, billed by TelcoPay; earlier Yomojo). Moose refunds reduce Utilities.
+  { match: { startsWith: 'DIRECT DEBIT', contains: 'TELCOPAY' }, kind: 'spend', categoryId: 'utilities', bill: true },
+  { match: { contains: ['TELCOPAY', 'TELCO PAY', 'MOOSE', 'YOMOJO'] }, kind: 'spend', categoryId: 'utilities' },
+
+  // Bank fees
+  { match: { contains: ['UNPAID PAYMENT FEE', 'INTERNATIONAL TRANSACTION FEE', 'DEBIT EXCESS INTEREST'] }, kind: 'spend', categoryId: 'fees' },
 
   // Businesses that are paid by PayID (must come before the people rule below)
   { match: { contains: ['JETSTAR', 'QANTAS', 'VIRGIN AUSTRALIA'] }, kind: 'spend', categoryId: 'travel' },
@@ -54,12 +73,11 @@ export const DEFAULT_RULES = [
   // Health
   { match: { contains: ['CHEMIST WAREHOUSE', 'PRICELINE', 'PHARMACY'] }, kind: 'spend', categoryId: 'health' },
 
-  // Utilities and subscriptions
-  // (Moose Mobile refunds arrive as money in and reduce Utilities)
-  { match: { contains: ['YOMOJO', 'MOOSE', 'GOOGLE', 'SPOTIFY', 'NETFLIX', 'APPLE.COM'] }, kind: 'spend', categoryId: 'utilities' },
+  // Subscriptions and app purchases (the phone plan stays in Utilities, above)
+  { match: { contains: ['ANTHROPIC', 'CLAUDE.AI', 'PATREON', 'REAL DEBRID', 'REAL-DEBRID', 'GOOGLE', 'SPOTIFY', 'NETFLIX', 'APPLE.COM'] }, kind: 'spend', categoryId: 'subscriptions' },
 
   // Shopping
-  { match: { contains: ['OFFICEWORKS', 'KMART', 'TARGET', 'JB HI-FI', 'AMAZON'] }, kind: 'spend', categoryId: 'shopping' },
+  { match: { contains: ['OFFICEWORKS', 'KMART', 'TARGET', 'JB HI-FI', 'JB HI FI', 'AMAZON'] }, kind: 'spend', categoryId: 'shopping' },
 ];
 
 // Payments to or from a person (always reviewed by hand, never auto-learned)
@@ -69,16 +87,36 @@ export function isPersonTransfer(description) {
 }
 
 // A short keyword to learn from a merchant description:
-// "WOOLWORTHS 1248 SYDNEY NS AUS" -> "WOOLWORTHS", "SQ *ROLL?D MELBOURNE" -> "ROLL?D MELBOURNE"
+// "WOOLWORTHS 1248 SYDNEY NS AUS" -> "WOOLWORTHS", "SQ *ROLL?D MELBOURNE" -> "ROLL?D MELBOURNE",
+// "Direct Debit 502541 TelcoPay 11708963" -> "TELCOPAY" (never just "DIRECT DEBIT")
+const KEY_PREFIXES = [
+  /^(REFUND PURCHASE|RETURN)\s+(\d{2}\/\d{2}\/\d{2,4}\s+)?/,
+  /^DIRECT (DEBIT|CREDIT)\s+\d+\s+/,
+  /^(FAST\s+)?TRANSFER\s+(TO|FROM)\s+/,
+  /^[A-Z]{2,5}\s?\*\s*/, // card processor prefixes: SQ *, DD *, ZLR*, EZI*, KPAY*
+];
+
 export function merchantKey(description) {
-  const s = description.toUpperCase().replace(/^(SQ|DD|SP|LS|ZLR)\s*\*\s*/, '').trim();
+  let s = description.toUpperCase().trim();
+  for (const re of KEY_PREFIXES) s = s.replace(re, '');
   const tokens = s.split(/\s+/).filter(Boolean);
   const out = [];
-  for (const t of tokens) {
-    if (/\d/.test(t) || out.length >= 2) break;
+  for (const raw of tokens) {
+    const t = raw.replace(/\*.*$/, ''); // "REVOLUT**1899*" -> "REVOLUT"
+    if (!t || /\d/.test(t) || out.length >= 2) break;
     out.push(t);
+    if (t !== raw) break;
   }
-  return out.length ? out.join(' ') : (tokens[0] ?? '');
+  const key = out.length ? out.join(' ') : (tokens[0] ?? '');
+  return isBroadKeyword(key) ? '' : key;
+}
+
+// Keywords that would catch far too much (the M2 bug: "DIRECT DEBIT" matched every direct debit).
+// Learned rules with these are ignored and can't be saved.
+const BROAD = /^(DIRECT( DEBIT| CREDIT)?|(FAST )?TRANSFER( TO| FROM)?|FAST|CARD|VALUE( DATE)?|PAYID|BPAY|COMMBANK( APP)?|REFUND( PURCHASE)?|RETURN|DEBIT|CREDIT|AUS?|SYDNEY|NSW|PTY|LTD|THE)$/;
+export function isBroadKeyword(keyword) {
+  const k = String(keyword ?? '').toUpperCase().replace(/\s+/g, ' ').trim();
+  return k.length < 3 || BROAD.test(k);
 }
 
 // A rule learned from the user: "always put KEYWORD in CATEGORY"

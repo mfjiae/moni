@@ -1,5 +1,8 @@
 // Small shared pieces.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { pickerGroups, getCategory, categoryName } from '../lib/categories.js';
+import { importCsvText, addCategory } from '../lib/store.js';
+import { monthLabel, shiftMonth } from '../lib/dates.js';
 
 // True on desktop-width screens (matches the CSS breakpoint).
 const WIDE = '(min-width: 900px)';
@@ -13,11 +16,10 @@ export function useWide() {
   }, []);
   return wide;
 }
-import { pickerCategories } from '../lib/categories.js';
-import { importCsvText } from '../lib/store.js';
 
 const pct = (x) => `${(Math.min(Math.max(x, 0), 1) * 100).toFixed(1)}%`;
 
+// status: ok | near | over (budgets) or a money color: in | out | save | invest
 export function Bar({ ratio, status = 'ok', pace, thick = false, label }) {
   return (
     <div className={`bar${thick ? ' thick' : ''}`} role="img" aria-label={label}>
@@ -27,17 +29,113 @@ export function Bar({ ratio, status = 'ok', pace, thick = false, label }) {
   );
 }
 
-export function CategoryPicker({ value, onChange, amountCents }) {
+export const Chevron = ({ dir = 'right', size = 18 }) => (
+  <svg aria-hidden="true" className="chev" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d={dir === 'left' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} />
+  </svg>
+);
+
+// Month switcher: never before the first month with data, never after this month.
+// Shows a "This month" button when you're looking at another month.
+export function MonthSwitch({ month, setMonth, current, first }) {
+  const min = first && first < current ? first : current;
   return (
-    <div className="chips" role="group" aria-label="Category">
-      {pickerCategories(amountCents).map((c) => (
-        <button type="button" key={c.id} className={`chip${value === c.id ? ' selected' : ''}`}
-          aria-pressed={value === c.id} onClick={() => onChange(c.id)}>
-          {c.name}
-        </button>
-      ))}
+    <div className="month-wrap">
+      <div className="month-switch">
+        <button type="button" className="icon-btn" aria-label="Previous month" disabled={month <= min}
+          onClick={() => setMonth(shiftMonth(month, -1))}><Chevron dir="left" /></button>
+        <span className="month" aria-live="polite">{monthLabel(month)}</span>
+        <button type="button" className="icon-btn" aria-label="Next month" disabled={month >= current}
+          onClick={() => setMonth(shiftMonth(month, 1))}><Chevron /></button>
+      </div>
+      {month !== current && <button type="button" className="pill" onClick={() => setMonth(current)}>This month</button>}
     </div>
   );
+}
+
+// Category dropdown: most-used first, then everything grouped, with search.
+// Typing a name that doesn't exist offers to add it (synced to your other devices).
+export function CategorySelect({ value, onChange, amountCents, usage = {}, onToast, startOpen = false }) {
+  const [open, setOpen] = useState(startOpen);
+  const [q, setQ] = useState('');
+  const search = useRef(null);
+  const { most, groups } = useMemo(() => pickerGroups(amountCents, usage), [amountCents, usage]);
+
+  useEffect(() => { if (open) search.current?.focus({ preventScroll: true }); }, [open]);
+
+  const qq = q.trim().toLowerCase();
+  const match = (c) => !qq || c.name.toLowerCase().includes(qq);
+  const shownGroups = groups.map((g) => ({ ...g, items: g.items.filter(match) })).filter((g) => g.items.length);
+  const exact = groups.some((g) => g.items.some((c) => c.name.toLowerCase() === qq));
+
+  const pick = (id) => { onChange(id); setOpen(false); setQ(''); };
+  async function add(type) {
+    try {
+      const id = await addCategory(q, type);
+      pick(id);
+      onToast?.(`Added category ${q.trim()}`);
+    } catch (e) {
+      onToast?.(e.message);
+    }
+  }
+
+  const current = value ? getCategory(value) : null;
+  const option = (c, key = c.id) => (
+    <button type="button" key={key} className={`cat-option${c.id === value ? ' selected' : ''}`} onClick={() => pick(c.id)}>
+      <span>{c.name}</span>{c.id === value && <span aria-hidden="true">✓</span>}
+    </button>
+  );
+
+  return (
+    <div className="cat-select">
+      <button type="button" className={`cat-button${current ? '' : ' empty-choice'}`} aria-expanded={open}
+        onClick={() => setOpen(!open)}>
+        <span>{current ? categoryName(value) : 'Pick a category'}</span>
+        <Chevron dir="right" />
+      </button>
+      {open && (
+        <div className="cat-panel" role="listbox" aria-label="Categories">
+          <input ref={search} className="input" type="search" placeholder="Search or add a category" value={q}
+            aria-label="Search categories" onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const first = shownGroups[0]?.items[0];
+                if (first) pick(first.id);
+              } else if (e.key === 'Escape') setOpen(false);
+            }} />
+          {!qq && most.length > 0 && (
+            <>
+              <div className="cat-group">Most used</div>
+              {most.map((c) => option(c, `m-${c.id}`))}
+            </>
+          )}
+          {shownGroups.map((g) => (
+            <div key={g.type} style={{ display: 'contents' }}>
+              <div className="cat-group">{g.label}</div>
+              {g.items.map((c) => option(c))}
+            </div>
+          ))}
+          {qq && !exact && (
+            <div className="cat-add">
+              <span className="small" style={{ width: '100%' }}>Add “{q.trim()}” as a new category:</span>
+              <button type="button" className="btn small-btn" onClick={() => add('spend')}>Spending</button>
+              <button type="button" className="btn small-btn" onClick={() => add('income')}>Income</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// How often each category is used, for "Most used".
+export function useCategoryUsage(txns) {
+  return useMemo(() => {
+    const u = {};
+    for (const t of txns ?? []) if (t.categoryId && t.kind !== 'review') u[t.categoryId] = (u[t.categoryId] ?? 0) + 1;
+    return u;
+  }, [txns]);
 }
 
 export function ImportButton({ onDone, className = 'btn' }) {
@@ -83,7 +181,7 @@ export function Sheet({ title, onClose, children }) {
     <div className="overlay" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <span className="card-title">{title}</span>
+          <span className="card-title plain">{title}</span>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>

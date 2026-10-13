@@ -1,6 +1,8 @@
 // Pure merge logic for syncing between devices (tested).
 //
-// A snapshot = { version, txns, rules, tombstones, balance }.
+// A snapshot = { version, txns, rules, categories, tombstones, balance }.
+// (categories = your renames, hidden flags and custom categories; added in M2.5.
+// An older app version simply ignores them, and the next sync from a new one puts them back.)
 // - Every record has a stable `uid` and an `updatedAt` (ms).
 // - The newest edit of a record wins.
 // - A tombstone { uid: deletedAt } removes a record unless it was edited after the delete.
@@ -23,6 +25,7 @@ export function normalize(s) {
     version: SNAPSHOT_VERSION,
     txns: [...(s?.txns ?? [])].sort(byUid),
     rules: [...(s?.rules ?? [])].sort(byUid),
+    categories: [...(s?.categories ?? [])].sort(byUid),
     tombstones: { ...(s?.tombstones ?? {}) },
     balance: s?.balance ?? null,
   };
@@ -59,6 +62,7 @@ export function mergeSnapshots(local, remote) {
   return normalize({
     txns: mergeRecords(l.txns, r.txns, tombstones),
     rules: mergeRecords(l.rules, r.rules, tombstones),
+    categories: mergeRecords(l.categories, r.categories, tombstones),
     tombstones,
     balance: newerBalance(l.balance, r.balance),
   });

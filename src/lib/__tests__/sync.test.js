@@ -81,3 +81,23 @@ describe('helpers', () => {
     expect(fromBase64(toBase64(s))).toBe(s);
   });
 });
+
+describe('categories sync (M2.5)', () => {
+  it('a rename on one device and a new category on another both survive', () => {
+    const a = { categories: [{ id: 'groceries', uid: 'groceries', name: 'Food shop', updatedAt: 5 }] };
+    const b = { categories: [{ id: 'custom-x-1', uid: 'custom-x-1', name: 'Coffee', type: 'spend', custom: true, updatedAt: 6 }] };
+    const m = mergeSnapshots(a, b);
+    expect(m.categories.map((c) => c.id)).toEqual(['custom-x-1', 'groceries']);
+  });
+  it('the newest hide/unhide wins', () => {
+    const a = { categories: [{ id: 'pets', uid: 'pets', hidden: false, updatedAt: 9 }] };
+    const b = { categories: [{ id: 'pets', uid: 'pets', hidden: true, updatedAt: 3 }] };
+    expect(mergeSnapshots(a, b).categories[0].hidden).toBe(false);
+    expect(mergeSnapshots(b, a).categories[0].hidden).toBe(false);
+  });
+  it('a snapshot from an older app (no categories) keeps ours', () => {
+    const ours = { categories: [{ id: 'pets', uid: 'pets', hidden: false, updatedAt: 9 }] };
+    expect(mergeSnapshots(ours, { txns: [] }).categories).toHaveLength(1);
+  });
+});
+

@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, requestPersistentStorage } from './lib/db.js';
 import { todaySydney, monthKey } from './lib/dates.js';
+import { setCategoryOverrides } from './lib/categories.js';
+import { firstDataMonth } from './lib/summary.js';
+import { migrateRules } from './lib/store.js';
+import { useCategoryUsage } from './components/ui.jsx';
 import Home from './components/Home.jsx';
+import Detail from './components/Detail.jsx';
 import Activity from './components/Activity.jsx';
 import AddTxn from './components/AddTxn.jsx';
 import TxnSheet from './components/TxnSheet.jsx';
@@ -28,6 +33,7 @@ function NavItem({ id, label, tab, go, badge, className = '' }) {
         {badge > 0 && <span className="badge" aria-hidden="true">{badge > 99 ? '99+' : badge}</span>}
       </span>
       <span>{label}</span>
+      {badge > 0 && <span className="badge badge-inline" aria-hidden="true">{badge > 99 ? '99+' : badge}</span>}
     </button>
   );
 }
@@ -48,20 +54,48 @@ export default function App() {
   const [filter, setFilter] = useState('all');
   const [openId, setOpenId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [page, setPage] = useState(null); // detail page: { name, category? }
+  const pushed = useRef(false);
 
   const txns = useLiveQuery(() => db.txns.toArray(), []);
   const balance = useLiveQuery(() => db.meta.get('balance'), []);
   const sync = useLiveQuery(() => db.meta.get('sync'), []);
+  const cats = useLiveQuery(() => db.categories.toArray(), []);
+
+  // Your renamed / hidden / added categories (synced) apply everywhere.
+  const catsReady = useMemo(() => { setCategoryOverrides(cats ?? []); return cats !== undefined; }, [cats]);
+  const usage = useCategoryUsage(txns);
+  const firstMonth = useMemo(() => firstDataMonth(txns ?? []), [txns]);
 
   useEffect(() => { requestPersistentStorage(); }, []);
 
-  // Sync when the app opens, when it comes back to the screen, and when the connection returns.
+  // Detail pages: the phone's back gesture closes them instead of leaving the app.
   useEffect(() => {
-    syncNow();
+    const onPop = () => { pushed.current = false; setPage(null); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const openDetail = (name, extra = {}) => {
+    setPage({ name, ...extra });
+    if (!pushed.current) { window.history.pushState({ moni: 'detail' }, ''); pushed.current = true; }
+    window.scrollTo(0, 0);
+  };
+  const closeDetail = () => {
+    if (pushed.current) window.history.back(); else setPage(null);
+  };
+
+  // Sync when the app opens, when it comes back to the screen, and when the connection returns.
+  // After the first sync, catch up older transactions with the M2.5 rules (once per device).
+  useEffect(() => {
+    let alive = true;
+    syncNow().then(() => migrateRules()).then((n) => {
+      if (alive && n) setToast(`Updated ${n} transactions to the new categories`);
+    }).catch(() => {});
     const onVisible = () => { if (document.visibilityState === 'visible') syncNow(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', syncNow);
     return () => {
+      alive = false;
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', syncNow);
     };
@@ -74,30 +108,35 @@ export default function App() {
 
   const go = (t, f) => {
     if (f) setFilter(f);
+    if (page) closeDetail();
     setTab(t);
     window.scrollTo(0, 0);
   };
 
-  if (txns === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
+  if (txns === undefined || !catsReady) return <div className="app"><div className="empty">Loading…</div></div>;
 
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
   const open = openId != null ? txns.find((t) => t.uid === openId) : null;
 
   return (
     <div className="app">
-      {tab === 'home' && (
-        <Home txns={txns} today={today} month={month} setMonth={setMonth} balance={balance} sync={sync}
-          onNavigate={go} onOpen={setOpenId} onToast={setToast} />
+      {tab === 'home' && !page && (
+        <Home txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} sync={sync}
+          onNavigate={go} onDetail={openDetail} onOpen={setOpenId} onToast={setToast} />
+      )}
+      {tab === 'home' && page && (
+        <Detail page={page} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
+          balance={balance} onBack={closeDetail} onOpen={setOpenId} />
       )}
       {tab === 'activity' && (
         <Activity txns={txns} today={today} filter={filter} setFilter={setFilter} onOpen={setOpenId} onToast={setToast} />
       )}
-      {tab === 'add' && <AddTxn today={today} onDone={() => go('home')} onToast={setToast} />}
+      {tab === 'add' && <AddTxn today={today} usage={usage} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && <Placeholder title="Budgets" milestone="M3" />}
       {tab === 'cashflow' && <Placeholder title="Cash flow" milestone="M4" />}
-      {tab === 'settings' && <Settings sync={sync} onToast={setToast} />}
+      {tab === 'settings' && <Settings sync={sync} txns={txns} onToast={setToast} />}
 
-      {open && <TxnSheet key={open.uid} txn={open} onClose={() => setOpenId(null)} onToast={setToast} />}
+      {open && <TxnSheet key={open.uid} txn={open} usage={usage} onClose={() => setOpenId(null)} onToast={setToast} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
 

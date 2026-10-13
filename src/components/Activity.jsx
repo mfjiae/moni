@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { categoryById } from '../lib/categories.js';
+import { categoryName } from '../lib/categories.js';
+import { resortReview } from '../lib/store.js';
 import { longDay, shortDay } from '../lib/dates.js';
 import { ImportButton } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
@@ -7,6 +8,17 @@ import TxnRow from './TxnRow.jsx';
 export default function Activity({ txns, today, filter, setFilter, onOpen, onToast }) {
   const [q, setQ] = useState('');
   const [showSavings, setShowSavings] = useState(false);
+  const [sorting, setSorting] = useState(false);
+
+  async function resort() {
+    setSorting(true);
+    try {
+      const n = await resortReview();
+      onToast(n ? `Sorted ${n} with the latest rules` : 'Nothing new to sort. The rest need you.');
+    } finally {
+      setSorting(false);
+    }
+  }
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
 
   const groups = useMemo(() => {
@@ -17,7 +29,7 @@ export default function Activity({ txns, today, filter, setFilter, onOpen, onToa
       .filter((t) => !qq ||
         t.description.toUpperCase().includes(qq) ||
         (t.note ?? '').toUpperCase().includes(qq) ||
-        (categoryById[t.categoryId]?.name ?? '').toUpperCase().includes(qq))
+        (t.categoryId ? categoryName(t.categoryId) : '').toUpperCase().includes(qq))
       .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0));
     const out = [];
     for (const t of list) {
@@ -49,6 +61,13 @@ export default function Activity({ txns, today, filter, setFilter, onOpen, onToa
           To review{reviewCount ? ` (${reviewCount})` : ''}
         </button>
       </div>
+
+      {filter === 'review' && reviewCount > 0 && (
+        <div className="row">
+          <span className="small">Rules only run when you import. Changed or added rules? Re-sort.</span>
+          <button type="button" className="btn small-btn" disabled={sorting} onClick={resort}>{sorting ? 'Sorting…' : 'Re-sort with latest rules'}</button>
+        </div>
+      )}
 
       {filter === 'all' && (
         <label className="toggle-row">

@@ -2,15 +2,15 @@
 // for a sync, so changes reach your other devices.
 import { db, newUid } from './db.js';
 import { parseNetBankCsv } from './csv.js';
-import { DEFAULT_RULES, makeUserRule, ruleMatches } from './rules.js';
+import { DEFAULT_RULES, makeUserRule, ruleMatches, isBroadKeyword } from './rules.js';
 import { prepareImport, nextBalance } from './importer.js';
-import { kindForCategory } from './categories.js';
+import { kindForCategory, customCategoryId } from './categories.js';
+import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync } from './sync.js';
 
-// User rules first (newest first), then the built-in ones.
+// User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
-  const user = await db.userRules.orderBy('order').reverse().toArray();
-  return [...user, ...DEFAULT_RULES];
+  return [...usableUserRules(await db.userRules.toArray()), ...DEFAULT_RULES];
 }
 
 export async function importCsvText(text) {
@@ -73,6 +73,7 @@ export async function setCategory(uid, categoryId, note) {
 // Save "always put KEYWORD in CATEGORY" and apply it to matching items still in Review.
 // Returns how many other transactions it sorted.
 export async function saveRule(keyword, categoryId, exceptUid) {
+  if (isBroadKeyword(keyword)) throw new Error(`"${keyword}" would match too many transactions. Use the merchant's name.`);
   const now = Date.now();
   const kind = kindForCategory(categoryId);
   const rule = makeUserRule(keyword, categoryId, kind);
@@ -98,4 +99,64 @@ export async function clearDevice() {
   await db.transaction('rw', db.tables, async () => {
     await Promise.all(db.tables.map((t) => t.clear()));
   });
+}
+
+export async function deleteRule(uid) {
+  await db.transaction('rw', db.userRules, db.tombstones, async () => {
+    await db.userRules.delete(uid);
+    await db.tombstones.put({ key: uid, deletedAt: Date.now() });
+  });
+  requestSync();
+}
+
+// ---------- Categories (renames, hide, custom; synced) ----------
+
+export async function updateCategory(id, changes) {
+  const cur = (await db.categories.get(id)) ?? { id, uid: id };
+  await db.categories.put({ ...cur, ...changes, id, uid: id, updatedAt: Date.now() });
+  requestSync();
+}
+
+// type: 'spend' | 'income'. Returns the new category's id.
+export async function addCategory(name, type) {
+  const clean = name.trim().replace(/\s+/g, ' ');
+  if (!clean) throw new Error('Give the category a name');
+  const id = customCategoryId(clean);
+  await db.categories.put({ id, uid: id, name: clean, type, custom: true, hidden: false, updatedAt: Date.now() });
+  requestSync();
+  return id;
+}
+
+// ---------- Re-sorting with the latest rules ----------
+
+async function applyPlan(plan) {
+  if (!plan.length) return 0;
+  const now = Date.now();
+  await db.transaction('rw', db.txns, async () => {
+    for (const c of plan) {
+      await db.txns.update(c.uid, { kind: c.kind, categoryId: c.categoryId, bill: !!c.bill, updatedAt: now });
+    }
+  });
+  requestSync();
+  return plan.length;
+}
+
+// "Re-sort Review": sorts whatever in Review the current rules now know.
+export async function resortReview() {
+  const [txns, userRules] = await Promise.all([db.txns.where('kind').equals('review').toArray(), db.userRules.toArray()]);
+  return applyPlan(resortPlan(txns, { userRules, mode: 'review' }));
+}
+
+// One-time M2.5 catch-up (see resort.js). Runs once per device after the first sync;
+// a second device finds nothing left to change.
+export const RULES_VERSION = 2;
+export async function migrateRules() {
+  const done = await db.meta.get('rulesVersion');
+  if ((done?.value ?? 1) >= RULES_VERSION) return null;
+  const [txns, userRules] = await Promise.all([db.txns.toArray(), db.userRules.toArray()]);
+  if (!txns.length) return null; // nothing here yet (new device): try again after data arrives
+  const plan = resortPlan(txns, { userRules, mode: 'migrate' });
+  const n = await applyPlan(plan);
+  await db.meta.put({ key: 'rulesVersion', value: RULES_VERSION, at: Date.now(), changed: n });
+  return n;
 }

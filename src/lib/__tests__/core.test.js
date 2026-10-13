@@ -136,15 +136,18 @@ describe('month summary', () => {
     // Sep groceries: IGA 4.60 (value date 28 Sep) - ALDI refund 11.98 = -7.38
     expect(sep.byCategory.groceries).toBe(460 - 1198);
   });
-  it('counts investing as spending', () => {
+  it('keeps investing out of spending but in the category totals', () => {
     expect(sep.byCategory.investing).toBe(5000 + 3635);
+    expect(sep.invested).toBe(5000 + 3635);
   });
   it('counts review items separately', () => {
     expect(sep.review).toBe(1); // B JONES reimbursement in Sep
   });
-  it('totals spending', () => {
-    // laundry 9.00 + taco bell 8.95 + opal 22.78 + rent 916 + groceries -7.38 + investing 86.35 + yomojo 12.45
-    expect(sep.spent).toBe(900 + 895 + 2278 + 91600 + (460 - 1198) + 8635 + 1245);
+  it('totals spending, and everything that left including investing', () => {
+    // laundry 9.00 + taco bell 8.95 + opal 22.78 + rent 916 + groceries -7.38 + yomojo 12.45
+    expect(sep.spent).toBe(900 + 895 + 2278 + 91600 + (460 - 1198) + 1245);
+    expect(sep.outgoings).toBe(sep.spent + 8635);
+    expect(sep.net).toBe(72033 - sep.outgoings);
   });
   it('computes October savings as net', () => {
     const oct = summarizeMonth(txns, '2026-10');

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { CategoryPicker } from './ui.jsx';
+import { CategorySelect } from './ui.jsx';
 import { parseCents } from '../lib/money.js';
 import { nowSydneyTime } from '../lib/dates.js';
 import { addManual } from '../lib/store.js';
 
-export default function AddTxn({ today, onDone, onToast }) {
+export default function AddTxn({ today, usage, onDone, onToast }) {
   const [direction, setDirection] = useState('out');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -33,7 +33,7 @@ export default function AddTxn({ today, onDone, onToast }) {
   return (
     <main className="screen">
       <header className="header"><div className="title">Add transaction</div></header>
-      <form className="card form" onSubmit={save} noValidate>
+      <form className="card form add-form" onSubmit={save} noValidate>
         <div className="segmented" role="tablist" aria-label="Direction">
           <button type="button" role="tab" aria-selected={direction === 'out'} className={direction === 'out' ? 'on' : ''}
             onClick={() => { setDirection('out'); setCategoryId(null); }}>Money out</button>
@@ -55,7 +55,8 @@ export default function AddTxn({ today, onDone, onToast }) {
 
         <div className="field">
           <span className="small">Category</span>
-          <CategoryPicker value={categoryId} onChange={(id) => { setCategoryId(id); setError(''); }} amountCents={sign} />
+          <CategorySelect value={categoryId} onChange={(id) => { setCategoryId(id); setError(''); }} amountCents={sign}
+            usage={usage} onToast={onToast} />
         </div>
 
         <label className="field">
