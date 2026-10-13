@@ -72,7 +72,7 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Day by day: bars, then a big calendar with the amount in each day (tap a day). "Busiest day" and the selected-day box (by category) sit UNDER the calendar, side by side (stacked on a phone), so the calendar gets the full column width (Ken, 13 Oct 2026: it was cluttered with them beside it). Only in the two-column Home (900-1279px, Day by day full width) are they beside the calendar again. Defaults to the latest day with spending.
 - Rent warning is a bigger, NOT clickable banner (guess: last rent bill + the gap between the last two; shows from 7 days before). M5 (Bills) replaces it.
 - Search box removed from Home. "All spending" in Where it went opens Activity (the Spending box opens the Spending page). Real search/filters = step 3.
-- Savings balance inside the Smart Access card is NOT built: Ken will send ALL CSVs and M2.6 handles savings balances. No balance is invented. Ken asked on 13 Oct 2026 why it is missing (the prototype showed it, with sample numbers): open question for him, see the savings-balance note in the visual bug list.
+- Savings balance inside the Smart Access card is NOT built: Ken will send ALL CSVs and M2.6 handles savings balances. No balance is invented. Ken asked on 13 Oct 2026 why it is missing (the prototype showed it, with sample numbers) and chose to wait for M2.6.
 - Month picking: Home has the month name as a dropdown with no arrows; other pages keep arrows in fixed places and tapping the name opens the picker. "This month" is inside the picker.
 - Settings = side list (Sync, This device, Categories, Learned rules). Desktop: list left, section right (Sync open by default). Phone: list of rows, each opens its section with a Settings button to go back. Learned rules shows an empty-state card.
 - Account page chart ranges: 1W / 1M / 3M / 1Y / All (the line starts at the balance held coming into the range).
@@ -123,7 +123,7 @@ At the start of every session and every stage, tell Ken which update and stage w
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
 - Fixed 13 Oct 2026 (check live): Day by day was cluttered sideways in the 3-column Home (boxes moved under the calendar); on detail pages (Spending, Money in, Saved, Invested, account) the big-number card and the comparison card touched with no gap (`.detail-grid .col` now has a 16px gap, same as Home).
-- OPEN (Ken, 13 Oct 2026): he expected a Savings line under the Smart Access balance, like the prototype. Waiting for his choice: wait for M2.6, or add a small balance-only savings figure now.
+- DECIDED (Ken, 13 Oct 2026): the Savings line under the Smart Access balance (prototype had it) waits for M2.6. No balance-only shortcut, no hand-typed figure.
 - Found in the 13 Oct review (not Ken's, not fixed): buttons have no visible keyboard focus ring outside the category dropdown, and there is no `prefers-reduced-motion` handling (little animation exists yet).
 - Fixed in M2.5b step 1 (13 Oct 2026, check in the live app): Home's 4 boxes now have a colored icon instead of the top line; desktop content grows to 1600px with 3 columns on Home.
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
