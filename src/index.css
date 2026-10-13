@@ -133,8 +133,11 @@ a { color: var(--accent); text-decoration: none; }
 .month-switch .month { font-size: 15px; color: var(--text); font-weight: 500; min-width: 150px; text-align: center; }
 .month-btn { min-height: 44px; border: 0; border-radius: 22px; background: none; padding: 0 8px; }
 .month-btn:hover { background: var(--surface-raised); }
-.month-drop { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-left: -14px; padding: 0 14px; border: 0; border-radius: 22px; background: none; color: var(--text); font-size: 23px; font-weight: 600; }
-.month-drop:hover { background: var(--surface-raised); }
+.month-pill { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; border-radius: 26px; }
+.month-pill:hover { background: var(--surface-raised); }
+.month-pill .icon-btn { width: 40px; }
+.month-drop { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--text); font-size: 23px; font-weight: 600; }
+.month-drop-label { min-width: 8.4em; text-align: center; }
 .month-drop svg { color: var(--accent); }
 .year-row { display: flex; align-items: center; justify-content: space-between; }
 .year { font-size: 19px; font-weight: 600; }

@@ -74,7 +74,7 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Rent warning is a bigger, NOT clickable banner (guess: last rent bill + the gap between the last two; shows from 7 days before). M5 (Bills) replaces it.
 - Search box removed from Home. "All spending" in Where it went opens Activity (the Spending box opens the Spending page). Each category row in Where it went opens the Spending page with that category selected and only its transactions listed (Ken, 13 Oct 2026). Real search/filters = step 3.
 - Savings balance inside the Smart Access card is NOT built: Ken will send ALL CSVs and M2.6 handles savings balances. No balance is invented. Ken asked on 13 Oct 2026 why it is missing (the prototype showed it, with sample numbers) and chose to wait for M2.6.
-- Month picking: Home has the month name as a dropdown with no arrows; other pages keep arrows in fixed places and tapping the name opens the picker. "This month" is inside the picker.
+- Month picking: Home's month pill now has previous/next arrows either side of the name (Ken, 13 Oct 2026; changed from no arrows), with the arrows in fixed places (the name has a minimum width) and extra padding so the text isn't tight to the pill edge; other pages keep arrows in fixed places too. Tapping the name opens the picker on every page. "This month" is inside the picker.
 - Settings = side list (Sync, This device, Categories, Learned rules). Desktop: list left, section right (Sync open by default). Phone: list of rows, each opens its section with a Settings button to go back. Learned rules shows an empty-state card.
 - Account page chart ranges: 1W / 1M / 3M / 1Y / All (the line starts at the balance held coming into the range).
 - Left for later: day-grouped, paged transaction lists on detail/account pages (step 2), Activity filters (step 3). Remembered toggles, quick sort and nicknames not started.
@@ -91,7 +91,7 @@ Build in steps, test each. Home layout = PICKED (Ken, 13 Oct 2026): prototype 1 
   - Reword the "spent X% of September's total so far" line: show "$X so far, X% of September's $Y" so it is clear.
   - Saved and Invested colors: Ken said "ye sure" to my suggestion: Saved = blue, Invested = purple (spent red/orange, income green).
 - Look: Claude-like near-black background (no purple tint), better contrast, new palette (spent red/orange, income green), less white text, colored icons instead of the top lines on the 4 boxes, use the space on wide screens (see visual bug list).
-- Month picking: no arrows on Home (it shows this month). On other pages: arrows stay in fixed positions; tapping the month name opens a picker (years and months grid, "This month" inside it) to jump straight to any month.
+- Month picking: (Home now has arrows, see above.) On other pages: arrows stay in fixed positions; tapping the month name opens a picker (years and months grid, "This month" inside it) to jump straight to any month.
 - Home: remove Recent; link to Activity instead (or a tiny one-liner).
 - Detail pages (Spending, Income, Saved, Invested): category stats on top; transactions in a separate full-width box underneath, grouped by day (CommBank-style day headers with the day's total), paged.
 - Account page: bigger balance chart, full width; add a 1-week range (1W / 1M / 3M / 1Y / All); transactions move into a separate box under the chart, grouped by day, paged/expandable.

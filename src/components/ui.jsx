@@ -71,14 +71,23 @@ export function MonthPicker({ month, setMonth, current, first, onClose }) {
   );
 }
 
-// Home: just the month name as a dropdown (no arrows; Home is "this month" unless you pick another).
+// Home: one pill with arrows either side of the month name. The arrows stay in fixed places
+// (the name has a minimum width) and tapping the name opens the month picker.
 export function MonthDropdown(props) {
+  const { month, setMonth, current, first } = props;
+  const min = first && first < current ? first : current;
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="month-drop" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
-        <span>{monthLabel(props.month)}</span><Icon name="chev-down" size={18} />
-      </button>
+      <div className="month-pill">
+        <button type="button" className="icon-btn" aria-label="Previous month" disabled={month <= min}
+          onClick={() => setMonth(shiftMonth(month, -1))}><Chevron dir="left" /></button>
+        <button type="button" className="month-drop" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
+          <span className="month-drop-label">{monthLabel(month)}</span><Icon name="chev-down" size={18} />
+        </button>
+        <button type="button" className="icon-btn" aria-label="Next month" disabled={month >= current}
+          onClick={() => setMonth(shiftMonth(month, 1))}><Chevron /></button>
+      </div>
       {open && <MonthPicker {...props} onClose={() => setOpen(false)} />}
     </>
   );
