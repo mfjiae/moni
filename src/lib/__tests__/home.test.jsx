@@ -53,7 +53,8 @@ describe('Home', () => {
   it('a past month: no rent warning, whole-month comparison', () => {
     const out = html({ month: '2026-09' });
     expect(out).not.toContain('is due');
-    expect(out).toContain('Spent in September');
+    expect(out).not.toContain('Spent in September');
+    expect(out).toContain('Nothing earlier to compare with yet.');
   });
   it('a month with nothing in it still draws', () => {
     const out = html({ txns: [t('2026-10-01', 500000, 'job-income', { kind: 'income' })] });

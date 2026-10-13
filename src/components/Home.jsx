@@ -39,16 +39,11 @@ function niceMax(cents) {
 const axisMoney = (c) => (c === 0 ? '$0' : c >= 100000 ? `$${c / 100000}k` : `$${c / 100}`);
 
 // This month's spending against the month before: a progress bar, one plain sentence, and a big graph.
-function PaceCard({ month, isCurrent, compare, spent }) {
+function PaceCard({ month, isCurrent, compare }) {
   const prevName = compare ? monthName(compare.prev) : '';
-  const title = isCurrent ? 'Spent so far' : `Spent in ${monthName(month)}`;
   const by = compare && isCurrent ? ` by the ${ordinal(compare.day)}` : '';
   return (
     <section className="card pace-card" aria-label="Spending pace">
-      <div className="card-head"><span className="card-title head-out">{title}</span></div>
-      <div className="pace-main">
-        <span className="pace-amount text-out">{formatCents(spent)}</span>
-      </div>
       {compare ? (
         <>
           <div className="pace-sub">
@@ -344,7 +339,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
             <Box kind="invest" icon="trend" label="Invested" value={formatCents(summary.invested)}
               foot={foot(formatCents(cmp.prevTotal.invested))} onClick={() => onDetail('invested')} />
           </div>
-          <PaceCard month={month} isCurrent={month === current} compare={compare} spent={summary.spent} />
+          <PaceCard month={month} isCurrent={month === current} compare={compare} />
           <DayByDay key={month} txns={txns} month={month} today={today} byDay={byDay} />
         </div>
       </div>
