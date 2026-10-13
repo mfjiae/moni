@@ -82,6 +82,15 @@ export function daysBetween(fromIso, toIso) {
   return n(toIso) - n(fromIso);
 }
 
+// Small label beside a day header: "Today", "Yesterday", "2 days ago" up to "31 days ago"; older days get none
+export function relativeDay(iso, today) {
+  const n = daysBetween(iso, today);
+  if (n < 0 || n > 31) return '';
+  if (n === 0) return 'Today';
+  if (n === 1) return 'Yesterday';
+  return `${n} days ago`;
+}
+
 // ("2026-10-06", 14) -> "2026-10-20"
 export function addDays(iso, delta) {
   const [y, m, d] = iso.split('-').map(Number);

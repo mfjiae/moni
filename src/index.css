@@ -98,8 +98,11 @@ a { color: var(--accent); text-decoration: none; }
 .txn { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; min-height: 60px; }
 .txn:hover .merchant { color: #fff; }
 .muted-row .merchant, .muted-row .amount { color: var(--muted); }
-.list .day-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 0 4px; }
-.day-total { color: var(--text); font-weight: 500; }
+.list .day-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 0 6px; }
+.day-date { display: inline-flex; align-items: center; gap: 9px; min-width: 0; font-size: 16px; font-weight: 600; color: var(--text); }
+.day-bar { width: 3px; height: 18px; border-radius: 0; background: var(--accent); flex: none; }
+.day-rel { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--surface-raised); border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
+.day-total { color: var(--text); font-weight: 600; font-size: 15px; }
 .list .day-head + .txn { border-top: 0; }
 .list .card-head + .txn { border-top: 0; }
 .small-empty { padding: 16px 0 12px; }
@@ -436,8 +439,6 @@ select.input { appearance: auto; }
 /* Cards stacked inside a detail-page column (big number, comparison, categories) need a gap like everywhere else */
 .detail-grid .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 @media (min-width: 900px) {
-  /* Stats first: the cards sit side by side in a row (they wrap when narrow), then the day-grouped transactions in one full-width box underneath */
-  .detail-grid { display: flex; flex-direction: column; gap: 20px; }
-  .detail-grid .col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; gap: 20px; }
-  .detail-grid .col .wide-card { grid-column: 1 / -1; }
+  /* Stats on the left, the day-grouped transactions in a tall box on the right (Ken, 13 Oct 2026) */
+  .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 20px; }
 }

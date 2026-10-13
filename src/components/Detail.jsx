@@ -2,7 +2,7 @@
 // the full Cash flow pages come in M4).
 import { useMemo, useState } from 'react';
 import { formatCents } from '../lib/money.js';
-import { monthKey, monthLabel, monthName, longDay, shortDay, ordinal, addDays } from '../lib/dates.js';
+import { monthKey, monthLabel, monthName, longDay, relativeDay, ordinal, addDays } from '../lib/dates.js';
 import { categoryName } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, balanceHistory, compareMonths } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
@@ -30,27 +30,31 @@ function Segmented({ value, onChange, options, label }) {
   );
 }
 
-// Day-grouped transactions (CommBank style): a header per day with the day's net total, paged by whole days.
+// Day-grouped transactions (CommBank style): a header per day (date, how long ago, net total), paged by whole days.
+// The button says exactly how many more it will show.
 function TxnList({ title, list, today, onOpen, empty }) {
   const [limit, setLimit] = useState(30);
   const { groups, shown } = useMemo(() => groupByDay(list, limit), [list, limit]);
-  const dayLabel = (iso) => {
-    const s = shortDay(iso, today);
-    return s === 'Today' || s === 'Yesterday' ? `${s}, ${longDay(iso)}` : longDay(iso);
-  };
+  const next = useMemo(() => groupByDay(list, limit + 30).shown - shown, [list, limit, shown]);
   return (
     <section className="card list txn-box" aria-label={title}>
       <div className="card-head"><span className="card-title">{title}</span><span className="small">{list.length}</span></div>
       {list.length
-        ? groups.map((g) => (
-          <div key={g.date} role="group" aria-label={longDay(g.date)}>
-            <div className="day-head small"><span>{dayLabel(g.date)}</span><span className="day-total">{formatCents(g.netCents, { sign: true })}</span></div>
-            {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} />)}
-          </div>
-        ))
+        ? groups.map((g) => {
+          const rel = relativeDay(g.date, today);
+          return (
+            <div key={g.date} role="group" aria-label={longDay(g.date)}>
+              <div className="day-head">
+                <span className="day-date"><i className="day-bar" aria-hidden="true" />{longDay(g.date)}{rel && <span className="day-rel">{rel}</span>}</span>
+                <span className="day-total">{formatCents(g.netCents, { sign: true })}</span>
+              </div>
+              {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} />)}
+            </div>
+          );
+        })
         : <div className="empty small-empty">{empty}</div>}
       {list.length > shown && (
-        <button type="button" className="btn ghost more" onClick={() => setLimit(limit + 30)}>Show more ({list.length - shown} left)</button>
+        <button type="button" className="btn ghost more" onClick={() => setLimit(limit + 30)}>Show {next} more &middot; {list.length - shown} left</button>
       )}
     </section>
   );
@@ -143,6 +147,8 @@ function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
   return (
     <div className="detail-grid">
       <div className="col">
+        <Segmented label="Tuition" value={noTuition} onChange={(v) => { setNoTuition(v); if (v === 'without' && sel === 'tuition') setSel(null); }}
+          options={[['all', 'Everything'], ['without', 'Without tuition']]} />
         <Hero label={`Everything that left in ${monthLabel(month)}`} cents={total} cls="text-out">
           <div className="sub-amounts">
             <span><Dot color="out" />Spending {formatCents(s.spent - (exclude.length ? tuition : 0))}</span>
@@ -152,8 +158,6 @@ function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
         </Hero>
         <CompareCard txns={txns} month={month} today={today} better="down"
           pick={(x) => x.outgoings - (exclude.length ? x.byCategory.tuition ?? 0 : 0)} />
-        <Segmented label="Tuition" value={noTuition} onChange={(v) => { setNoTuition(v); if (v === 'without' && sel === 'tuition') setSel(null); }}
-          options={[['all', 'Everything'], ['without', 'Without tuition']]} />
         <Breakdown title="By category" head="head-out" rows={rows} total={total} selected={sel} onSelect={setSel}
           colorFor={(id) => (id === 'investing' ? 'invest' : 'out')} />
       </div>
@@ -177,6 +181,8 @@ function IncomePage({ txns, month, today, onOpen }) {
   return (
     <div className="detail-grid">
       <div className="col">
+        <Segmented label="Income view" value={view} onChange={(v) => { setView(v); setSel(null); }}
+          options={[['all', 'All income'], ['job', 'Job income only']]} />
         <Hero label={view === 'job' ? `Job income in ${monthLabel(month)}` : `Money in, ${monthLabel(month)}`} cents={total} cls="text-in">
           {view === 'all' && (s.incomeByCategory.family ?? 0) !== 0 && (
             <div className="sub-amounts">
@@ -187,8 +193,6 @@ function IncomePage({ txns, month, today, onOpen }) {
         </Hero>
         <CompareCard txns={txns} month={month} today={today} better="up"
           pick={(x) => (view === 'job' ? x.incomeByCategory['job-income'] ?? 0 : x.income)} />
-        <Segmented label="Income view" value={view} onChange={(v) => { setView(v); setSel(null); }}
-          options={[['all', 'All income'], ['job', 'Job income only']]} />
         <Breakdown title="By category" head="head-in" rows={rows} total={total} color="in" selected={sel} onSelect={setSel} />
       </div>
       <TxnList title={sel ? categoryName(sel) : 'Transactions'} list={list} today={today} onOpen={onOpen}
@@ -318,7 +322,7 @@ function AccountPage({ txns, balance, today, onOpen }) {
             </div>
           )}
         </Hero>
-        <section className="card wide-card" aria-label="Balance over time">
+        <section className="card" aria-label="Balance over time">
           <div className="card-head">
             <span className="card-title head-balance">Balance over time</span>
           </div>

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { groupByDay } from '../daygroups.js';
+import { relativeDay } from '../dates.js';
 
 const t = (date, amountCents) => ({ uid: `${date}|${amountCents}`, date, amountCents });
 
@@ -24,5 +25,19 @@ describe('groupByDay', () => {
 
   it('handles an empty list', () => {
     expect(groupByDay([], 30)).toEqual({ groups: [], shown: 0 });
+  });
+});
+
+describe('relativeDay', () => {
+  const today = '2026-10-13';
+  it('labels today, yesterday and N days ago up to a month', () => {
+    expect(relativeDay('2026-10-13', today)).toBe('Today');
+    expect(relativeDay('2026-10-12', today)).toBe('Yesterday');
+    expect(relativeDay('2026-10-11', today)).toBe('2 days ago');
+    expect(relativeDay('2026-09-12', today)).toBe('31 days ago');
+  });
+  it('has no label for older days or future days', () => {
+    expect(relativeDay('2026-09-11', today)).toBe('');
+    expect(relativeDay('2026-10-14', today)).toBe('');
   });
 });
