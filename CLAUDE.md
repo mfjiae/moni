@@ -122,6 +122,7 @@ At the start of every session and every stage, tell Ken which update and stage w
 - Small visual fixes or notes: Sonnet, low or medium. A session mixing money logic and UI: start on Opus, high.
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
+- Open (Ken, 13 Oct 2026): the month pill (e.g. "August 2026" with the dropdown arrow) on hover: the month text isn't centred in the pill, and the "A" sits too close to the pill's left border. The "226 to sort" pill is not part of this bug.
 - Fixed 13 Oct 2026 (check live): Day by day was cluttered sideways in the 3-column Home (boxes moved under the calendar); on detail pages (Spending, Money in, Saved, Invested, account) the big-number card and the comparison card touched with no gap (`.detail-grid .col` now has a 16px gap, same as Home).
 - Fixed 13 Oct 2026 (check live): the empty gaps in Home's third column are gone because Day by day moved to the bottom (prototype B, column 1 width); the more/less line moved onto the "% of September" row.
 - DECIDED (Ken, 13 Oct 2026): the Savings line under the Smart Access balance (prototype had it) waits for M2.6. No balance-only shortcut, no hand-typed figure.
