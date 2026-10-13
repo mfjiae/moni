@@ -40,10 +40,10 @@ describe('Home', () => {
     expect(out).toContain('by the 13th');
     expect(out.match(/class="cal-day /g).length).toBeGreaterThanOrEqual(31);
   });
-  it('Where it went rows are buttons, and the pace comparison sits under the big number', () => {
+  it('Where it went rows are buttons, and the more/less line shares the row with the % of last month', () => {
     const out = html();
     expect(out).toMatch(/<button type="button" class="where"[^>]*aria-label="Rent &amp; housing: \$916\.00\. Open in Spending"/);
-    expect(out).toMatch(/class="pace-amount[^"]*">[^<]*<\/span><span class="vs /);
+    expect(out).toMatch(/<div class="pace-sub"><span class="label">[^<]*<\/span><span class="vs /);
   });
   it('has no transaction list on Home', () => {
     const out = html();

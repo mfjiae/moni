@@ -191,7 +191,9 @@ a { color: var(--accent); text-decoration: none; }
 /* Spending pace card */
 .pace-card, .where-card { flex: 1; }
 .pace-amount { font-size: 40px; font-weight: 600; letter-spacing: -0.6px; line-height: 1.05; }
-.pace-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pace-main { display: flex; min-width: 0; }
+/* "44% of September's $X" on the left, the green/orange more-or-less line on the right: one row, wraps only on a phone */
+.pace-sub { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
 .vs { font-size: 14.5px; font-weight: 500; line-height: 1.3; }
 .pace-chart { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .pace-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -239,8 +241,8 @@ a { color: var(--accent); text-decoration: none; }
 .day-line { font-size: 14px; gap: 8px; }
 .day-line .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 480px) { .cal-side { grid-template-columns: minmax(0, 1fr); } .cal-day { min-height: 46px; padding: 4px 5px; } .cal-amt { font-size: 12px; } }
-/* Two-column Home (900-1279px): Day by day is full width, so calendar and boxes sit side by side again */
-@media (min-width: 900px) and (max-width: 1279px) {
+/* Desktop Home: Day by day is one column wide at the very bottom, so calendar and boxes sit side by side (prototype B) */
+@media (min-width: 900px) {
   .cal-row { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); }
   .cal-side { grid-template-columns: minmax(0, 1fr); }
 }
@@ -414,7 +416,7 @@ select.input { appearance: auto; }
 
   .home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 20px; }
   .home-grid .col { display: flex; flex-direction: column; gap: 16px; }
-  .home-grid .col.third { grid-column: 1 / -1; }
+  .home-grid .col.third { grid-column: 1; }
   .box .box-value { font-size: 30px; }
 
   .overlay { align-items: center; }
@@ -425,11 +427,6 @@ select.input { appearance: auto; }
 
   .desktop-only { display: flex !important; }
   .mobile-only { display: none !important; }
-}
-/* Wide monitors: Home uses three columns */
-@media (min-width: 1280px) {
-  .home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .home-grid .col.third { grid-column: auto; }
 }
 .detail-grid { display: flex; flex-direction: column; gap: 16px; }
 /* Cards stacked inside a detail-page column (big number, comparison, categories) need a gap like everywhere else */

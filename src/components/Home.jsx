@@ -48,17 +48,17 @@ function PaceCard({ month, isCurrent, compare, spent }) {
       <div className="card-head"><span className="card-title head-out">{title}</span></div>
       <div className="pace-main">
         <span className="pace-amount text-out">{formatCents(spent)}</span>
-        {compare && (
-          <span className={`vs ${compare.delta > 0 ? 'text-out' : compare.delta < 0 ? 'text-in' : 'label'}`}>
-            {compare.delta === 0
-              ? `Same as ${prevName}${by}`
-              : `${formatCents(Math.abs(compare.delta))} ${compare.delta > 0 ? 'more' : 'less'} than ${prevName}${by}`}
-          </span>
-        )}
       </div>
       {compare ? (
         <>
-          <span className="label">{Math.round(compare.share * 100)}% of {prevName}&rsquo;s {formatCents(compare.prevTotal)}</span>
+          <div className="pace-sub">
+            <span className="label">{Math.round(compare.share * 100)}% of {prevName}&rsquo;s {formatCents(compare.prevTotal)}</span>
+            <span className={`vs ${compare.delta > 0 ? 'text-out' : compare.delta < 0 ? 'text-in' : 'label'}`}>
+              {compare.delta === 0
+                ? `Same as ${prevName}${by}`
+                : `${formatCents(Math.abs(compare.delta))} ${compare.delta > 0 ? 'more' : 'less'} than ${prevName}${by}`}
+            </span>
+          </div>
           <Bar thick ratio={compare.share} status={compare.share > 1 ? 'over' : 'out'}
             label={`${Math.round(compare.share * 100)}% of ${prevName}'s total`} />
           <PaceChart compare={compare} month={month} prevName={prevName} />
