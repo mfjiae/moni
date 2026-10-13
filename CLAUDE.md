@@ -54,6 +54,7 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
 - Home's 4 boxes (In / Spent / Saved / Invested): the colored line along the top looks ugly and doesn't reach the corners (the rounded corners cut it off). Replace it with a colored icon per box (e.g. arrow in, bag/arrow out, piggy bank, chart). Keep the amount in its color. Next update (Ken, 13 Oct 2026).
+- Desktop doesn't use the space on Ken's wide screen: content is capped at ~1140px and centered, leaving big empty margins. Let it grow to ~1600px and use 3 columns on wide screens (balance + cash flow + 4 boxes | top spending | recent with more rows). Next update, with the box icons (Ken, 13 Oct 2026).
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
 
 ## Later, for a real mobile app version (Ken's idea, not now)
