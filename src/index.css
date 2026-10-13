@@ -91,7 +91,7 @@ a { color: var(--accent); text-decoration: none; }
 .list { padding: 8px 20px; gap: 0; }
 .list .card-head { padding-top: 12px; }
 .txn { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); gap: 12px; }
-.txn .merchant { font-size: 15.5px; font-weight: 500; }
+.txn .merchant { font-size: 15.5px; font-weight: 400; }
 .txn .amount { font-size: 15.5px; font-weight: 500; white-space: nowrap; }
 .txn > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .txn .merchant, .txn .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -99,10 +99,11 @@ a { color: var(--accent); text-decoration: none; }
 .txn:hover .merchant { color: #fff; }
 .muted-row .merchant, .muted-row .amount { color: var(--muted); }
 .list .day-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 0 6px; }
-.day-date { display: inline-flex; align-items: center; gap: 10px; min-width: 0; font-size: 16px; font-weight: 600; color: var(--text); }
+.day-date { display: inline-flex; align-items: center; gap: 10px; min-width: 0; font-size: 17.5px; font-weight: 600; color: var(--text); }
 .day-rel { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--surface-raised); border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
 .day-total { color: var(--text); font-weight: 600; font-size: 15px; }
 .list .day-head + .txn { border-top: 0; }
+.list [role="group"] + [role="group"] > .day-head { border-top: 1px solid var(--border); margin-top: 4px; }
 .list .card-head + .txn { border-top: 0; }
 .small-empty { padding: 16px 0 12px; }
 

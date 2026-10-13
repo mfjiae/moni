@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { categoryName } from '../lib/categories.js';
 import { resortReview } from '../lib/store.js';
-import { longDay, shortDay } from '../lib/dates.js';
+import { longDay, relativeDay } from '../lib/dates.js';
+import { formatCents } from '../lib/money.js';
 import { ImportButton } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
 
@@ -35,15 +36,11 @@ export default function Activity({ txns, today, filter, setFilter, onOpen, onToa
     for (const t of list) {
       const last = out[out.length - 1];
       if (last && last.date === t.date) last.items.push(t);
-      else out.push({ date: t.date, items: [t] });
+      else out.push({ date: t.date, items: [t], netCents: 0 });
+      out[out.length - 1].netCents += t.amountCents;
     }
     return out;
   }, [txns, filter, q, showSavings]);
-
-  const dayLabel = (iso) => {
-    const s = shortDay(iso, today);
-    return s === 'Today' || s === 'Yesterday' ? `${s}, ${longDay(iso)}` : longDay(iso);
-  };
 
   return (
     <main className="screen">
@@ -84,7 +81,10 @@ export default function Activity({ txns, today, filter, setFilter, onOpen, onToa
 
       {groups.map((g) => (
         <section className="card list" key={g.date} aria-label={longDay(g.date)}>
-          <div className="day-head small">{dayLabel(g.date)}</div>
+          <div className="day-head">
+            <span className="day-date">{longDay(g.date)}{relativeDay(g.date, today) && <span className="day-rel">{relativeDay(g.date, today)}</span>}</span>
+            <span className="day-total">{formatCents(g.netCents, { sign: true })}</span>
+          </div>
           {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} />)}
         </section>
       ))}
