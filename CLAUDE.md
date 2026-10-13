@@ -75,7 +75,7 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
   - Month switcher: "This month" button; no months before the first month with data (never before Jan 2024)
   - Category picker = dropdown (most-used first + search); "Add category" in the dropdown and in Settings; rename / hide (synced)
   - Category set (CommBank-aligned, see "Categories" below); recategorize existing data where rules change
-  - Rules: Tuition = UTS ... BPAY only; "UNIVERSITY OF TECHNO" card charges = Education (kits, printing); Activate UTS, Broadway Gym, badminton = Sport & fitness; TelcoPay direct debit + Moose = Utilities (phone, ~$26.80/month); xx2103 transfers = saving; savings Credit Interest = Interest income
+  - Rules: Tuition = UTS ... BPAY only; "UNIVERSITY OF TECHNO" card charges = Education (kits, printing), except "University Of Technol Broadway NS" = Health & medical (health visit) and its AGA Assistance insurance refund = Health; Activate UTS, Broadway Gym, badminton = Sport & fitness; TelcoPay direct debit + Moose = Utilities (phone, ~$26.80/month); xx2103 transfers = saving; savings Credit Interest = Interest income
   - FIX: merchantKey turns "Direct Debit 502541 TelcoPay" into "DIRECT DEBIT", so a learned rule would catch every direct debit. Skip "Direct Debit <number>" / "Transfer to" prefixes when making the keyword.
   - "Re-sort Review with the latest rules" button (rules only apply at import time today)
 - [ ] M2.6 Accounts: import a CSV per account (choose the account on import); Smart Access balance box + a box per savings account; pair transfers between own accounts (main "Transfer from xx2066" = savings "Transfer to xx6193") so nothing double counts; savings interest as income.

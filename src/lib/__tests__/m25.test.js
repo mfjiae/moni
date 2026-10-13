@@ -12,7 +12,11 @@ describe('M2.5 rules', () => {
   it('tuition is only the UTS BPAY payment; UTS card charges are Education', () => {
     expect(cat('UTS SYDNEY CommBank app BPAY 111111 0000000000000000000 S2026 Tuition', -1935598).categoryId).toBe('tuition');
     expect(cat('UNIVERSITY OF TECHNO BROADWAY AUS', -5000).categoryId).toBe('education');
-    expect(cat('University Of Technol Broadway NS AUS', -500).categoryId).toBe('education');
+    expect(cat('UNIVERSITY OF TECHNO BROADWAY AUS', -500).categoryId).toBe('education');
+  });
+  it('the UTS health visit and its insurance refund are Health & medical', () => {
+    expect(cat('University Of Technol Broadway NS AUS', -4285).categoryId).toBe('health');
+    expect(cat('Direct Credit 100000 AGA ASSISTANCE 0000000000', 4285)).toMatchObject({ kind: 'spend', categoryId: 'health' });
     expect(cat('PappaRich UTS Univers Ultimo AU').kind).toBe('review');
   });
   it('sport & fitness: gym, Activate UTS, badminton (even by PayID)', () => {

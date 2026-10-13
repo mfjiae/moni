@@ -26,7 +26,11 @@ export const DEFAULT_RULES = [
 
   // Uni: tuition is only the UTS BPAY payments; UTS card charges (kits, printing) are Education
   { match: { startsWith: 'UTS SYDNEY', contains: 'BPAY' }, kind: 'spend', categoryId: 'tuition', bill: true },
+  // ...except "University Of Technol Broadway NS" (a different UTS merchant: health visit, Ken 13 Oct 2026)
+  { match: { contains: 'UNIVERSITY OF TECHNOL BROADWAY NS' }, kind: 'spend', categoryId: 'health' },
   { match: { contains: 'UNIVERSITY OF TECHNO' }, kind: 'spend', categoryId: 'education' },
+  // Health insurance claim refunds (AGA Assistance) reduce Health & medical
+  { match: { contains: 'AGA ASSISTANCE' }, kind: 'spend', categoryId: 'health' },
 
   // Rent vs laundry: both contain SCAPE, so rent must come first.
   // Rent: direct debits (code STRP_BRO, older ones say broadwayx), transfers to SCAPE BROADWAY,
