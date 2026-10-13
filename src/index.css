@@ -99,8 +99,7 @@ a { color: var(--accent); text-decoration: none; }
 .txn:hover .merchant { color: #fff; }
 .muted-row .merchant, .muted-row .amount { color: var(--muted); }
 .list .day-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 0 6px; }
-.day-date { display: inline-flex; align-items: center; gap: 9px; min-width: 0; font-size: 16px; font-weight: 600; color: var(--text); }
-.day-bar { width: 3px; height: 18px; border-radius: 0; background: var(--accent); flex: none; }
+.day-date { display: inline-flex; align-items: center; gap: 10px; min-width: 0; font-size: 16px; font-weight: 600; color: var(--text); }
 .day-rel { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--surface-raised); border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
 .day-total { color: var(--text); font-weight: 600; font-size: 15px; }
 .list .day-head + .txn { border-top: 0; }

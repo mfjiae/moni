@@ -45,7 +45,7 @@ function TxnList({ title, list, today, onOpen, empty }) {
           return (
             <div key={g.date} role="group" aria-label={longDay(g.date)}>
               <div className="day-head">
-                <span className="day-date"><i className="day-bar" aria-hidden="true" />{longDay(g.date)}{rel && <span className="day-rel">{rel}</span>}</span>
+                <span className="day-date">{longDay(g.date)}{rel && <span className="day-rel">{rel}</span>}</span>
                 <span className="day-total">{formatCents(g.netCents, { sign: true })}</span>
               </div>
               {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} />)}
