@@ -2,9 +2,9 @@
 // the full Cash flow pages come in M4).
 import { useMemo, useState } from 'react';
 import { formatCents } from '../lib/money.js';
-import { monthKey, monthLabel, longDay, shortDay } from '../lib/dates.js';
+import { monthKey, monthLabel, monthName, longDay, shortDay, ordinal, addDays } from '../lib/dates.js';
 import { categoryName } from '../lib/categories.js';
-import { summarizeMonth, categoryRows, balanceHistory } from '../lib/summary.js';
+import { summarizeMonth, categoryRows, balanceHistory, compareMonths } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
 import { Bar, MonthSwitch, Chevron } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
@@ -79,6 +79,41 @@ function Hero({ label, cents, cls, children }) {
   );
 }
 
+// This month against last month: up to the same day, and the whole of last month.
+// pick(summary) gives the number to compare; better = 'down' (spending) or 'up' (income, saving).
+// kind 'saved' shows signed amounts (a negative month means money came out of savings).
+function CompareCard({ txns, month, today, pick, better = null, signed = false }) {
+  const c = useMemo(() => compareMonths(txns, month, today), [txns, month, today]);
+  const prevName = monthName(c.prev);
+  const now = pick(c.now);
+  const money = (v) => formatCents(v, signed ? { sign: true } : undefined);
+  const row = (label, prevVal) => {
+    const delta = now - prevVal;
+    const good = better && delta !== 0 && (better === 'down' ? delta < 0 : delta > 0);
+    const tone = delta === 0 || !better ? 'label' : good ? 'text-in' : 'text-out';
+    return (
+      <div className="cmp-row" key={label}>
+        <span className="cmp-label">{label}</span>
+        <span className="cmp-prev">{prevName} {money(prevVal)}</span>
+        <span className={`cmp-delta ${tone}`}>
+          {delta === 0 ? 'Same' : `${formatCents(Math.abs(delta))} ${delta > 0 ? 'more' : 'less'}`}
+        </span>
+      </div>
+    );
+  };
+  return (
+    <section className="card compare-card" aria-label={`Compared with ${prevName}`}>
+      <div className="card-head"><span className="card-title">Compared with {prevName}</span></div>
+      {!c.hasPrev ? <span className="small">Nothing in {prevName} to compare with.</span> : (
+        <>
+          {c.isCurrent && row(`By the ${ordinal(c.day)}`, pick(c.prevThrough))}
+          {row(c.isCurrent ? `All of ${prevName}` : 'Whole month', pick(c.prevTotal))}
+        </>
+      )}
+    </section>
+  );
+}
+
 const Dot = ({ color }) => <span className="dot" style={{ background: `var(--${color})` }} />;
 
 function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
@@ -103,6 +138,8 @@ function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
             {tuition !== 0 && !exclude.length && <span>incl. tuition {formatCents(tuition)}</span>}
           </div>
         </Hero>
+        <CompareCard txns={txns} month={month} today={today} better="down"
+          pick={(x) => x.outgoings - (exclude.length ? x.byCategory.tuition ?? 0 : 0)} />
         <Segmented label="Tuition" value={noTuition} onChange={(v) => { setNoTuition(v); if (v === 'without' && sel === 'tuition') setSel(null); }}
           options={[['all', 'Everything'], ['without', 'Without tuition']]} />
         <Breakdown title="By category" head="head-out" rows={rows} total={total} selected={sel} onSelect={setSel}
@@ -136,6 +173,8 @@ function IncomePage({ txns, month, today, onOpen }) {
             </div>
           )}
         </Hero>
+        <CompareCard txns={txns} month={month} today={today} better="up"
+          pick={(x) => (view === 'job' ? x.incomeByCategory['job-income'] ?? 0 : x.income)} />
         <Segmented label="Income view" value={view} onChange={(v) => { setView(v); setSel(null); }}
           options={[['all', 'All income'], ['job', 'Job income only']]} />
         <Breakdown title="By category" head="head-in" rows={rows} total={total} color="in" selected={sel} onSelect={setSel} />
@@ -160,6 +199,7 @@ function SavedPage({ txns, month, today, onOpen }) {
             <span>Took out {formatCents(took)}</span>
           </div>
         </Hero>
+        <CompareCard txns={txns} month={month} today={today} better="up" signed pick={(x) => x.savedNet} />
         <p className="hint">Transfers between your own accounts. They're never counted as income or spending. A box per savings account comes with M2.6.</p>
       </div>
       <TxnList title="Transfers" list={list} today={today} onOpen={onOpen} empty="No savings transfers this month." />
@@ -177,6 +217,7 @@ function InvestedPage({ txns, month, today, onOpen }) {
         <Hero label={`Invested in ${monthLabel(month)}`} cents={total} cls="text-invest">
           <div className="sub-amounts"><span><Dot color="invest" />All time {formatCents(allTime)}</span></div>
         </Hero>
+        <CompareCard txns={txns} month={month} today={today} pick={(x) => x.invested} />
         <p className="hint">Betashares and CommSec contributions. The contributions-over-time chart comes with M4.</p>
       </div>
       <TxnList title="Contributions" list={list} today={today} onOpen={onOpen} empty="Nothing invested this month." />
@@ -240,12 +281,18 @@ function AccountPage({ txns, balance, today, onOpen }) {
   const cutoff = useMemo(() => {
     if (range === 'all' || !history.length) return '';
     const last = history[history.length - 1].date;
+    if (range === '1w') return addDays(last, -7);
     const [y, m, d] = last.split('-').map(Number);
-    const back = range === '3m' ? 3 : 12;
+    const back = range === '1m' ? 1 : range === '3m' ? 3 : 12;
     const dt = new Date(Date.UTC(y, m - 1 - back, d));
     return dt.toISOString().slice(0, 10);
   }, [range, history]);
-  const points = history.filter((p) => p.date >= cutoff);
+  const points = useMemo(() => {
+    const inside = history.filter((p) => p.date >= cutoff);
+    // Start the line on the first day of the range at the balance held coming in
+    const before = history.filter((p) => p.date < cutoff).pop();
+    return before && inside.length && inside[0].date > cutoff ? [{ date: cutoff, cents: before.cents }, ...inside] : inside;
+  }, [history, cutoff]);
   const list = useMemo(() => [...txns].sort(byNewest), [txns]);
 
   return (
@@ -265,7 +312,7 @@ function AccountPage({ txns, balance, today, onOpen }) {
           </div>
           <BalanceChart points={points} />
           <div className="segmented" role="tablist" aria-label="Range">
-            {[['3m', '3 months'], ['1y', '1 year'], ['all', 'All']].map(([v, t]) => (
+            {[['1w', '1W'], ['1m', '1M'], ['3m', '3M'], ['1y', '1Y'], ['all', 'All']].map(([v, t]) => (
               <button key={v} type="button" role="tab" aria-selected={range === v} className={range === v ? 'on' : ''} onClick={() => setRange(v)}>{t}</button>
             ))}
           </div>

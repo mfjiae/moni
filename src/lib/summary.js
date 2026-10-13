@@ -5,12 +5,13 @@ import { categoryName } from './categories.js';
 // txn: { date, amountCents, kind, categoryId }
 // - spent: real spending (kind 'spend'). A positive amount in a spend category
 //   (refund or a friend paying you back) reduces that category's spending.
+// - upToDay (optional): only count days 1..upToDay (for "by the 13th" comparisons)
 // - invested: Betashares/CommSec etc. (kind 'investing'), kept out of `spent`.
 //   Home shows it as its own box; the Spending page adds it back ("everything that left").
 // - savedNet: to savings minus from savings (negative = took money out of savings).
 // - byCategory: spending AND investing, by category (money out as a positive number).
 // - incomeByCategory: money in, by income category.
-export function summarizeMonth(txns, key) {
+export function summarizeMonth(txns, key, upToDay) {
   const byCategory = {};
   const incomeByCategory = {};
   let income = 0;
@@ -20,6 +21,7 @@ export function summarizeMonth(txns, key) {
   let review = 0;
   for (const t of txns) {
     if (monthKey(t.date) !== key) continue;
+    if (upToDay != null && Number(t.date.slice(8)) > upToDay) continue;
     if (t.kind === 'review' || !t.categoryId) { review++; continue; }
     if (t.kind === 'saving') { savedNet += -t.amountCents; continue; }
     if (t.kind === 'income') {
@@ -190,4 +192,30 @@ export function upcomingRent(txns, today, withinDays = 7) {
   const days = daysBetween(today, due);
   if (days > withinDays) return null;
   return { date: due, cents: -last.amountCents, days };
+}
+
+// This month against the month before, for any of the four numbers (money in, spent, saved, invested).
+// now = this month so far; prevThrough = last month up to the same day (current month only);
+// prevTotal = all of last month. For a past month, prevThrough is the whole month.
+export function compareMonths(txns, key, today) {
+  const prev = shiftMonth(key, -1);
+  const [py, pm] = prev.split('-').map(Number);
+  const isCurrent = monthKey(today) === key;
+  const day = isCurrent ? Number(today.slice(8)) : null;
+  const now = summarizeMonth(txns, key);
+  const prevTotal = summarizeMonth(txns, prev);
+  const prevThrough = day == null ? prevTotal : summarizeMonth(txns, prev, Math.min(day, daysInMonth(py, pm)));
+  return { prev, day, isCurrent, hasPrev: txns.some((t) => monthKey(t.date) === prev), now, prevThrough, prevTotal };
+}
+
+// What was spent on one day, by category (biggest first). Same rule as `spent`.
+export function dayItems(txns, date) {
+  const by = {};
+  for (const t of txns) {
+    if (t.date !== date || t.kind !== 'spend' || !t.categoryId) continue;
+    by[t.categoryId] = (by[t.categoryId] ?? 0) - t.amountCents;
+  }
+  return Object.entries(by).filter(([, c]) => c !== 0)
+    .map(([id, cents]) => ({ id, name: categoryName(id), cents }))
+    .sort((a, b) => b.cents - a.cents);
 }

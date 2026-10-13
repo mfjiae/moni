@@ -64,13 +64,19 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Big visual changes: show prototypes in chat first, Ken picks, then build. Point out UX problems proactively and suggest ideas.
 
 ## NEXT UPDATE: M2.5b Layout, look and search (Ken, 13 Oct 2026; before M2.6 accounts)
-**STEP 1 BUILT (13 Oct 2026, 115 tests):** new palette, Home layout below, box icons, month dropdown + picker, wide-screen 3 columns (content up to 1600px; 2 columns from 900px, 3 from 1280px). Not yet seen by Ken in a browser: check it live and note what to adjust. Decisions made while building (tell Ken, change if he wants):
-- Home order on phone: month dropdown, banners (sync, rent), balance card, "N to sort" chip + search button, 4 boxes, "Spent so far" pace card (amount, "X% of September's $Y", bar, "$Z more/less than September by the 13th", small this-month-vs-last-month graph), "Where it went" (top 6, icon + % + bar), "Day by day" (per-day bars + compact heat calendar + busiest day). The old Cash flow card and Recent list are gone from Home.
-- Savings balance beside the Smart Access balance is NOT shown yet: savings accounts arrive with M2.6, and no balance is invented.
-- Rent banner = simple guess: the next rent date is the last rent bill + the gap between the last two (rent now is fortnightly); shows from 7 days before. M5 (Bills) replaces it.
-- The Home search button just opens Activity (real filters are step 3).
-- Month picking: Home has the month name as a dropdown with no arrows; other pages keep arrows in fixed places and tapping the name opens the picker. "This month" is inside the picker (no pill that moves things).
-- Left for later: detail/account page layout (step 2), Activity filters (step 3). The month picker is a year + month grid (not typeable). Remembered toggles, quick sort, nicknames and the "N to sort" quick-sort flow are not started.
+**STEP 1 BUILT (13 Oct 2026, 124 tests; v3 follow-up built same day):** new palette, Home layout, box icons, month dropdown + picker, wide-screen 3 columns (content up to 1600px; 2 columns from 900px, 3 from 1280px), Settings side list, 1W/1M on the account chart. Not yet seen by Ken in a browser: check it live and note what to adjust. Decisions (Ken approved the v3 prototype; change if he wants):
+- Home order on phone: month dropdown with a small rose "N to sort" pill to its left (opens Activity > To review), banners (sync), rent warning, balance card, 4 boxes, "Spent so far", "Where it went", "Day by day". Desktop: col 1 = balance + Where it went (fills the column, 8 rows), col 2 = 4 boxes + Spent so far, col 3 = Day by day. CSS: on phone `.col` is `display:contents` with `order` on the cards.
+- The 4 boxes show a bottom line with the FULL previous month ("September: $186.35"), never "by the 13th". "By the 13th" is only on the Spent so far card and its graph. Saved box reads "$X from savings" / "$X saved".
+- Detail pages (Spending, Money in, Saved, Invested) have a "Compared with September" card: current month = two rows, "By the 13th" and "All of September", each with more/less; a past month = one "Whole month" row; "Nothing in X to compare with" when last month is empty (`compareMonths` in summary.js). Spending compares spent + invested, honoring "without tuition". Spending/less = green, more = orange; income/saved more = green; invested is neutral.
+- Spent so far: big graph with axes (hover/touch shows the day), this month vs last month, "$X so far, X% of September's $Y".
+- Day by day: bars, then a big calendar with the amount in each day (tap a day). Side column: "Busiest day" box on top, selected-day box below (by category). Defaults to the latest day with spending.
+- Rent warning is a bigger, NOT clickable banner (guess: last rent bill + the gap between the last two; shows from 7 days before). M5 (Bills) replaces it.
+- Search box removed from Home. "All spending" in Where it went opens Activity (the Spending box opens the Spending page). Real search/filters = step 3.
+- Savings balance inside the Smart Access card is NOT built: Ken will send ALL CSVs and M2.6 handles savings balances. No balance is invented.
+- Month picking: Home has the month name as a dropdown with no arrows; other pages keep arrows in fixed places and tapping the name opens the picker. "This month" is inside the picker.
+- Settings = side list (Sync, This device, Categories, Learned rules). Desktop: list left, section right (Sync open by default). Phone: list of rows, each opens its section with a Settings button to go back. Learned rules shows an empty-state card.
+- Account page chart ranges: 1W / 1M / 3M / 1Y / All (the line starts at the balance held coming into the range).
+- Left for later: day-grouped, paged transaction lists on detail/account pages (step 2), Activity filters (step 3). Remembered toggles, quick sort and nicknames not started.
 Build in steps, test each. Home layout = PICKED (Ken, 13 Oct 2026): prototype 1 as the base, mixed with parts of 2, 3, 4, 5. Ken's pick:
 - Home pick details (Ken, 13 Oct 2026):
   - Base = prototype 1 (command center): month-dropdown, top categories with icons, small "last month" reflection (graph), search box, small "N to sort" chip (its own small separate box, not a big one).
@@ -116,6 +122,7 @@ At the start of every session and every stage, tell Ken which update and stage w
 - Small visual fixes or notes: Sonnet, low or medium. A session mixing money logic and UI: start on Opus, high.
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
+- Found in the 13 Oct review (not Ken's, not fixed): buttons have no visible keyboard focus ring outside the category dropdown, and there is no `prefers-reduced-motion` handling (little animation exists yet).
 - Fixed in M2.5b step 1 (13 Oct 2026, check in the live app): Home's 4 boxes now have a colored icon instead of the top line; desktop content grows to 1600px with 3 columns on Home.
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
 

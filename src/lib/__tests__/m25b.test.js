@@ -2,7 +2,7 @@
 // Made-up numbers only.
 import { describe, it, expect } from 'vitest';
 import { daysBetween, addDays, weekdayMonFirst, ordinal, monthName, monthShort } from '../dates.js';
-import { summarizeMonth, spentByDay, cumulativeSpend, monthCompare, upcomingRent } from '../summary.js';
+import { summarizeMonth, spentByDay, cumulativeSpend, monthCompare, upcomingRent, compareMonths, dayItems } from '../summary.js';
 
 const spend = (date, cents, categoryId = 'groceries', extra = {}) =>
   ({ uid: `${date}|${cents}|${categoryId}`, date, amountCents: -Math.abs(cents), kind: 'spend', categoryId, ...extra });
@@ -123,5 +123,49 @@ describe('upcomingRent', () => {
   it('ignores one-off gaps that are not a regular schedule', () => {
     expect(upcomingRent([rent('2026-10-01'), rent('2026-10-03')], '2026-10-04')).toBeNull();
     expect(upcomingRent([rent('2026-01-01'), rent('2026-10-03')], '2026-10-04')).toBeNull();
+  });
+});
+
+describe('summarizeMonth upToDay', () => {
+  const txns = [spend('2026-09-03', 3635, 'investing', { kind: 'investing' }), spend('2026-09-21', 15000, 'investing', { kind: 'investing' }),
+    spend('2026-09-02', 1000), spend('2026-09-20', 2000)];
+  it('only counts days up to the cutoff', () => {
+    expect(summarizeMonth(txns, '2026-09', 13)).toMatchObject({ spent: 1000, invested: 3635 });
+    expect(summarizeMonth(txns, '2026-09')).toMatchObject({ spent: 3000, invested: 18635 });
+    expect(summarizeMonth(txns, '2026-09', 3).spent).toBe(1000);
+  });
+});
+
+describe('compareMonths', () => {
+  const inc = (date, cents) => ({ uid: `i${date}`, date, amountCents: cents, kind: 'income', categoryId: 'job-income' });
+  const sav = (date, cents) => ({ uid: `s${date}`, date, amountCents: cents, kind: 'saving', categoryId: 'saving' });
+  const txns = [inc('2026-09-02', 61390), inc('2026-09-27', 61390), sav('2026-09-05', 78601), sav('2026-09-25', 12904),
+    spend('2026-09-03', 3635, 'investing', { kind: 'investing' }), spend('2026-09-21', 15000, 'investing', { kind: 'investing' }),
+    sav('2026-10-04', 123965)];
+  it('gives this month, last month by the same day, and all of last month', () => {
+    const c = compareMonths(txns, '2026-10', '2026-10-13');
+    expect(c).toMatchObject({ prev: '2026-09', day: 13, isCurrent: true, hasPrev: true });
+    expect(c.now.savedNet).toBe(-123965);
+    expect(c.prevThrough.income).toBe(61390);
+    expect(c.prevTotal.income).toBe(122780);
+    expect(c.prevThrough.invested).toBe(3635);
+    expect(c.prevTotal.invested).toBe(18635);
+    expect(c.prevThrough.savedNet).toBe(-78601);
+    expect(c.prevTotal.savedNet).toBe(-91505);
+  });
+  it('a past month compares whole months only', () => {
+    const c = compareMonths(txns, '2026-09', '2026-10-13');
+    expect(c.isCurrent).toBe(false);
+    expect(c.prevThrough).toBe(c.prevTotal);
+    expect(c.hasPrev).toBe(false);
+  });
+});
+
+describe('dayItems', () => {
+  it('adds up a day by category, biggest first, refunds reduce', () => {
+    const list = [spend('2026-10-06', 91600, 'housing'), spend('2026-10-06', 4531, 'groceries'),
+      { ...spend('2026-10-06', 500, 'groceries'), amountCents: 500 }, spend('2026-10-07', 900)];
+    expect(dayItems(list, '2026-10-06').map((x) => [x.id, x.cents])).toEqual([['housing', 91600], ['groceries', 4031]]);
+    expect(dayItems(list, '2026-10-01')).toEqual([]);
   });
 });

@@ -5,6 +5,7 @@ import { connect, disconnect, syncNow, DEFAULT_REPO } from '../lib/sync.js';
 import { clearDevice, updateCategory, addCategory, deleteRule } from '../lib/store.js';
 import { allCategories, categoryName, LOCKED, TYPE_LABEL } from '../lib/categories.js';
 import { isBroadKeyword } from '../lib/rules.js';
+import { Chevron, useWide } from './ui.jsx';
 
 const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 
@@ -113,10 +114,16 @@ function CategoriesCard({ txns, onToast }) {
   );
 }
 
-function RulesCard({ onToast }) {
-  const rules = useLiveQuery(() => db.userRules.orderBy('order').reverse().toArray(), []);
+function RulesCard({ rules, onToast }) {
   const [confirm, setConfirm] = useState(null);
-  if (!rules?.length) return null;
+  if (!rules?.length) {
+    return (
+      <section className="card" aria-label="Learned rules">
+        <span className="card-title">Learned rules</span>
+        <p className="hint">None yet. When you sort a transaction and tick “Always use this category”, the rule shows up here.</p>
+      </section>
+    );
+  }
   return (
     <section className="card" aria-label="Learned rules">
       <span className="card-title">Learned rules</span>
@@ -157,6 +164,9 @@ export default function Settings({ sync, txns, onToast }) {
   const [error, setError] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const [replaceToken, setReplaceToken] = useState(false);
+  const wide = useWide();
+  const [picked, setPicked] = useState(null);       // phone: null = the list; desktop: always one open
+  const rules = useLiveQuery(() => db.userRules.orderBy('order').reverse().toArray(), []);
 
   async function onConnect(e) {
     e.preventDefault();
@@ -190,11 +200,16 @@ export default function Settings({ sync, txns, onToast }) {
   const connected = !!sync?.token;
   const showForm = !connected || replaceToken;
 
-  return (
-    <main className="screen">
-      <header className="header"><div className="title">Settings</div></header>
-
-      <div className="settings-col">
+  const catCount = allCategories().filter((c) => !c.hidden).length;
+  const NAV = [
+    ['sync', 'Sync', connected ? `Synced ${ago(sync.lastSyncAt)}` : 'Off on this device'],
+    ['device', 'This device', 'Remove data from here'],
+    ['categories', 'Categories', `${catCount} shown`],
+    ['rules', 'Learned rules', rules ? (rules.length ? `${rules.length} saved` : 'None yet') : ''],
+  ];
+  const active = picked ?? (wide ? 'sync' : null);
+  const content = {
+    sync: (
       <section className="card" aria-label="Sync">
         <span className="card-title">Sync between devices</span>
 
@@ -248,7 +263,8 @@ export default function Settings({ sync, txns, onToast }) {
           </form>
         )}
       </section>
-
+    ),
+    device: (
       <section className="card" aria-label="This device">
         <span className="card-title">This device</span>
         <p className="hint">
@@ -260,10 +276,37 @@ export default function Settings({ sync, txns, onToast }) {
           {confirmClear ? 'Tap again to confirm' : connected ? 'Remove data from this device' : 'Delete all data'}
         </button>
       </section>
+    ),
+    categories: <CategoriesCard txns={txns} onToast={onToast} />,
+    rules: <RulesCard rules={rules} onToast={onToast} />,
+  };
 
-      <CategoriesCard txns={txns} onToast={onToast} />
-      <RulesCard onToast={onToast} />
-      </div>
+  const list = (
+    <nav className="settings-nav" aria-label="Settings sections">
+      {NAV.map(([id, title, sub]) => (
+        <button key={id} type="button" className={`settings-item${active === id ? ' active' : ''}`} aria-current={active === id ? 'page' : undefined}
+          onClick={() => setPicked(id)}>
+          <span className="settings-item-text"><span className="settings-item-title">{title}</span><span className="small">{sub}</span></span>
+          <Chevron />
+        </button>
+      ))}
+    </nav>
+  );
+
+  return (
+    <main className="screen">
+      <header className="header">
+        <div className="title">{!wide && active ? NAV.find((n) => n[0] === active)[1] : 'Settings'}</div>
+        {!wide && active && <button type="button" className="btn ghost small-btn" onClick={() => setPicked(null)}><Chevron dir="left" size={16} /> Settings</button>}
+      </header>
+      {wide ? (
+        <div className="settings-layout">
+          {list}
+          <div className="settings-pane">{content[active]}</div>
+        </div>
+      ) : active ? (
+        <div className="settings-col">{content[active]}</div>
+      ) : list}
     </main>
   );
 }

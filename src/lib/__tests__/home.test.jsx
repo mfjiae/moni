@@ -30,7 +30,12 @@ describe('Home', () => {
     expect(out).toContain('<strong>1</strong> to sort');
     expect(out).toContain('Where it went');
     expect(out).toContain('Day by day');
-    expect(out).toContain('Rent</strong> is due in 7 days');
+    expect(out).toContain('Rent is due in 7 days');
+    expect(out).not.toContain('<button type="button" class="banner action"><span class="warn-text">');
+    expect(out).toContain('rent-warn');
+    expect(out).not.toContain('Search transactions');
+    expect(out).toContain('September: $');             // box bottom lines = full previous month
+    expect(out).toContain('Busiest day');
     expect(out).toContain('of September’s');      // pace wording
     expect(out).toContain('by the 13th');
     expect(out.match(/class="cal-day /g).length).toBeGreaterThanOrEqual(31);
