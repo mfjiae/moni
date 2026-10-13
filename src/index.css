@@ -150,7 +150,7 @@ a { color: var(--accent); text-decoration: none; }
 .icon-btn { width: 44px; height: 44px; border-radius: 22px; border: 0; background: none; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .icon-btn:disabled { opacity: 0.3; cursor: default; }
 .icon-btn:not(:disabled):hover { color: var(--text); }
-.header-right { display: flex; align-items: center; gap: 4px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex: none; }
 .header-right .icon-btn { margin-right: -10px; }
 
 /* Balance box: bigger and in its own color so it stands out */
@@ -236,27 +236,24 @@ a { color: var(--accent); text-decoration: none; }
 .cal-day:not(:disabled):hover { filter: brightness(1.15); }
 .cal-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; min-width: 0; }
 .side-box { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--surface-raised); border: 1px solid var(--border); }
-.side-box:first-child:not(.day-detail) { flex-direction: row; align-items: center; gap: 12px; }
-.side-icon { width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--out); background: color-mix(in srgb, var(--out) 16%, transparent); }
-.side-big { display: block; font-size: 17px; font-weight: 600; color: var(--out); }
 .side-amount { font-size: 26px; font-weight: 600; color: var(--out); letter-spacing: -0.4px; }
 .day-line { font-size: 14px; gap: 8px; }
 .day-line .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 480px) { .cal-side { grid-template-columns: minmax(0, 1fr); } .cal-day { min-height: 46px; padding: 4px 5px; } .cal-amt { font-size: 12px; } }
-/* Desktop Home: Day by day sits in column 2 under Spent so far; the calendar fills the width with bigger cells, and Busiest day / picked day sit side by side under it */
+/* Desktop Home: Day by day sits in the wide right column; the calendar is on the left and the picked-day card beside it */
 @media (min-width: 900px) {
-  .cal-day { min-height: 66px; padding: 7px 9px; }
+  .cal-row { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+  .cal-day { min-height: 58px; padding: 6px 8px; }
   .cal-n { font-size: 12px; }
-  .cal-amt { font-size: 15px; }
+  .cal-amt { font-size: 14px; }
 }
 .heat-legend { display: flex; align-items: center; gap: 4px; }
 
 /* Rent / bill warning */
 .banner.warn { border-color: color-mix(in srgb, var(--out) 55%, transparent); background: color-mix(in srgb, var(--out) 10%, var(--surface-raised)); color: var(--text); }
-.rent-warn { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--out) 60%, transparent); background: color-mix(in srgb, var(--out) 12%, var(--surface)); }
-.rent-warn > svg { color: var(--out); flex: none; }
-.rent-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rent-big { font-size: 20px; font-weight: 600; }
+.rent-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; font-size: 13px; white-space: nowrap; color: color-mix(in srgb, var(--out) 55%, white); border: 1px solid color-mix(in srgb, var(--out) 55%, transparent); background: color-mix(in srgb, var(--out) 12%, var(--surface)); }
+.rent-pill svg { color: var(--out); }
+.busy-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: var(--out); background: color-mix(in srgb, var(--out) 14%, var(--surface-raised)); }
 .warn-text { display: flex; align-items: center; gap: 12px; }
 .warn-text > svg { color: var(--out); flex: none; }
 .warn-text strong { color: var(--text); }
@@ -417,9 +414,13 @@ select.input { appearance: auto; }
   .nav-icon .badge { display: none; }
   .badge-inline { position: static; display: inline-flex; margin-left: auto; }
 
-  .home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 20px; }
+  .home-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: start; gap: 20px; }
   .home-grid .col { display: flex; flex-direction: column; gap: 16px; }
-  .box .box-value { font-size: 30px; }
+  .box { min-height: 0; padding: 12px 14px; gap: 8px; }
+  .box .box-icon { width: 30px; height: 30px; border-radius: 9px; }
+  .box .box-label { font-size: 14px; }
+  .box .box-value { font-size: clamp(20px, 1.8vw, 28px); }
+  .box .box-foot { padding-top: 8px; font-size: 12px; }
 
   .overlay { align-items: center; }
   .sheet { max-width: 540px; border-radius: 20px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }

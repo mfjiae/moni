@@ -174,7 +174,14 @@ function DayByDay({ txns, month, today, byDay }) {
 
   return (
     <section className="card day-card" aria-label="Day by day">
-      <div className="card-head"><span className="card-title head-out">Day by day</span></div>
+      <div className="card-head">
+        <span className="card-title head-out">Day by day</span>
+        {busiestIdx >= 0 && (
+          <span className="busy-pill" title={`Busiest day: the ${ordinal(busiestIdx + 1)}`}>
+            <Icon name="flame" size={15} />Busiest {ordinal(busiestIdx + 1)} &middot; {formatCents(days[busiestIdx])}
+          </span>
+        )}
+      </div>
       <div className="daybars" role="img"
         aria-label={`Spending for each day of ${monthLabel(month)}${busiestIdx >= 0 ? `. Busiest day: the ${ordinal(busiestIdx + 1)}, ${formatCents(days[busiestIdx])}` : ''}`}>
         {days.map((c, i) => {
@@ -211,12 +218,6 @@ function DayByDay({ txns, month, today, byDay }) {
           </div>
         </div>
         <div className="cal-side">
-          {busiestIdx >= 0 && (
-            <div className="side-box">
-              <span className="side-icon"><Icon name="flame" size={20} /></span>
-              <span><span className="small">Busiest day</span><span className="side-big">{ordinal(busiestIdx + 1)} · {formatCents(days[busiestIdx])}</span></span>
-            </div>
-          )}
           <div className="side-box day-detail">
             {selDate ? (
               <>
@@ -234,17 +235,13 @@ function DayByDay({ txns, month, today, byDay }) {
   );
 }
 
-// Bigger warning for a bill coming up. Just a warning: it doesn't open anything.
-function RentBanner({ rent }) {
-  const when = rent.days === 0 ? 'is due today' : rent.days === 1 ? 'is due tomorrow' : `is due in ${rent.days} days`;
+// Small alarm pill in the top right for a bill coming up. Just a warning: it doesn't open anything.
+function RentPill({ rent }) {
+  const when = rent.days === 0 ? 'today' : rent.days === 1 ? 'tomorrow' : `in ${rent.days} days`;
   return (
-    <div className="rent-warn" role="status">
-      <Icon name="alert" size={32} />
-      <span className="rent-text">
-        <span className="rent-big">Rent {when}</span>
-        <span className="label">{longDay(rent.date)} · about {formatCents(rent.cents)}</span>
-      </span>
-    </div>
+    <span className="rent-pill" role="status" title={`${longDay(rent.date)} \u00b7 about ${formatCents(rent.cents)}`}>
+      <Icon name="alarm" size={16} />Rent due {when}
+    </span>
   );
 }
 
@@ -298,6 +295,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
           <MonthDropdown month={month} setMonth={setMonth} current={current} first={firstMonth} />
         </div>
         <div className="header-right">
+          {rent && <RentPill rent={rent} />}
           <SettingsButton onClick={() => onNavigate('settings')} />
         </div>
       </header>
@@ -314,7 +312,6 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
           <span className="link-text">Set up</span>
         </button>
       )}
-      {rent && <RentBanner rent={rent} />}
 
       <div className="home-grid">
         <div className="col">
@@ -325,10 +322,6 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
               <span className="balance-note">Bank as of {longDay(balance.asOf)}{bal !== balance.cents ? ' + manual entries' : ''}</span>
             </button>
           )}
-          <WhereItWent rows={whereRows} onNavigate={onNavigate} onDetail={onDetail} />
-        </div>
-
-        <div className="col">
           <div className="boxes" role="group" aria-label={month === current ? 'This month' : monthLabel(month)}>
             <Box kind="in" icon="arrow-in" label="In" value={formatCents(summary.income)}
               foot={foot(formatCents(cmp.prevTotal.income))} onClick={() => onDetail('income')} />
@@ -339,6 +332,10 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
             <Box kind="invest" icon="trend" label="Invested" value={formatCents(summary.invested)}
               foot={foot(formatCents(cmp.prevTotal.invested))} onClick={() => onDetail('invested')} />
           </div>
+          <WhereItWent rows={whereRows} onNavigate={onNavigate} onDetail={onDetail} />
+        </div>
+
+        <div className="col">
           <PaceCard month={month} isCurrent={month === current} compare={compare} />
           <DayByDay key={month} txns={txns} month={month} today={today} byDay={byDay} />
         </div>
