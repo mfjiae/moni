@@ -46,3 +46,21 @@ describe('Detail comparison card', () => {
     expect(out).toContain('>1M<');
   });
 });
+
+describe('Spending opened from a Home category', () => {
+  const mk = (category) => html('spending', {
+    page: { name: 'spending', category },
+    txns: [t('2026-10-03', -8000, 'groceries', 'spend', { description: 'FAKE GROCER' }),
+           t('2026-10-04', -3000, 'eating-out', 'spend', { description: 'FAKE CAFE' })],
+  });
+  it('lists only that category\'s transactions', () => {
+    const out = mk('groceries');
+    expect(out).toContain('FAKE GROCER');
+    expect(out).not.toContain('FAKE CAFE');
+  });
+  it('without a category it lists everything', () => {
+    const out = mk(undefined);
+    expect(out).toContain('FAKE GROCER');
+    expect(out).toContain('FAKE CAFE');
+  });
+});

@@ -130,7 +130,7 @@ function PaceChart({ compare, month, prevName }) {
 }
 
 // Biggest spending categories, with a share of the month's spending and a bar. Fills the column.
-function WhereItWent({ rows, onNavigate }) {
+function WhereItWent({ rows, onNavigate, onDetail }) {
   const max = rows.length ? rows[0].cents : 1;
   return (
     <section className="card where-card" aria-label="Where it went">
@@ -141,7 +141,8 @@ function WhereItWent({ rows, onNavigate }) {
       {rows.length === 0 && <div className="empty small-empty">No spending yet this month.</div>}
       <div className="where-list">
         {rows.map((r) => (
-          <div className="where" key={r.id}>
+          <button type="button" className="where" key={r.id} onClick={() => onDetail('spending', { category: r.id })}
+            aria-label={`${r.name}: ${formatCents(r.cents)}. Open in Spending`}>
             <span className="where-icon"><CategoryIcon id={r.id} size={20} /></span>
             <span className="where-body">
               <span className="row">
@@ -150,7 +151,7 @@ function WhereItWent({ rows, onNavigate }) {
               </span>
               <Bar thick ratio={r.cents / max} status="out" label={`${r.name}: ${formatCents(r.cents)}`} />
             </span>
-          </div>
+          </button>
         ))}
       </div>
     </section>
@@ -329,7 +330,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
               <span className="balance-note">Bank as of {longDay(balance.asOf)}{bal !== balance.cents ? ' + manual entries' : ''}</span>
             </button>
           )}
-          <WhereItWent rows={whereRows} onNavigate={onNavigate} />
+          <WhereItWent rows={whereRows} onNavigate={onNavigate} onDetail={onDetail} />
         </div>
 
         <div className="col">
