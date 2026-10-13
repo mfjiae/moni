@@ -52,9 +52,32 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Revolut top-ups (card, "Revolut**"): leave in Review; Ken will check them against Revolut
 - Not spending: Savings transfers, Transfers & payments (excluded), Investing (counts as invested, CommBank "Shares"/"Other investments")
 
+## Ken's UX preferences (learned; apply to every screen)
+- Stats first, transactions second. Each page leads with its own numbers (totals, categories, charts). Transactions are a separate box underneath, full width, grouped by day like CommBank, paged ("Show 10 more" or pages), never the main thing.
+- Home has NO transaction list. At most a small link to Activity (or a tiny one-liner). Ken hates big transaction lists on Home.
+- Controls must not move. A button appearing must never shift other buttons (the "This month" pill pushing the month arrows was annoying).
+- Background: near-black neutral like the Claude app, no purple/indigo tint. Strong contrast, colors that pop, but not white text everywhere: secondary info goes muted, color carries meaning.
+- Money colors (Ken, 13 Oct 2026; replaces the M2.5 blue-income palette): spent = red/orange, income/credit = green. Saving and invested need colors that don't clash with those (to be picked from the Home prototypes).
+- Use the whole screen on wide monitors.
+- Big visual changes: show prototypes in chat first, Ken picks, then build. Point out UX problems proactively and suggest ideas.
+
+## NEXT UPDATE: M2.5b Layout, look and search (Ken, 13 Oct 2026; before M2.6 accounts)
+Build in steps, test each. Home layout = the prototype Ken picks (5 shown in chat 13 Oct 2026; record his pick here).
+- Look: Claude-like near-black background (no purple tint), better contrast, new palette (spent red/orange, income green), less white text, colored icons instead of the top lines on the 4 boxes, use the space on wide screens (see visual bug list).
+- Month picking: no arrows on Home (it shows this month). On other pages: arrows stay in fixed positions; tapping the month name opens a picker (years and months grid, "This month" inside it) to jump straight to any month.
+- Home: remove Recent; link to Activity instead (or a tiny one-liner).
+- Detail pages (Spending, Income, Saved, Invested): category stats on top; transactions in a separate full-width box underneath, grouped by day (CommBank-style day headers with the day's total), paged.
+- Account page: bigger balance chart, full width; add a 1-week range (1W / 1M / 3M / 1Y / All); transactions move into a separate box under the chart, grouped by day, paged/expandable.
+- Activity = the place for all transactions: grouped by day, paged, plus a scalable search (CommBank-style filter buttons):
+  - text search (merchant, note, person), with matches highlighted
+  - date range from / to; amount range min / max; direction in / out
+  - category filter (pick several); type filter: card purchase, direct debit, BPAY, transfer/PayID to a person, to/from savings, income, refund
+  - "who" filter: pick a person or merchant
+  - result count and total of what's shown
+
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
 - Home's 4 boxes (In / Spent / Saved / Invested): the colored line along the top looks ugly and doesn't reach the corners (the rounded corners cut it off). Replace it with a colored icon per box (e.g. arrow in, bag/arrow out, piggy bank, chart). Keep the amount in its color. Next update (Ken, 13 Oct 2026).
-- Desktop doesn't use the space on Ken's wide screen: content is capped at ~1140px and centered, leaving big empty margins. Let it grow to ~1600px and use 3 columns on wide screens (balance + cash flow + 4 boxes | top spending | recent with more rows). Next update, with the box icons (Ken, 13 Oct 2026).
+- Desktop doesn't use the space on Ken's wide screen: content is capped at ~1140px and centered, leaving big empty margins. Let it grow to ~1600px and use 3 columns on wide screens (layout from the Home prototype Ken picks; no Recent list on Home). Next update, with the box icons (Ken, 13 Oct 2026).
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
 
 ## Later, for a real mobile app version (Ken's idea, not now)
@@ -88,6 +111,6 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
   - Period picker: this cycle (1–31 with days left), month, quarter, year
   - Spending: categories with % of total (e.g. Rent 50%) and what's left
   - Saved: per savings account breakdown, total on a graph, progress
-  - Invested: like spending, plus a Betashares-style line chart of contributions over time
+  - Invested page (Ken, 13 Oct 2026): line chart of contributions per month and cumulative total, ranges month / quarter / year / 3y / 5y / 10y / all; optional "potential growth" line at a return rate Ken sets (clearly labelled as an estimate, not Betashares data). Goes in M4 because it needs M2.6 (investing paid from savings must count once) and a few months of contributions to be worth charting.
   - Tuition page: all tuition payments by semester
 - [ ] M5: Bills tab: bills this month, next bill date, bill calendar, 3-month bar overview, expand to all months, review option; weekly/fortnightly/monthly bills; install polish
