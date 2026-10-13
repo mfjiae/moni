@@ -20,7 +20,9 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 - Budget period: calendar month.
 
 ## Money logic
-- Savings account xx2066: transfers to/from it are `saving`, never income or spending. Saving shows as net.
+- Accounts: main = Smart Access xx6193 (the CSV imported so far). Savings = NetBank Saver xx2066 (main savings, 5% bonus rate until ~Nov 2026) and xx2103 (2nd savings, emptied Aug 2026).
+- Transfers between Ken's own accounts are `saving`, never income or spending. Saving shows as net.
+- DON'T import savings-account CSVs until M2.6: they'd overwrite the main balance and their transfers aren't paired yet.
 - Investing (Betashares, CommSec) counts as spending, in the Investing category.
 - Refunds and friends paying back reduce the category's spending; they are not income.
 - PayID to/from people and unknown merchants go to the Review inbox for Ken to categorize.
@@ -36,6 +38,12 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 No header; columns: date DD/MM/YYYY, signed amount, description, running balance; newest first.
 Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase date. Dedupe on `importKey`.
 
+## Categories (planned for M2.5, CommBank-aligned; hidden = available but not shown until unhidden)
+- Spending: Eating out & takeaway, Groceries, Shopping, Entertainment, Personal care, Health & medical, Sport & fitness, Education, Tuition, Home (rent; was "Rent & housing"), Utilities, Vehicle & transport, Travel & holidays, Gifts & donations, Fees & interest, Professional services, Uncategorized
+- Hidden by default: Business, Cash, Childcare, Home loan, Insurance, Pets, Tax paid, Super contributions
+- Income: Job income, Family support, Interest, Other income
+- Not spending: Savings transfers, Transfers & payments (excluded), Investing (counts as invested, CommBank "Shares"/"Other investments")
+
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
 - Settings, first-time connect form: the Token input and the "Connect and sync" button sit too close together.
 - Settings: the Sync card is much narrower than the "This device" card; make the cards consistent.
@@ -48,21 +56,29 @@ Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase
 - [x] M1: app shell, Home screen with sample data, tests for core logic
 - [x] M2: CSV import into Dexie (dedupe + manual-entry matching), learned merchant rules, Review inbox, Activity list, manual add, month switcher
 - [x] Desktop layout (sidebar from 900px) and sync between devices via moni-data
-- [ ] M2.5 (planned with Ken, not started; waiting on his category answers):
+- [ ] M2.5 (planned with Ken; build next):
   - Look: type and sizes up 10–15%; card headings bigger and highlighted; fix the visual bug list
-  - Home: 4 color-coded boxes (Money in, Spent, Saved, Invested); Recent = 10 items
-  - Balance as a highlighted box; tapping it opens an account page (balance-over-time chart + all transactions)
-  - Tap any box -> detail page with charts (CommBank-style), colors per type
-  - Spending detail has a "without tuition" view; the headline total still includes tuition
-  - Month switcher: a "This month" button to jump back; no months before the first month with data (never before Jan 2024)
-  - Category picker as a dropdown (most-used first + search) instead of all chips
-  - Add / rename / hide categories (synced); new categories + rules from Ken's CSVs
-  - Tuition: its own category, auto-detected (UTS ... BPAY tuition payments only; small education costs like kits are not tuition)
+  - Colors (Ken's palette; he dislikes yellow): income = blue, spend = orange, saving = purple, invest = green/teal; budget bars blue, over budget = orange-red
+  - Home: monthly cash flow card = horizontal bars (income vs spend); 4 boxes In / Spent / Saved / Invested; Recent = 5 on phone (or 10 in a scrollable box), 10 on desktop
+  - Balance as a highlighted box; tap opens an account page (balance-over-time chart + all transactions)
+  - Tap any box -> detail page (CommBank-style), see M4 list below for the full version
+  - Spending detail has a "without tuition" view; headline total still includes tuition
+  - Income detail has a "job income only" view (excludes Family support)
+  - Month switcher: "This month" button; no months before the first month with data (never before Jan 2024)
+  - Category picker = dropdown (most-used first + search); "Add category" in the dropdown and in Settings; rename / hide (synced)
+  - Category set (CommBank-aligned, see "Categories" below); recategorize existing data where rules change
+  - Rules: Tuition = UTS ... BPAY only; "UNIVERSITY OF TECHNO" card charges = Education (kits, printing); Activate UTS, Broadway Gym, badminton = Sport & fitness; TelcoPay direct debit + Moose = Utilities (phone, ~$26.80/month); xx2103 transfers = saving; savings Credit Interest = Interest income
+  - FIX: merchantKey turns "Direct Debit 502541 TelcoPay" into "DIRECT DEBIT", so a learned rule would catch every direct debit. Skip "Direct Debit <number>" / "Transfer to" prefixes when making the keyword.
   - "Re-sort Review with the latest rules" button (rules only apply at import time today)
-- [ ] M2.6 Accounts (planned): Smart Access (main) balance box + a box per savings account (xx2066, xx2103).
-  Import a CSV per account (choose the account on import); pair transfers between Ken's own accounts so nothing is double counted.
-  Balance shown = last balance in that account's newest CSV (+ manual entries after it). Pending bank transactions aren't in CSV exports.
-- [ ] Tuition page (M4): all tuition payments by semester
-- [ ] M3: Budgets page (all categories, edit limits, vertical month-progress marker on each bar)
-- [ ] M4: Cash flow page (income / spending / bills / saving / investing; 6-month category bars)
-- [ ] M5: bills (weekly/fortnightly/monthly), install polish (backup is covered by moni-data history)
+- [ ] M2.6 Accounts: import a CSV per account (choose the account on import); Smart Access balance box + a box per savings account; pair transfers between own accounts (main "Transfer from xx2066" = savings "Transfer to xx6193") so nothing double counts; savings interest as income.
+- [ ] Later: pending transactions aren't in CSV exports -> add by hand now; screenshot import later (v2).
+- [ ] M3: Budgets page: vertical month-progress marker on each bar; "Add category to budget" picks from existing categories (like CommBank); all bars blue, over = orange-red
+- [ ] M4: Cash flow page (CommBank-style):
+  - Standing bar chart per month, scrollable month to month: income blue, spend orange, saving purple, invest teal
+  - Four boxes (Spent, Bills, Saved, Invested) each open their own page
+  - Period picker: this cycle (1–31 with days left), month, quarter, year
+  - Spending: categories with % of total (e.g. Rent 50%) and what's left
+  - Saved: per savings account breakdown, total on a graph, progress
+  - Invested: like spending, plus a Betashares-style line chart of contributions over time
+  - Tuition page: all tuition payments by semester
+- [ ] M5: Bills tab: bills this month, next bill date, bill calendar, 3-month bar overview, expand to all months, review option; weekly/fortnightly/monthly bills; install polish
