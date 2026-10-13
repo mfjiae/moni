@@ -75,3 +75,36 @@ export function shortDay(iso, today) {
   if (t - d === 86400000) return 'Yesterday';
   return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
+
+// Whole days from one date to another: ("2026-10-06", "2026-10-20") -> 14
+export function daysBetween(fromIso, toIso) {
+  const n = (iso) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) / 86400000; };
+  return n(toIso) - n(fromIso);
+}
+
+// ("2026-10-06", 14) -> "2026-10-20"
+export function addDays(iso, delta) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + delta)).toISOString().slice(0, 10);
+}
+
+// Weekday with Monday = 0 ... Sunday = 6 (calendars here start on Monday)
+export function weekdayMonFirst(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+}
+
+// 1 -> "1st", 2 -> "2nd", 13 -> "13th", 22 -> "22nd"
+export function ordinal(n) {
+  const tail = n % 100;
+  if (tail >= 11 && tail <= 13) return `${n}th`;
+  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' })[n % 10] ?? 'th'}`;
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// "2026-10" -> "October" (no year)
+export const monthName = (key) => MONTHS[Number(key.split('-')[1]) - 1];
+
+// "2026-10" -> "Oct" (fixed 3 letters; browsers differ on "Sep" vs "Sept")
+export const monthShort = (key) => monthName(key).slice(0, 3);

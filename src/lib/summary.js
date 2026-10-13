@@ -1,5 +1,5 @@
 // Month totals. All values in cents.
-import { monthKey } from './dates.js';
+import { monthKey, shiftMonth, daysInMonth, daysBetween, addDays } from './dates.js';
 import { categoryName } from './categories.js';
 
 // txn: { date, amountCents, kind, categoryId }
@@ -114,4 +114,80 @@ export function balanceHistory(txns) {
     out.push({ date, cents: last.balanceCents });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ---------- Home: spending over the month ----------
+
+// Spending per day of a month (same rule as `spent`: kind 'spend', refunds reduce it,
+// investing and savings left out). Returns { days: [cents per day, index 0 = the 1st], total }.
+// A day with only a refund shows 0 (a bar can't be negative); `total` is the true net.
+export function spentByDay(txns, key) {
+  const [y, m] = key.split('-').map(Number);
+  const dim = daysInMonth(y, m);
+  const raw = new Array(dim).fill(0);
+  for (const t of txns) {
+    if (t.kind !== 'spend' || !t.categoryId || monthKey(t.date) !== key) continue;
+    raw[Number(t.date.slice(8)) - 1] += -t.amountCents;
+  }
+  return { days: raw.map((c) => Math.max(c, 0)), total: raw.reduce((a, c) => a + c, 0) };
+}
+
+// Running total of spending by day: [after the 1st, after the 2nd, ...], up to `upTo` days
+// (default the whole month). Uses the true net per day so it matches `spent`.
+export function cumulativeSpend(txns, key, upTo) {
+  const [y, m] = key.split('-').map(Number);
+  const dim = daysInMonth(y, m);
+  const raw = new Array(dim).fill(0);
+  for (const t of txns) {
+    if (t.kind !== 'spend' || !t.categoryId || monthKey(t.date) !== key) continue;
+    raw[Number(t.date.slice(8)) - 1] += -t.amountCents;
+  }
+  const n = Math.min(upTo ?? dim, dim);
+  const out = [];
+  let run = 0;
+  for (let i = 0; i < n; i++) { run += raw[i]; out.push(run); }
+  return out;
+}
+
+// This month's spending against the month before, for the Home pace card.
+// - Current month: this month so far vs the previous month up to the same day
+//   (the 31st vs a 30-day month compares against that month's last day).
+// - Any other month: the whole month vs the whole previous month.
+// Returns null when the previous month has no spending (nothing to compare with).
+export function monthCompare(txns, key, today) {
+  const prev = shiftMonth(key, -1);
+  const [py, pm] = prev.split('-').map(Number);
+  const prevDim = daysInMonth(py, pm);
+  const prevCum = cumulativeSpend(txns, prev);
+  const prevTotal = prevCum[prevCum.length - 1] ?? 0;
+  const isCurrent = monthKey(today) === key;
+  const day = isCurrent ? Number(today.slice(8)) : null;
+  const cum = cumulativeSpend(txns, key, day ?? undefined);
+  const spent = cum[cum.length - 1] ?? 0;
+  if (!prevTotal) return null;
+  const prevThrough = day == null ? prevTotal : prevCum[Math.min(day, prevDim) - 1];
+  return {
+    prev, prevTotal, prevThrough, spent, day, isCurrent,
+    share: spent / prevTotal,            // e.g. 0.44 = 44% of the previous month's total
+    delta: spent - prevThrough,          // positive = spent more than last month by this date
+    cum, prevCum,
+  };
+}
+
+// The next rent payment, guessed from your last two rent payments (bills flagged as
+// Rent & housing): same gap again. Returns { date, cents, days } when it falls due within
+// `withinDays` (0 = today), otherwise null. A simple stand-in until M5 (Bills).
+export function upcomingRent(txns, today, withinDays = 7) {
+  const rent = txns
+    .filter((t) => t.kind === 'spend' && t.categoryId === 'housing' && t.bill && t.amountCents < 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (rent.length < 2) return null;
+  const last = rent[rent.length - 1];
+  const gap = daysBetween(rent[rent.length - 2].date, last.date);
+  if (gap < 7 || gap > 31) return null;
+  let due = addDays(last.date, gap);
+  while (due < today) due = addDays(due, gap);
+  const days = daysBetween(today, due);
+  if (days > withinDays) return null;
+  return { date: due, cents: -last.amountCents, days };
 }

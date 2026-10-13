@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { pickerGroups, getCategory, categoryName } from '../lib/categories.js';
 import { importCsvText, addCategory } from '../lib/store.js';
-import { monthLabel, shiftMonth } from '../lib/dates.js';
+import { monthLabel, shiftMonth, monthShort } from '../lib/dates.js';
+import { Icon } from './icons.jsx';
 
 // True on desktop-width screens (matches the CSS breakpoint).
 const WIDE = '(min-width: 900px)';
@@ -35,20 +36,70 @@ export const Chevron = ({ dir = 'right', size = 18 }) => (
   </svg>
 );
 
-// Month switcher: never before the first month with data, never after this month.
-// Shows a "This month" button when you're looking at another month.
+// Month picker: a year with a 12-month grid. Never before the first month with data, never after
+// this month. "This month" lives in here so nothing on the page moves when you change month.
+export function MonthPicker({ month, setMonth, current, first, onClose }) {
+  const min = first && first < current ? first : current;
+  const [year, setYear] = useState(Number(month.slice(0, 4)));
+  const minYear = Number(min.slice(0, 4));
+  const maxYear = Number(current.slice(0, 4));
+  const pick = (key) => { setMonth(key); onClose(); };
+  return (
+    <Sheet title="Choose a month" onClose={onClose}>
+      <div className="sheet-body">
+        <div className="year-row">
+          <button type="button" className="icon-btn" aria-label="Previous year" disabled={year <= minYear}
+            onClick={() => setYear(year - 1)}><Chevron dir="left" /></button>
+          <span className="year" aria-live="polite">{year}</span>
+          <button type="button" className="icon-btn" aria-label="Next year" disabled={year >= maxYear}
+            onClick={() => setYear(year + 1)}><Chevron /></button>
+        </div>
+        <div className="month-grid" role="group" aria-label={`Months of ${year}`}>
+          {Array.from({ length: 12 }, (_, i) => {
+            const key = `${year}-${String(i + 1).padStart(2, '0')}`;
+            const off = key < min || key > current;
+            return (
+              <button type="button" key={key} disabled={off} aria-pressed={key === month}
+                className={`month-cell${key === month ? ' on' : ''}${key === current ? ' now' : ''}`}
+                onClick={() => pick(key)}>{monthShort(key)}</button>
+            );
+          })}
+        </div>
+        <button type="button" className="btn" onClick={() => pick(current)}>This month</button>
+      </div>
+    </Sheet>
+  );
+}
+
+// Home: just the month name as a dropdown (no arrows; Home is "this month" unless you pick another).
+export function MonthDropdown(props) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="month-drop" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
+        <span>{monthLabel(props.month)}</span><Icon name="chev-down" size={18} />
+      </button>
+      {open && <MonthPicker {...props} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+// Other pages: arrows stay in fixed places; tap the month name to jump to any month.
 export function MonthSwitch({ month, setMonth, current, first }) {
   const min = first && first < current ? first : current;
+  const [open, setOpen] = useState(false);
   return (
     <div className="month-wrap">
       <div className="month-switch">
         <button type="button" className="icon-btn" aria-label="Previous month" disabled={month <= min}
           onClick={() => setMonth(shiftMonth(month, -1))}><Chevron dir="left" /></button>
-        <span className="month" aria-live="polite">{monthLabel(month)}</span>
+        <button type="button" className="month month-btn" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
+          {monthLabel(month)}
+        </button>
         <button type="button" className="icon-btn" aria-label="Next month" disabled={month >= current}
           onClick={() => setMonth(shiftMonth(month, 1))}><Chevron /></button>
       </div>
-      {month !== current && <button type="button" className="pill" onClick={() => setMonth(current)}>This month</button>}
+      {open && <MonthPicker month={month} setMonth={setMonth} current={current} first={first} onClose={() => setOpen(false)} />}
     </div>
   );
 }

@@ -219,14 +219,14 @@ function BalanceChart({ points }) {
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Balance from ${longDay(points[0].date)} to ${longDay(points[points.length - 1].date)}, highest ${formatCents(hi)}`}>
         <defs>
           <linearGradient id="balfill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--in)" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="var(--in)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--balance)" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="var(--balance)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {lo < 0 && <line x1={PAD} x2={W - PAD} y1={Y(0)} y2={Y(0)} stroke="var(--over)" strokeDasharray="4 4" strokeWidth="1" />}
         <path d={area} fill="url(#balfill)" />
-        <path d={d} fill="none" stroke="var(--in)" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-        <circle cx={X(shown.date)} cy={Y(shown.cents)} r="5" fill="var(--bg)" stroke="var(--in)" strokeWidth="2.5" />
+        <path d={d} fill="none" stroke="var(--balance)" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        <circle cx={X(shown.date)} cy={Y(shown.cents)} r="5" fill="var(--bg)" stroke="var(--balance)" strokeWidth="2.5" />
       </svg>
       <div className="axis"><span>{shortMonth(points[0].date)}</span><span>High {formatCents(hi)}</span><span>{shortMonth(points[points.length - 1].date)}</span></div>
     </div>
@@ -261,7 +261,7 @@ function AccountPage({ txns, balance, today, onOpen }) {
         </Hero>
         <section className="card" aria-label="Balance over time">
           <div className="card-head">
-            <span className="card-title head-in">Balance over time</span>
+            <span className="card-title head-balance">Balance over time</span>
           </div>
           <BalanceChart points={points} />
           <div className="segmented" role="tablist" aria-label="Range">

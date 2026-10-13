@@ -36,7 +36,8 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 - `src/lib/`: pure logic (money, dates, csv, rules, importer, summary), all tested; `store.js` = database actions
 - `src/lib/resort.js` = re-sort / one-time catch-up (pure, tested); `rules-v1.js` = frozen M2 rules, don't edit
 - `src/lib/categories.js`: defaults + user overrides (`setCategoryOverrides`, called by App from the synced `categories` table); use `categoryName()` / `getCategory()`, never a static map
-- `src/components/`: screens (Home, Detail = Spending/Income/Saved/Invested/account pages, Activity, AddTxn, TxnSheet, Settings) and shared UI (`ui.jsx`: Bar, MonthSwitch, CategorySelect dropdown)
+- `src/components/`: screens (Home, Detail = Spending/Income/Saved/Invested/account pages, Activity, AddTxn, TxnSheet, Settings) and shared UI (`ui.jsx`: Bar, MonthDropdown (Home), MonthSwitch + MonthPicker (other pages), CategorySelect dropdown; `icons.jsx`: line icons, one per category)
+- `summary.js` also holds Home's month maths: `spentByDay`, `cumulativeSpend`, `monthCompare` (this month so far vs last month by the same day), `upcomingRent`
 - Learned rules live in the `rules` table and run before `DEFAULT_RULES`
 - Savings transfers are hidden from Home's Recent and from Activity unless toggled on
 - `.claude/skills/`: design and review helpers (see "Design helpers" below). Origins and licences in `.claude/skills/SOURCES.md`.
@@ -58,11 +59,18 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Home has NO transaction list. At most a small link to Activity (or a tiny one-liner). Ken hates big transaction lists on Home.
 - Controls must not move. A button appearing must never shift other buttons (the "This month" pill pushing the month arrows was annoying).
 - Background: near-black neutral like the Claude app, no purple/indigo tint. Strong contrast, colors that pop, but not white text everywhere: secondary info goes muted, color carries meaning.
-- Money colors (Ken, 13 Oct 2026; replaces the M2.5 blue-income palette): spent = red/orange, income/credit = green. Saving and invested need colors that don't clash with those (to be picked from the Home prototypes).
+- Money colors (Ken, 13 Oct 2026; replaces the M2.5 blue-income palette), tokens in `src/index.css`: spent = red/orange, income/credit = green, saved = blue, invested = purple. Balance, buttons and links = cyan; "to sort" = rose. Hex values were my pick on 13 Oct (Ken only saw the prototypes): change the tokens if he wants different shades.
 - Use the whole screen on wide monitors.
 - Big visual changes: show prototypes in chat first, Ken picks, then build. Point out UX problems proactively and suggest ideas.
 
 ## NEXT UPDATE: M2.5b Layout, look and search (Ken, 13 Oct 2026; before M2.6 accounts)
+**STEP 1 BUILT (13 Oct 2026, 115 tests):** new palette, Home layout below, box icons, month dropdown + picker, wide-screen 3 columns (content up to 1600px; 2 columns from 900px, 3 from 1280px). Not yet seen by Ken in a browser: check it live and note what to adjust. Decisions made while building (tell Ken, change if he wants):
+- Home order on phone: month dropdown, banners (sync, rent), balance card, "N to sort" chip + search button, 4 boxes, "Spent so far" pace card (amount, "X% of September's $Y", bar, "$Z more/less than September by the 13th", small this-month-vs-last-month graph), "Where it went" (top 6, icon + % + bar), "Day by day" (per-day bars + compact heat calendar + busiest day). The old Cash flow card and Recent list are gone from Home.
+- Savings balance beside the Smart Access balance is NOT shown yet: savings accounts arrive with M2.6, and no balance is invented.
+- Rent banner = simple guess: the next rent date is the last rent bill + the gap between the last two (rent now is fortnightly); shows from 7 days before. M5 (Bills) replaces it.
+- The Home search button just opens Activity (real filters are step 3).
+- Month picking: Home has the month name as a dropdown with no arrows; other pages keep arrows in fixed places and tapping the name opens the picker. "This month" is inside the picker (no pill that moves things).
+- Left for later: detail/account page layout (step 2), Activity filters (step 3). The month picker is a year + month grid (not typeable). Remembered toggles, quick sort, nicknames and the "N to sort" quick-sort flow are not started.
 Build in steps, test each. Home layout = PICKED (Ken, 13 Oct 2026): prototype 1 as the base, mixed with parts of 2, 3, 4, 5. Ken's pick:
 - Home pick details (Ken, 13 Oct 2026):
   - Base = prototype 1 (command center): month-dropdown, top categories with icons, small "last month" reflection (graph), search box, small "N to sort" chip (its own small separate box, not a big one).
@@ -108,8 +116,7 @@ At the start of every session and every stage, tell Ken which update and stage w
 - Small visual fixes or notes: Sonnet, low or medium. A session mixing money logic and UI: start on Opus, high.
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
-- Home's 4 boxes (In / Spent / Saved / Invested): the colored line along the top looks ugly and doesn't reach the corners (the rounded corners cut it off). Replace it with a colored icon per box (e.g. arrow in, bag/arrow out, piggy bank, chart). Keep the amount in its color. Next update (Ken, 13 Oct 2026).
-- Desktop doesn't use the space on Ken's wide screen: content is capped at ~1140px and centered, leaving big empty margins. Let it grow to ~1600px and use 3 columns on wide screens (layout from the Home prototype Ken picks; no Recent list on Home). Next update, with the box icons (Ken, 13 Oct 2026).
+- Fixed in M2.5b step 1 (13 Oct 2026, check in the live app): Home's 4 boxes now have a colored icon instead of the top line; desktop content grows to 1600px with 3 columns on Home.
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
 
 ## Later, for a real mobile app version (Ken's idea, not now)
@@ -122,7 +129,7 @@ At the start of every session and every stage, tell Ken which update and stage w
 - [x] Desktop layout (sidebar from 900px) and sync between devices via moni-data
 - [x] M2.5 (built 13 Oct 2026; tested with both main-account CSVs in a browser):
   - Look: type and sizes up 10–15%; card headings bigger and highlighted; fix the visual bug list
-  - Colors (Ken's palette; he dislikes yellow): income = blue, spend = orange, saving = purple, invest = green/teal; budget bars blue, over budget = orange-red
+  - Colors (superseded by the M2.5b palette: spent red/orange, income green, saved blue, invested purple): income = blue, spend = orange, saving = purple, invest = green/teal; budget bars blue, over budget = orange-red
   - Home: monthly cash flow card = horizontal bars (income vs spend); 4 boxes In / Spent / Saved / Invested (2×2, also on desktop); Recent = 5 on phone (Ken picked 5), 10 on desktop
   - Balance as a highlighted box; tap opens an account page (balance-over-time chart + all transactions)
   - Tap any box -> detail page (CommBank-style), see M4 list below for the full version. Detail pages: category breakdown with %, tap a category to filter the list; phone back gesture closes them
