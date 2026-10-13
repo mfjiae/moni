@@ -177,8 +177,8 @@ function DayByDay({ txns, month, today, byDay }) {
       <div className="card-head">
         <span className="card-title head-out">Day by day</span>
         {busiestIdx >= 0 && (
-          <span className="busy-pill" title={`Busiest day: the ${ordinal(busiestIdx + 1)}`}>
-            <Icon name="flame" size={15} />Busiest {ordinal(busiestIdx + 1)} &middot; {formatCents(days[busiestIdx])}
+          <span className="busy-pill">
+            <Icon name="flame" size={15} />Busiest day: {longDay(`${month}-${String(busiestIdx + 1).padStart(2, '0')}`).split(' ')[0]} {ordinal(busiestIdx + 1)} &middot; {formatCents(days[busiestIdx])}
           </span>
         )}
       </div>

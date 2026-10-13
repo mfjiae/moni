@@ -8,6 +8,7 @@ import { summarizeMonth, categoryRows, balanceHistory, compareMonths } from '../
 import { currentBalance } from '../lib/importer.js';
 import { Bar, MonthSwitch, Chevron } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
+import { groupByDay } from '../lib/daygroups.js';
 
 const byNewest = (a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0);
 
@@ -29,16 +30,27 @@ function Segmented({ value, onChange, options, label }) {
   );
 }
 
+// Day-grouped transactions (CommBank style): a header per day with the day's net total, paged by whole days.
 function TxnList({ title, list, today, onOpen, empty }) {
-  const [limit, setLimit] = useState(40);
+  const [limit, setLimit] = useState(30);
+  const { groups, shown } = useMemo(() => groupByDay(list, limit), [list, limit]);
+  const dayLabel = (iso) => {
+    const s = shortDay(iso, today);
+    return s === 'Today' || s === 'Yesterday' ? `${s}, ${longDay(iso)}` : longDay(iso);
+  };
   return (
-    <section className="card list" aria-label={title}>
+    <section className="card list txn-box" aria-label={title}>
       <div className="card-head"><span className="card-title">{title}</span><span className="small">{list.length}</span></div>
       {list.length
-        ? list.slice(0, limit).map((t) => <TxnRow key={t.uid} t={t} meta={shortDay(t.date, today)} onOpen={onOpen} />)
+        ? groups.map((g) => (
+          <div key={g.date} role="group" aria-label={longDay(g.date)}>
+            <div className="day-head small"><span>{dayLabel(g.date)}</span><span className="day-total">{formatCents(g.netCents, { sign: true })}</span></div>
+            {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} />)}
+          </div>
+        ))
         : <div className="empty small-empty">{empty}</div>}
-      {list.length > limit && (
-        <button type="button" className="btn ghost more" onClick={() => setLimit(limit + 60)}>Show more ({list.length - limit} left)</button>
+      {list.length > shown && (
+        <button type="button" className="btn ghost more" onClick={() => setLimit(limit + 30)}>Show more ({list.length - shown} left)</button>
       )}
     </section>
   );
@@ -306,7 +318,7 @@ function AccountPage({ txns, balance, today, onOpen }) {
             </div>
           )}
         </Hero>
-        <section className="card" aria-label="Balance over time">
+        <section className="card wide-card" aria-label="Balance over time">
           <div className="card-head">
             <span className="card-title head-balance">Balance over time</span>
           </div>

@@ -35,7 +35,7 @@ describe('Home', () => {
     expect(out).toContain('rent-pill');
     expect(out).not.toContain('Search transactions');
     expect(out).toContain('September: $');             // box bottom lines = full previous month
-    expect(out).toContain('Busiest ');
+    expect(out).toMatch(/Busiest day: (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+(st|nd|rd|th)/);
     expect(out).toContain('of September’s');      // pace wording
     expect(out).toContain('by the 13th');
     expect(out.match(/class="cal-day /g).length).toBeGreaterThanOrEqual(31);
