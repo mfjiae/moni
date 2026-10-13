@@ -39,9 +39,10 @@ No header; columns: date DD/MM/YYYY, signed amount, description, running balance
 Card rows end with "Card xx#### Value Date: DD/MM/YYYY" — that is the purchase date. Dedupe on `importKey`.
 
 ## Categories (planned for M2.5, CommBank-aligned; hidden = available but not shown until unhidden)
-- Spending: Eating out & takeaway, Groceries, Shopping, Entertainment, Personal care, Health & medical, Sport & fitness, Education, Tuition, Home (rent; was "Rent & housing"), Utilities, Vehicle & transport, Travel & holidays, Gifts & donations, Fees & interest, Professional services, Uncategorized
+- Spending: Eating out & takeaway, Groceries, Shopping, Entertainment, Personal care, Health & medical, Sport & fitness, Education, Tuition, Rent & housing (kept; CommBank "Home" maps here), Utilities (phone, internet), Subscriptions (Claude, Patreon, Real-Debrid, apps), Vehicle & transport, Travel & holidays, Gifts & donations, Fees & interest, Professional services, Uncategorized
 - Hidden by default: Business, Cash, Childcare, Home loan, Insurance, Pets, Tax paid, Super contributions
-- Income: Job income, Family support, Interest, Other income
+- Income: Job income, Family support (incl. the ATM cash deposits, which were family money), Interest, Other income
+- Revolut top-ups (card, "Revolut**"): leave in Review; Ken will check them against Revolut
 - Not spending: Savings transfers, Transfers & payments (excluded), Investing (counts as invested, CommBank "Shares"/"Other investments")
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
