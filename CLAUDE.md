@@ -53,7 +53,7 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Not spending: Savings transfers, Transfers & payments (excluded), Investing (counts as invested, CommBank "Shares"/"Other investments")
 
 ## Visual bugs to fix later (Ken's list, don't fix until asked)
-- (none open)
+- Home's 4 boxes (In / Spent / Saved / Invested): the colored line along the top looks ugly and doesn't reach the corners (the rounded corners cut it off). Replace it with a colored icon per box (e.g. arrow in, bag/arrow out, piggy bank, chart). Keep the amount in its color. Next update (Ken, 13 Oct 2026).
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
 
 ## Later, for a real mobile app version (Ken's idea, not now)
