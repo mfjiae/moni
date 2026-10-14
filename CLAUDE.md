@@ -59,9 +59,54 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Home has NO transaction list. At most a small link to Activity (or a tiny one-liner). Ken hates big transaction lists on Home.
 - Controls must not move. A button appearing must never shift other buttons (the "This month" pill pushing the month arrows was annoying).
 - Background: near-black neutral like the Claude app, no purple/indigo tint. Strong contrast, colors that pop, but not white text everywhere: secondary info goes muted, color carries meaning.
-- Money colors (Ken, 13 Oct 2026; replaces the M2.5 blue-income palette), tokens in `src/index.css`: spent = red/orange, income/credit = green, saved = blue, invested = purple. Balance, buttons and links = cyan; "to sort" = rose. Hex values were my pick on 13 Oct (Ken only saw the prototypes): change the tokens if he wants different shades.
+- Money colors (Ken, 13 Oct 2026; replaces the M2.5 blue-income palette), tokens in `src/index.css`: spent = red/orange, income/credit = green, saved = blue, invested = purple. Balance, buttons and links = cyan; "to sort" = rose. Hex values below are superseded by the LOCKED DESIGN section (14 Oct 2026, palette "C vivid"); apply those when built.
 - Use the whole screen on wide monitors.
 - Big visual changes: show prototypes in chat first, Ken picks, then build. Point out UX problems proactively and suggest ideas.
+
+## LOCKED DESIGN (Ken, 14 Oct 2026; "UI locked"; prototyped in chat, NOT BUILT yet; build only when Ken says "build")
+Wherever this section disagrees with the older M2.5b notes below (Home layout, palette hex values, the 4 boxes on Home, Day by day on Home), THIS section wins once built. Prototype figures were sample numbers, not real data.
+
+**Workflow rules (Ken, 14 Oct 2026)**
+- Every UI change: prototype in chat first, offer 2-3 alternatives based on his learned preferences, ask for his preferences, wait for "UI locked", then wait for "build" before pushing. Do not push small UI tweaks or design code without confirming.
+- "Fix now" without asking = logic or code bugs only (wrong values, unreadable text, unclickable boxes). Cosmetic changes go on the visual bug list and ship in a batch.
+- Group prototypes under headings per page; label alternatives so Ken can name them. Remind Ken when he falls back on old habits (vague reactive feedback, deciding on isolated pieces, changing decisions after build). Keep replies short.
+
+**Look**
+- Font: IBM Plex Sans (unchanged), tabular numbers for money.
+- Palette "C vivid" (replaces the 13 Oct hex values; same meaning): background #111010, card #1C1A19, raised #2A2725, border #3B3735, text #FFFFFF, muted text #EDE7DC, income #2BFF88, spent #FF7452, saved #3DAEFF, invested #BF7BFF, balance and links #2EF2D4, to-sort rose #FF8CC6 (pill bg #3A1F2E), "other" gray #B8B1A8, rent pill bg #3A2A1E text #FFCB9A. Goal: contrast and readability, colors that pop on the dark background. No yellow.
+- Tinted cards: ONLY Spent so far (spent color at 14% fill, 45% border) and Monthly cash flow (income color at 10% fill, 40% border). Other cards stay neutral.
+- Home shortcut widgets, style C1 (tinted): round button with the category color at 18% fill, a 1px border at 50%, and the icon in the category color. Spending = spent, Income = income, Saved = saved, Invested = invested, Activity = teal.
+
+**Home (A2)**
+- Desktop, 2 columns (about 5fr / 7fr). Header: month pill left, rent pill and "N to sort" pill right. Left: Smart Access balance (bright teal, big), the 5 shortcut widgets (Spending, Income, Saved, Invested, Activity), Spent so far (tinted, with a vertical "today" marker on the bar). Right: Monthly cash flow (tinted; In and Spent horizontal bars; "Spent X% of what came in"), then Where it went (donut + legend).
+- Phone, one column in this order: header, balance, shortcuts, Spent so far, Monthly cash flow, Where it went.
+- Removed from Home: the 4 boxes, the Spent-vs-last-month graph and Day by day (they move to the Cash flow and Spending pages). No transaction list on Home.
+- Donut: hovering or tapping a slice or legend row keeps that slice lit, grays the rest, and the centre shows only that category's name and amount.
+- Taps: Spent so far opens Spending; Monthly cash flow opens the Cash flow page; Where it went opens its page; the balance card opens the account page; "N to sort" opens Activity filtered to To sort; the rent pill stays a warning until the M5 Bills page exists, then opens it.
+
+**Cash flow page (F1)** (opened from Home's Monthly cash flow card and later the M4 cash flow work)
+- Range buttons M / 3M / 6M / 1Y (M = the four bars of one month; longer ranges = one bar group per month, scrollable).
+- A headline line ("Your spending is X% less/more than <last month>"), then vertical bars In / Spent / Saved / Invested, then four boxes (icon, value, "<last month>: $X"). Each box opens its detail page. Desktop 7fr / 5fr (bars left, four boxes right).
+
+**Where it went page (W3)**
+- Range buttons M / 3M / Y. Donut with "Compared with <last month>", plus rows per category: amount, up/down percent chip (more spending = spent color, less = income color), thin bars this month vs last month. Tapping a category opens Spending filtered to that category, with a chip that clears the filter. Desktop 5fr / 7fr.
+
+**Detail pages (Spending, Income, Saved, Invested): one shared template**
+- Desktop: stats left, day-grouped transactions right (as already built). Spending left column: big number, % vs last month, line chart this month vs last month (day axis), "Where it went" link, Day by day heat calendar. Income / Saved / Invested left column: big number, % vs last month, 6-month mini bars, breakdown rows (income sources, savings accounts, ETFs). Phone: stats then transactions.
+- Month switcher only on these pages (no range buttons). The Investing page proper (M4) can only show amounts invested and per-ETF split, because moni sees buys, not prices; portfolio value and gains would need typed values or a price source. Hold the "current investments" table.
+
+**Activity (filters; M2.5b step 3, Opus high)**
+- Desktop: filter sidebar always visible on the left (about 4fr), list on the right (8fr). Phone: a Filters button opens the same filters.
+- Filters: search (merchant, amount, category), Date range (All time, Last month, This year, Custom), Type (spending, income, saved, invested), Category (multi-select with counts, rent, subscriptions and the rest, "Show all N categories"), Status (To sort only), Amount min / max. Rows: name, category tag, amount, grouped by day with the existing date header style. Skip ticker filter and export for now.
+
+**Chart ranges**
+- Cash flow bars M/3M/6M/1Y; Where it went donut M/3M/Y; account balance line 1W/1M/3M/6M/1Y/All; Investing line and per-ETF donut (M4) 1W/1M/3M/6M/1Y/All; Spent so far, Day by day calendar, budget bars: month switcher only. 1W = last 7 days.
+
+**Build order (when Ken says "build")**
+1. Look + Home A2 + widgets (tokens, tinted cards, shortcuts, donut hover): Sonnet 5.5, medium.
+2. Cash flow page and Where it went page (+ the Spending category filter chip): Sonnet 5.5, medium.
+3. Detail page template changes (line chart, calendar move, mini bars): Sonnet 5.5, medium.
+4. Activity filters: Opus, high.
 
 ## NEXT UPDATE: M2.5b Layout, look and search (Ken, 13 Oct 2026; before M2.6 accounts)
 **STEP 1 DONE (13 Oct 2026), STEP 2 BUILT and reworked to stats-left / transactions-right (134 tests); both waiting only for Ken's live check, he reports bugs as he finds them. Progress rule: after each piece of work, update this status and the memory notes (what is done, which update/step is next). NEXT: M2.5b step 3 (Activity search and filters, Opus, high).** new palette, Home layout, box icons, month dropdown + picker, wide-screen 2 columns from 900px (content up to 1600px; was 3 columns until Day by day moved down), Settings side list, 1W/1M on the account chart. Not yet seen by Ken in a browser: check it live and note what to adjust. Decisions (Ken approved the v3 prototype; change if he wants):
