@@ -55,6 +55,9 @@ describe('summary helpers', () => {
     const w = whereCompare(txns, '2026-10', 3, '2026-10-13');
     expect(w.total).toBe(10000 + 12000 + 30000 + 91600 + 8000 + 45000 + 91600);
     expect(w.prevTotal).toBe(0);
+    // earlier months are never cut at today's day: from December, the 3 months before are Jul-Sep, whole
+    const dec = whereCompare(txns, '2026-12', 3, '2026-12-02');
+    expect(dec.prevTotal).toBe(10000 + 12000 + 30000 + 91600);   // Aug + Sep
   });
 });
 

@@ -193,7 +193,7 @@ At the start of every session and every stage, tell Ken which update and stage w
 - Fixed 13 Oct 2026 (check live): the empty gaps in Home's third column are gone because Day by day moved to the bottom (prototype B, column 1 width); the more/less line moved onto the "% of September" row.
 - DECIDED (Ken, 13 Oct 2026): the Savings line under the Smart Access balance (prototype had it) waits for M2.6. No balance-only shortcut, no hand-typed figure.
 - Found in the 13 Oct review (not Ken's, not fixed): buttons have no visible keyboard focus ring outside the category dropdown. (`prefers-reduced-motion` and tap delay handled 14 Oct 2026.)
-- Known gaps in the 14 Oct build (not Ken's, check live): Cash flow boxes show the selected month even when a longer range is picked; Where it went 3M/Y compares the current month so far against full earlier months for the older months; nav "Cash flow" tab now opens the Cash flow page (was a placeholder).
+- Known gaps in the 14 Oct build (not Ken's, check live): Cash flow boxes show the selected month even when a longer range is picked; Where it went 3M/Y includes this month so far against whole earlier months (only M is cut at the same day); nav "Cash flow" tab now opens the Cash flow page (was a placeholder).
 - Fixed in M2.5b step 1 (13 Oct 2026, check in the live app): Home's 4 boxes now have a colored icon instead of the top line; desktop content grows to 1600px with 3 columns on Home.
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
 

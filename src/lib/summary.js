@@ -253,9 +253,10 @@ export function spendTotals(txns, key, n, throughDay) {
 
 // Where the money went over the last n months against the n months before that.
 // Rows: biggest first, with this period, the period before, and the change (null if none before).
-// When `key` is the month in progress, the earlier period is cut at the same day of its newest month.
+// For a single month in progress (n = 1), last month is cut at the same day so the two are fair.
+// Longer periods compare the months as they are (this month so far against whole earlier months).
 export function whereCompare(txns, key, n, today) {
-  const day = today && monthKey(today) === key ? Number(today.slice(8)) : undefined;
+  const day = n === 1 && today && monthKey(today) === key ? Number(today.slice(8)) : undefined;
   const now = spendTotals(txns, key, n);
   const before = spendTotals(txns, shiftMonth(key, -n), n, day);
   const positive = (o) => Object.fromEntries(Object.entries(o).filter(([, c]) => c > 0));
