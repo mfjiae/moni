@@ -251,3 +251,13 @@ export function Sheet({ title, onClose, children }) {
     </div>
   );
 }
+
+export function Segmented({ value, onChange, options, label }) {
+  return (
+    <div className="segmented" role="tablist" aria-label={label}>
+      {options.map(([v, text]) => (
+        <button key={v} type="button" role="tab" aria-selected={value === v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>{text}</button>
+      ))}
+    </div>
+  );
+}

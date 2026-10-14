@@ -6,27 +6,18 @@ import { monthKey, monthLabel, monthName, longDay, relativeDay, ordinal, addDays
 import { categoryName } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, balanceHistory, compareMonths } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
-import { Bar, MonthSwitch, Chevron } from './ui.jsx';
+import { Bar, MonthSwitch, Chevron, Segmented } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
 import { groupByDay } from '../lib/daygroups.js';
+import { CashFlowPage, WherePage } from './FlowPages.jsx';
 
 const byNewest = (a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0);
 
-function Back({ onBack }) {
+function Back({ onBack, label }) {
   return (
     <button type="button" className="btn ghost back" onClick={onBack}>
-      <Chevron dir="left" /> Home
+      <Chevron dir="left" /> {label}
     </button>
-  );
-}
-
-function Segmented({ value, onChange, options, label }) {
-  return (
-    <div className="segmented" role="tablist" aria-label={label}>
-      {options.map(([v, text]) => (
-        <button key={v} type="button" role="tab" aria-selected={value === v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>{text}</button>
-      ))}
-    </div>
   );
 }
 
@@ -161,8 +152,18 @@ function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
         <Breakdown title="By category" head="head-out" rows={rows} total={total} selected={sel} onSelect={setSel}
           colorFor={(id) => (id === 'investing' ? 'invest' : 'out')} />
       </div>
-      <TxnList title={sel ? categoryName(sel) : 'Transactions'} list={list} today={today} onOpen={onOpen}
-        empty="No spending this month." />
+      <div className="col">
+        {sel && (
+          <div className="chips">
+            <button type="button" className="chip selected filter-chip" onClick={() => setSel(null)}
+              aria-label={`Showing ${categoryName(sel)} only. Clear filter`}>
+              {categoryName(sel)} <span aria-hidden="true">×</span>
+            </button>
+          </div>
+        )}
+        <TxnList title={sel ? categoryName(sel) : 'Transactions'} list={list} today={today} onOpen={onOpen}
+          empty="No spending this month." />
+      </div>
     </div>
   );
 }
@@ -340,15 +341,15 @@ function AccountPage({ txns, balance, today, onOpen }) {
   );
 }
 
-const TITLES = { spending: 'Spending', income: 'Money in', saved: 'Saved', invested: 'Invested', account: 'Smart Access' };
+const TITLES = { spending: 'Spending', income: 'Money in', saved: 'Saved', invested: 'Invested', account: 'Smart Access', cashflow: 'Cash flow', where: 'Where it went' };
 
-export default function Detail({ page, txns, today, month, setMonth, firstMonth, balance, onBack, onOpen }) {
+export default function Detail({ page, txns, today, month, setMonth, firstMonth, balance, onBack, onOpen, onDetail, rootLabel = 'Home' }) {
   const current = monthKey(today);
   const props = { txns, month, today, onOpen };
   return (
     <main className="screen">
       <header className="detail-top">
-        <Back onBack={onBack} />
+        <Back onBack={onBack} label={page.from ? TITLES[page.from.name] : rootLabel} />
         <div className="header">
           <div className="title">{TITLES[page.name]}</div>
           {page.name !== 'account' && (
@@ -360,6 +361,8 @@ export default function Detail({ page, txns, today, month, setMonth, firstMonth,
       {page.name === 'income' && <IncomePage {...props} />}
       {page.name === 'saved' && <SavedPage {...props} />}
       {page.name === 'invested' && <InvestedPage {...props} />}
+      {page.name === 'cashflow' && <CashFlowPage {...props} onDetail={onDetail} />}
+      {page.name === 'where' && <WherePage {...props} onDetail={onDetail} />}
       {page.name === 'account' && <AccountPage txns={txns} balance={balance} today={today} onOpen={onOpen} />}
     </main>
   );

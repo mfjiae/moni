@@ -56,6 +56,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [page, setPage] = useState(null); // detail page: { name, category? }
   const pushed = useRef(false);
+  const pageRef = useRef(null);
+  useEffect(() => { pageRef.current = page; }, [page]);
 
   const txns = useLiveQuery(() => db.txns.toArray(), []);
   const balance = useLiveQuery(() => db.meta.get('balance'), []);
@@ -71,12 +73,21 @@ export default function App() {
 
   // Detail pages: the phone's back gesture closes them instead of leaving the app.
   useEffect(() => {
-    const onPop = () => { pushed.current = false; setPage(null); };
+    const onPop = () => {
+      const p = pageRef.current;
+      if (p?.from) {            // came from another detail page: go back to that one, keep one history entry
+        setPage(p.from);
+        window.history.pushState({ moni: 'detail' }, '');
+        return;
+      }
+      pushed.current = false;
+      setPage(null);
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
   const openDetail = (name, extra = {}) => {
-    setPage({ name, ...extra });
+    setPage((prev) => ({ name, ...extra, from: prev ? { name: prev.name, category: prev.category } : undefined }));
     if (!pushed.current) { window.history.pushState({ moni: 'detail' }, ''); pushed.current = true; }
     window.scrollTo(0, 0);
   };
@@ -124,16 +135,20 @@ export default function App() {
         <Home txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} sync={sync}
           onNavigate={go} onDetail={openDetail} onOpen={setOpenId} onToast={setToast} />
       )}
-      {tab === 'home' && page && (
+      {(tab === 'home' || tab === 'cashflow') && page && (
         <Detail page={page} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
-          balance={balance} onBack={closeDetail} onOpen={setOpenId} />
+          balance={balance} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail}
+          rootLabel={tab === 'cashflow' ? 'Cash flow' : 'Home'} />
+      )}
+      {tab === 'cashflow' && !page && (
+        <Detail page={{ name: 'cashflow' }} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
+          balance={balance} onBack={() => go('home')} onOpen={setOpenId} onDetail={openDetail} rootLabel="Home" />
       )}
       {tab === 'activity' && (
         <Activity txns={txns} today={today} filter={filter} setFilter={setFilter} onOpen={setOpenId} onToast={setToast} />
       )}
       {tab === 'add' && <AddTxn today={today} usage={usage} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && <Placeholder title="Budgets" milestone="M3" />}
-      {tab === 'cashflow' && <Placeholder title="Cash flow" milestone="M4" />}
       {tab === 'settings' && <Settings sync={sync} txns={txns} onToast={setToast} />}
 
       {open && <TxnSheet key={open.uid} txn={open} usage={usage} onClose={() => setOpenId(null)} onToast={setToast} />}

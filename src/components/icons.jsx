@@ -28,6 +28,8 @@ const P = {
   // box + chip icons
   'arrow-in': <path d="M17 7L7 17M16 17H7V8" />,
   'arrow-out': <path d="M7 17L17 7M8 7h9v9" />,
+  'arrow-up': <path d="M12 19V5M6 11l6-6 6 6" />,
+  'arrow-down': <path d="M12 5v14M6 13l6 6 6-6" />,
   piggy: <><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z" /><path d="M2 9v1c0 1.1.9 2 2 2h1M16 11h.01" /></>,
   trend: <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />,
   inbox: <path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5" />,
