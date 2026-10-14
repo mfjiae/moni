@@ -1,25 +1,26 @@
-/* moni is dark only. M2.5b: near-black neutral background, spent = red/orange, income = green,
-   saved = blue, invested = purple, balance and links = cyan. */
+/* moni is dark only. Palette "C vivid": warm near-black background, spent = orange, income = green,
+   saved = blue, invested = purple, balance and links = teal. */
 :root {
-  --bg: #0D0D0F;
-  --surface: #17171B;
-  --surface-raised: #202026;
-  --track: #2C2C34;
-  --border: #2A2A31;
-  --text: #ECECF1;
-  --muted: #9B9BA8;
+  --bg: #111010;
+  --surface: #1C1A19;
+  --surface-raised: #2A2725;
+  --track: #3B3735;
+  --border: #3B3735;
+  --text: #FFFFFF;
+  --muted: #EDE7DC;
 
-  /* Money colors */
-  --in: #3DD68C;        /* income, money in */
-  --out: #FF7A45;       /* spent */
-  --save: #5B8CFF;      /* saved */
-  --invest: #A78BFA;    /* invested */
-  --over: #FF4D5E;      /* over budget, errors, delete */
-  --budget: #5B8CFF;    /* budget bars (M3) */
+  /* Money colors ("C vivid", locked 14 Oct 2026) */
+  --in: #2BFF88;        /* income, money in */
+  --out: #FF7452;       /* spent */
+  --save: #3DAEFF;      /* saved */
+  --invest: #BF7BFF;   /* invested */
+  --over: #FF5468;      /* over budget, errors, delete */
+  --budget: #3DAEFF;    /* budget bars (M3) */
 
-  --accent: #3CC8E6;    /* buttons, links, active tab, balance */
-  --balance: #3CC8E6;
-  --review: #FF6FA8;    /* needs your attention (to sort) */
+  --accent: #2EF2D4;    /* buttons, links, active tab, balance */
+  --balance: #2EF2D4;
+  --review: #FF8CC6;    /* needs your attention (to sort) */
+  --other: #B8B1A8;     /* "other" gray */
 
   --good: var(--in);
   --near: var(--review);
@@ -43,7 +44,7 @@ a { color: var(--accent); text-decoration: none; }
 .app { max-width: 480px; margin: 0 auto; min-height: 100dvh; position: relative; }
 .screen { padding: 20px 18px calc(116px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 16px; }
 
-.header { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; gap: 8px; }
+.header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; padding-top: 8px; gap: 8px; }
 .header .title { font-size: 23px; font-weight: 600; }
 
 /* Cards and highlighted headings */
@@ -154,14 +155,14 @@ a { color: var(--accent); text-decoration: none; }
 .icon-btn { width: 44px; height: 44px; border-radius: 22px; border: 0; background: none; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .icon-btn:disabled { opacity: 0.3; cursor: default; }
 .icon-btn:not(:disabled):hover { color: var(--text); }
-.header-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.header-right { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .header-right .icon-btn { margin-right: -10px; }
 
 /* Balance box: bigger and in its own color so it stands out */
 .balance-card {
   width: 100%; text-align: left; display: flex; flex-direction: column; gap: 6px; color: var(--text);
   border: 1px solid color-mix(in srgb, var(--balance) 45%, transparent); border-radius: 22px; padding: 22px 22px 20px;
-  background: radial-gradient(120% 150% at 0% 0%, color-mix(in srgb, var(--balance) 32%, #0D0D0F) 0%, #0F2A33 55%, #0B1A20 100%);
+  background: radial-gradient(120% 150% at 0% 0%, color-mix(in srgb, var(--balance) 30%, #111010) 0%, #0E2B28 55%, #0B1A18 100%);
   box-shadow: 0 10px 40px -14px color-mix(in srgb, var(--balance) 55%, transparent);
 }
 .balance-label { font-size: 14px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: color-mix(in srgb, var(--balance) 75%, white); }
@@ -171,7 +172,7 @@ a { color: var(--accent); text-decoration: none; }
 
 /* "N to sort" notification pill, top left next to the month */
 .header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
-.sort-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 13px; border-radius: 18px; font-size: 14px; color: var(--text); border: 1px solid color-mix(in srgb, var(--review) 55%, transparent); background: color-mix(in srgb, var(--review) 12%, var(--surface)); white-space: nowrap; }
+.sort-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 13px; border-radius: 18px; font-size: 14px; color: var(--text); border: 1px solid color-mix(in srgb, var(--review) 55%, transparent); background: #3A1F2E; white-space: nowrap; }
 .sort-pill svg { color: var(--review); }
 .sort-pill strong { color: var(--review); font-weight: 600; }
 .sort-pill:hover { border-color: var(--review); }
@@ -234,7 +235,7 @@ a { color: var(--accent); text-decoration: none; }
 .cal-day.l2 { background: color-mix(in srgb, var(--out) 46%, var(--surface-raised)); color: var(--text); }
 .cal-day.l3 { background: color-mix(in srgb, var(--out) 74%, var(--surface-raised)); color: #1A0D06; }
 .cal-day.l4 { background: var(--out); color: #1A0D06; }
-.cal-day.future { background: none; border: 1px dashed var(--border); color: #5A5A66; cursor: default; }
+.cal-day.future { background: none; border: 1px dashed var(--border); color: #7A726C; cursor: default; }
 .cal-day.today { outline: 2px solid var(--text); outline-offset: 1px; }
 .cal-day.picked { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cal-day:not(:disabled):hover { filter: brightness(1.15); }
@@ -255,7 +256,7 @@ a { color: var(--accent); text-decoration: none; }
 
 /* Rent / bill warning */
 .banner.warn { border-color: color-mix(in srgb, var(--out) 55%, transparent); background: color-mix(in srgb, var(--out) 10%, var(--surface-raised)); color: var(--text); }
-.rent-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; font-size: 13px; white-space: nowrap; color: color-mix(in srgb, var(--out) 55%, white); border: 1px solid color-mix(in srgb, var(--out) 55%, transparent); background: color-mix(in srgb, var(--out) 12%, var(--surface)); }
+.rent-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; font-size: 13px; white-space: nowrap; color: #FFCB9A; border: 1px solid color-mix(in srgb, #FFCB9A 45%, transparent); background: #3A2A1E; }
 .rent-pill svg { color: var(--out); }
 .busy-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12.5px; font-weight: 500; white-space: nowrap; color: var(--out); background: color-mix(in srgb, var(--out) 14%, var(--surface-raised)); }
 .warn-text { display: flex; align-items: center; gap: 12px; }
@@ -391,13 +392,8 @@ select.input { appearance: auto; }
 
 /* ---------- Layout: phone first, desktop from 900px ---------- */
 .home-grid { display: flex; flex-direction: column; gap: 16px; }
-/* Phone: one column, in this order (the three .col wrappers disappear) */
+/* Phone: one column in page order: balance, shortcuts, Spent so far, Monthly cash flow, Where it went */
 .home-grid .col { display: contents; }
-.home-grid .balance-card { order: 1; }
-.home-grid .boxes { order: 2; }
-.home-grid .pace-card { order: 3; }
-.home-grid .where-card { order: 4; }
-.home-grid .day-card { order: 5; }
 .desktop-only { display: none !important; }
 
 @media (min-width: 900px) {
@@ -418,7 +414,7 @@ select.input { appearance: auto; }
   .nav-icon .badge { display: none; }
   .badge-inline { position: static; display: inline-flex; margin-left: auto; }
 
-  .home-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: start; gap: 20px; }
+  .home-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; gap: 20px; }
   .home-grid .col { display: flex; flex-direction: column; gap: 16px; }
   .box { min-height: 0; padding: 12px 14px; gap: 8px; }
   .box .box-icon { width: 30px; height: 30px; border-radius: 9px; }
@@ -442,3 +438,42 @@ select.input { appearance: auto; }
   /* Stats on the left, the day-grouped transactions in a tall box on the right (Ken, 13 Oct 2026) */
   .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 20px; }
 }
+
+/* ---------- Home (M2.5b): shortcuts, tinted cards, donut ---------- */
+.shortcuts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.sc { --c: var(--accent); display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0; min-height: 44px; }
+.sc-btn { width: 56px; height: 56px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); border: 1px solid color-mix(in srgb, var(--c) 50%, transparent); transition: background 120ms; }
+.sc:hover .sc-btn, .sc:focus-visible .sc-btn { background: color-mix(in srgb, var(--c) 30%, transparent); }
+.sc-label { font-size: 13px; color: var(--text); }
+
+/* The only two tinted cards: Spent so far (spent color) and Monthly cash flow (income color) */
+.tint { --c: var(--out); --fill: 14%; --edge: 45%; width: 100%; text-align: left; color: var(--text); background: color-mix(in srgb, var(--c) var(--fill), var(--surface)); border-color: color-mix(in srgb, var(--c) var(--edge), transparent); }
+.tint:hover { border-color: var(--c); }
+.tint-out { --c: var(--out); --fill: 14%; --edge: 45%; }
+.tint-in { --c: var(--in); --fill: 10%; --edge: 40%; }
+.tint-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.tint-amount { font-size: clamp(38px, 10vw, 48px); font-weight: 600; letter-spacing: -0.8px; line-height: 1.05; }
+.tint-sub { font-size: 14px; color: var(--muted); }
+.tint .bar { background: color-mix(in srgb, var(--c) 20%, var(--surface)); }
+.tint .bar .pace { top: -5px; bottom: -5px; width: 3px; background: var(--text); }
+.today-key { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.today-key i { width: 3px; height: 14px; border-radius: 2px; background: var(--text); }
+.flow-line { display: flex; flex-direction: column; gap: 8px; }
+.flow-line .row { font-size: 15px; }
+.flow-line strong { font-size: 18px; font-weight: 600; }
+
+/* Donut */
+.donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+@media (min-width: 560px) { .donut-wrap { flex-direction: row; align-items: center; gap: 28px; } }
+.donut { position: relative; flex: none; }
+.donut svg { display: block; overflow: visible; }
+.donut-centre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0 44px; text-align: center; pointer-events: none; }
+.donut-name { font-size: 13px; color: var(--muted); line-height: 1.2; }
+.donut-amount { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+.donut-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0; }
+.leg { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 8px; margin: 0 -8px; border: 0; border-radius: 10px; background: none; color: var(--text); font-size: 14.5px; text-align: left; }
+.leg .dot { width: 10px; height: 10px; border-radius: 5px; flex: none; }
+.leg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leg-pct { color: var(--muted); font-size: 13.5px; }
+.leg.lit { background: var(--surface-raised); }
+.leg.dim { opacity: 0.45; }

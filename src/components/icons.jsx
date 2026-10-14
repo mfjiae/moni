@@ -36,6 +36,7 @@ const P = {
   alarm: <><circle cx="12" cy="13" r="7" /><path d="M12 10v3l2 2M4 5l3-2M20 5l-3-2" /></>,
   'chev-down': <path d="M6 9l6 6 6-6" />,
   flame: <path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2.2 1.4.9 2.2 1.8 2.6C10.5 8.7 10.6 5.5 12 3z" />,
+  list: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
 };
 

@@ -23,37 +23,47 @@ const props = { txns, today: '2026-10-13', month: '2026-10', setMonth: noop, fir
 const html = (over = {}) => renderToStaticMarkup(<Home {...props} {...over} />);
 
 describe('Home', () => {
-  it('shows the balance, 4 boxes, to-sort chip, pace, categories, day by day and the rent warning', () => {
+  it('shows the balance, shortcuts, Spent so far, cash flow, donut, to-sort pill and the rent warning', () => {
     const out = html();
     expect(out).toContain('$1,234.56');                // balance
-    for (const label of ['>In<', '>Spent<', '>Saved<', '>Invested<']) expect(out).toContain(label);
+    for (const label of ['>Spending<', '>Income<', '>Saved<', '>Invested<', '>Activity<']) expect(out).toContain(label);
     expect(out).toContain('<strong>1</strong> to sort');
+    expect(out).toContain('Spent so far');
+    expect(out).toContain('Monthly cash flow');
+    expect(out).toContain('Spent 20% of what came in');
     expect(out).toContain('Where it went');
-    expect(out).toContain('Day by day');
+    expect(out).toContain('class="donut"');
     expect(out).toContain('Rent due in 7 days');
-    expect(out).not.toContain('<button type="button" class="banner action"><span class="warn-text">');
     expect(out).toContain('rent-pill');
-    expect(out).not.toContain('Search transactions');
-    expect(out).toContain('September: $');             // box bottom lines = full previous month
-    expect(out).toMatch(/Busiest day: (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+(st|nd|rd|th)/);
-    expect(out).toContain('of September’s');      // pace wording
+    expect(out).toContain('class="pace"');              // today marker on the Spent so far bar
+    expect(out).toContain('of September’s');
     expect(out).toContain('by the 13th');
-    expect(out.match(/class="cal-day /g).length).toBeGreaterThanOrEqual(31);
+    expect(out).not.toContain('Search transactions');
   });
-  it('Where it went rows are buttons, and the more/less line shares the row with the % of last month', () => {
+  it('the 4 boxes, pace graph and Day by day are no longer on Home', () => {
     const out = html();
-    expect(out).toMatch(/<button type="button" class="where"[^>]*aria-label="Rent &amp; housing: \$916\.00\. Open in Spending"/);
-    expect(out).toMatch(/<div class="pace-sub"><span class="label">[^<]*<\/span><span class="vs /);
+    expect(out).not.toContain('class="boxes"');
+    expect(out).not.toContain('Day by day');
+    expect(out).not.toContain('pace-chart');
+  });
+  it('page order: balance, shortcuts, Spent so far, cash flow, Where it went', () => {
+    const out = html();
+    const at = (x) => out.indexOf(x);
+    expect(at('balance-card')).toBeLessThan(at('class="shortcuts"'));
+    expect(at('class="shortcuts"')).toBeLessThan(at('spent-card'));
+    expect(at('spent-card')).toBeLessThan(at('flow-card'));
+    expect(at('flow-card')).toBeLessThan(at('where-card'));
   });
   it('has no transaction list on Home', () => {
     const out = html();
     expect(out).not.toContain('Recent');
     expect(out).not.toContain('class="txn');
   });
-  it('a past month: no rent warning, whole-month comparison', () => {
+  it('a past month: no rent warning, no today marker', () => {
     const out = html({ month: '2026-09' });
     expect(out).not.toContain('Rent due');
-    expect(out).not.toContain('Spent in September');
+    expect(out).not.toContain('class="pace"');
+    expect(out).toContain('Spent in September');
     expect(out).toContain('Nothing earlier to compare with yet.');
   });
   it('a month with nothing in it still draws', () => {

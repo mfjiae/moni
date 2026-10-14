@@ -1,6 +1,6 @@
 // Month totals. All values in cents.
 import { monthKey, shiftMonth, daysInMonth, daysBetween, addDays } from './dates.js';
-import { categoryName } from './categories.js';
+import { categoryName, kindForCategory } from './categories.js';
 
 // txn: { date, amountCents, kind, categoryId }
 // - spent: real spending (kind 'spend'). A positive amount in a spend category
@@ -136,12 +136,12 @@ export function spentByDay(txns, key) {
 
 // Running total of spending by day: [after the 1st, after the 2nd, ...], up to `upTo` days
 // (default the whole month). Uses the true net per day so it matches `spent`.
-export function cumulativeSpend(txns, key, upTo) {
+export function cumulativeSpend(txns, key, upTo, exclude = []) {
   const [y, m] = key.split('-').map(Number);
   const dim = daysInMonth(y, m);
   const raw = new Array(dim).fill(0);
   for (const t of txns) {
-    if (t.kind !== 'spend' || !t.categoryId || monthKey(t.date) !== key) continue;
+    if (t.kind !== 'spend' || !t.categoryId || monthKey(t.date) !== key || exclude.includes(t.categoryId)) continue;
     raw[Number(t.date.slice(8)) - 1] += -t.amountCents;
   }
   const n = Math.min(upTo ?? dim, dim);
@@ -156,15 +156,15 @@ export function cumulativeSpend(txns, key, upTo) {
 //   (the 31st vs a 30-day month compares against that month's last day).
 // - Any other month: the whole month vs the whole previous month.
 // Returns null when the previous month has no spending (nothing to compare with).
-export function monthCompare(txns, key, today) {
+export function monthCompare(txns, key, today, exclude = []) {
   const prev = shiftMonth(key, -1);
   const [py, pm] = prev.split('-').map(Number);
   const prevDim = daysInMonth(py, pm);
-  const prevCum = cumulativeSpend(txns, prev);
+  const prevCum = cumulativeSpend(txns, prev, undefined, exclude);
   const prevTotal = prevCum[prevCum.length - 1] ?? 0;
   const isCurrent = monthKey(today) === key;
   const day = isCurrent ? Number(today.slice(8)) : null;
-  const cum = cumulativeSpend(txns, key, day ?? undefined);
+  const cum = cumulativeSpend(txns, key, day ?? undefined, exclude);
   const spent = cum[cum.length - 1] ?? 0;
   if (!prevTotal) return null;
   const prevThrough = day == null ? prevTotal : prevCum[Math.min(day, prevDim) - 1];
@@ -218,4 +218,54 @@ export function dayItems(txns, date) {
   return Object.entries(by).filter(([, c]) => c !== 0)
     .map(([id, cents]) => ({ id, name: categoryName(id), cents }))
     .sort((a, b) => b.cents - a.cents);
+}
+
+// ---------- Cash flow and Where it went pages ----------
+
+// Percent change from `prev` to `now` (0.25 = 25% more). null when there is nothing to compare with.
+export function pctChange(now, prev) {
+  return prev > 0 ? (now - prev) / prev : null;
+}
+
+// The n months ending at `key`, oldest first: money in, spent, saved (net, can be negative), invested.
+export function monthSeries(txns, key, n) {
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const k = shiftMonth(key, -i);
+    const s = summarizeMonth(txns, k);
+    out.push({ key: k, income: s.income, spent: s.spent, saved: s.savedNet, invested: s.invested });
+  }
+  return out;
+}
+
+// Spending by category over the n months ending at `key` (spending categories only; investing left out).
+// throughDay (optional) caps the newest month at that day, to compare a month in progress fairly.
+export function spendTotals(txns, key, n, throughDay) {
+  const totals = {};
+  for (let i = 0; i < n; i++) {
+    const s = summarizeMonth(txns, shiftMonth(key, -i), i === 0 ? throughDay : undefined);
+    for (const [id, c] of Object.entries(s.byCategory)) {
+      if (kindForCategory(id) === 'spend') totals[id] = (totals[id] ?? 0) + c;
+    }
+  }
+  return totals;
+}
+
+// Where the money went over the last n months against the n months before that.
+// Rows: biggest first, with this period, the period before, and the change (null if none before).
+// When `key` is the month in progress, the earlier period is cut at the same day of its newest month.
+export function whereCompare(txns, key, n, today) {
+  const day = today && monthKey(today) === key ? Number(today.slice(8)) : undefined;
+  const now = spendTotals(txns, key, n);
+  const before = spendTotals(txns, shiftMonth(key, -n), n, day);
+  const positive = (o) => Object.fromEntries(Object.entries(o).filter(([, c]) => c > 0));
+  const { total, rows } = categoryRows(positive(now));
+  const prevTotal = Object.values(positive(before)).reduce((a, c) => a + c, 0);
+  return {
+    total, prevTotal,
+    rows: rows.map((r) => {
+      const prev = Math.max(before[r.id] ?? 0, 0);
+      return { ...r, prev, change: pctChange(r.cents, prev) };
+    }),
+  };
 }
