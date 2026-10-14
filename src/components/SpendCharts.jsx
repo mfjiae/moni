@@ -76,7 +76,7 @@ export function PaceChart({ compare, month, prevName }) {
 const cellMoney = (c) => (c >= 100000 ? `$${(c / 100000).toFixed(1)}k` : `$${Math.round(c / 100)}`);
 
 // Spending per day as small bars, plus a calendar showing what you spent each day. Tap a day to see it.
-export function DayByDay({ txns, month, today, byDay }) {
+export function DayByDay({ txns, month, today, byDay, exclude = [] }) {
   const { days } = byDay;
   const dim = days.length;
   const isCurrent = monthKey(today) === month;
@@ -89,7 +89,7 @@ export function DayByDay({ txns, month, today, byDay }) {
   const level = (c) => { if (c <= 0) return 0; const r = Math.sqrt(c / max); return r < 0.2 ? 1 : r < 0.3 ? 2 : r < 0.45 ? 3 : 4; };
   const tick = (d) => d === 1 || d % 7 === 1 || d === dim;
   const selDate = sel ? `${month}-${String(sel).padStart(2, '0')}` : null;
-  const items = useMemo(() => (selDate ? dayItems(txns, selDate) : []), [txns, selDate]);
+  const items = useMemo(() => (selDate ? dayItems(txns, selDate, exclude) : []), [txns, selDate, exclude]);
 
   return (
     <section className="card day-card" aria-label="Day by day">

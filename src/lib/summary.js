@@ -123,12 +123,12 @@ export function balanceHistory(txns) {
 // Spending per day of a month (same rule as `spent`: kind 'spend', refunds reduce it,
 // investing and savings left out). Returns { days: [cents per day, index 0 = the 1st], total }.
 // A day with only a refund shows 0 (a bar can't be negative); `total` is the true net.
-export function spentByDay(txns, key) {
+export function spentByDay(txns, key, exclude = []) {
   const [y, m] = key.split('-').map(Number);
   const dim = daysInMonth(y, m);
   const raw = new Array(dim).fill(0);
   for (const t of txns) {
-    if (t.kind !== 'spend' || !t.categoryId || monthKey(t.date) !== key) continue;
+    if (t.kind !== 'spend' || !t.categoryId || monthKey(t.date) !== key || exclude.includes(t.categoryId)) continue;
     raw[Number(t.date.slice(8)) - 1] += -t.amountCents;
   }
   return { days: raw.map((c) => Math.max(c, 0)), total: raw.reduce((a, c) => a + c, 0) };
@@ -209,10 +209,10 @@ export function compareMonths(txns, key, today) {
 }
 
 // What was spent on one day, by category (biggest first). Same rule as `spent`.
-export function dayItems(txns, date) {
+export function dayItems(txns, date, exclude = []) {
   const by = {};
   for (const t of txns) {
-    if (t.date !== date || t.kind !== 'spend' || !t.categoryId) continue;
+    if (t.date !== date || t.kind !== 'spend' || !t.categoryId || exclude.includes(t.categoryId)) continue;
     by[t.categoryId] = (by[t.categoryId] ?? 0) - t.amountCents;
   }
   return Object.entries(by).filter(([, c]) => c !== 0)

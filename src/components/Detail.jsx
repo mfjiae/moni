@@ -2,14 +2,16 @@
 // the full Cash flow pages come in M4).
 import { useMemo, useState } from 'react';
 import { formatCents } from '../lib/money.js';
-import { monthKey, monthLabel, monthName, longDay, relativeDay, ordinal, addDays } from '../lib/dates.js';
+import { monthKey, monthLabel, monthName, longDay, relativeDay, ordinal, addDays, shiftMonth } from '../lib/dates.js';
 import { categoryName } from '../lib/categories.js';
-import { summarizeMonth, categoryRows, balanceHistory, compareMonths } from '../lib/summary.js';
+import { summarizeMonth, categoryRows, balanceHistory, compareMonths, monthCompare, spentByDay, pctChange } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
 import { Bar, MonthSwitch, Chevron, Segmented } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
 import { groupByDay } from '../lib/daygroups.js';
 import { CashFlowPage, WherePage } from './FlowPages.jsx';
+import { MiniBars } from './charts.jsx';
+import { PaceChart, DayByDay } from './SpendCharts.jsx';
 
 const byNewest = (a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0);
 
@@ -86,54 +88,44 @@ function Hero({ label, cents, cls, children }) {
   );
 }
 
-// This month against last month: up to the same day, and the whole of last month.
-// pick(summary) gives the number to compare; better = 'down' (spending) or 'up' (income, saving).
-// kind 'saved' shows signed amounts (a negative month means money came out of savings).
-function CompareCard({ txns, month, today, pick, better = null, signed = false }) {
+// One plain line: "12% more than September (by the 13th)". pick(summary) gives the number to compare;
+// better = 'down' (spending) or 'up' (income, saving).
+function VsLine({ txns, month, today, pick, better = null }) {
   const c = useMemo(() => compareMonths(txns, month, today), [txns, month, today]);
   const prevName = monthName(c.prev);
+  if (!c.hasPrev) return <span className="small">Nothing in {prevName} to compare with yet.</span>;
   const now = pick(c.now);
-  const money = (v) => formatCents(v, signed ? { sign: true } : undefined);
-  const row = (label, prevVal) => {
-    const delta = now - prevVal;
-    const good = better && delta !== 0 && (better === 'down' ? delta < 0 : delta > 0);
-    const tone = delta === 0 || !better ? 'label' : good ? 'text-in' : 'text-out';
-    return (
-      <div className="cmp-row" key={label}>
-        <span className="cmp-label">{label}</span>
-        <span className="cmp-prev">{prevName} {money(prevVal)}</span>
-        <span className={`cmp-delta ${tone}`}>
-          {delta === 0 ? 'Same' : `${formatCents(Math.abs(delta))} ${delta > 0 ? 'more' : 'less'}`}
-        </span>
-      </div>
-    );
-  };
+  const prev = pick(c.prevThrough);
+  const by = c.isCurrent ? ` (by the ${ordinal(c.day)})` : '';
+  const delta = now - prev;
+  const good = better && delta !== 0 && (better === 'down' ? delta < 0 : delta > 0);
+  const tone = delta === 0 || !better ? 'label' : good ? 'text-in' : 'text-out';
+  if (delta === 0) return <span className="vs label">Same as {prevName}{by}</span>;
+  const pct = pctChange(now, prev);
+  const amount = formatCents(Math.abs(delta));
   return (
-    <section className="card compare-card" aria-label={`Compared with ${prevName}`}>
-      <div className="card-head"><span className="card-title">Compared with {prevName}</span></div>
-      {!c.hasPrev ? <span className="small">Nothing in {prevName} to compare with.</span> : (
-        <>
-          {c.isCurrent && row(`By the ${ordinal(c.day)}`, pick(c.prevThrough))}
-          {row(c.isCurrent ? `All of ${prevName}` : 'Whole month', pick(c.prevTotal))}
-        </>
-      )}
-    </section>
+    <span className={`vs ${tone}`}>
+      {pct != null && prev > 0 ? `${Math.round(Math.abs(pct) * 100)}%` : amount} {delta > 0 ? 'more' : 'less'} than {prevName}{by}
+    </span>
   );
 }
 
 const Dot = ({ color }) => <span className="dot" style={{ background: `var(--${color})` }} />;
 
-function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
+function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory }) {
   const [noTuition, setNoTuition] = useState('all');
   const [sel, setSel] = useState(initialCategory ?? null);
   const s = useMemo(() => summarizeMonth(txns, month), [txns, month]);
-  const exclude = noTuition === 'without' ? ['tuition'] : [];
-  const { total, rows } = categoryRows(s.byCategory, { exclude });
+  const exclude = useMemo(() => (noTuition === 'without' ? ['tuition'] : []), [noTuition]);
+  const { total } = categoryRows(s.byCategory, { exclude });
   const tuition = s.byCategory.tuition ?? 0;
+  const compare = useMemo(() => monthCompare(txns, month, today, exclude), [txns, month, today, exclude]);
+  const byDay = useMemo(() => spentByDay(txns, month, exclude), [txns, month, exclude]);
   const list = txns
     .filter((t) => monthKey(t.date) === month && (t.kind === 'spend' || t.kind === 'investing'))
     .filter((t) => !exclude.includes(t.categoryId) && (!sel || t.categoryId === sel))
     .sort(byNewest);
+  const prevName = compare ? monthName(compare.prev) : '';
 
   return (
     <div className="detail-grid">
@@ -141,16 +133,25 @@ function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
         <Segmented label="Tuition" value={noTuition} onChange={(v) => { setNoTuition(v); if (v === 'without' && sel === 'tuition') setSel(null); }}
           options={[['all', 'Everything'], ['without', 'Without tuition']]} />
         <Hero label={`Everything that left in ${monthLabel(month)}`} cents={total} cls="text-out">
+          <VsLine txns={txns} month={month} today={today} better="down"
+            pick={(x) => x.outgoings - (exclude.length ? x.byCategory.tuition ?? 0 : 0)} />
           <div className="sub-amounts">
             <span><Dot color="out" />Spending {formatCents(s.spent - (exclude.length ? tuition : 0))}</span>
             <span><Dot color="invest" />Investing {formatCents(s.invested)}</span>
             {tuition !== 0 && !exclude.length && <span>incl. tuition {formatCents(tuition)}</span>}
           </div>
         </Hero>
-        <CompareCard txns={txns} month={month} today={today} better="down"
-          pick={(x) => x.outgoings - (exclude.length ? x.byCategory.tuition ?? 0 : 0)} />
-        <Breakdown title="By category" head="head-out" rows={rows} total={total} selected={sel} onSelect={setSel}
-          colorFor={(id) => (id === 'investing' ? 'invest' : 'out')} />
+        <section className="card" aria-label="Spending this month against last month">
+          <div className="card-head"><span className="card-title head-out">This month vs {compare ? prevName : 'last month'}</span></div>
+          {compare
+            ? <PaceChart compare={compare} month={month} prevName={prevName} />
+            : <span className="small">Nothing earlier to compare with yet.</span>}
+        </section>
+        <button type="button" className="card link-card" onClick={() => onDetail('where')}>
+          <span className="card-title head-out">Where it went</span>
+          <span className="link-text">By category <Chevron /></span>
+        </button>
+        <DayByDay key={month} txns={txns} month={month} today={today} byDay={byDay} exclude={exclude} />
       </div>
       <div className="col">
         {sel && (
@@ -165,6 +166,33 @@ function SpendingPage({ txns, month, today, onOpen, initialCategory }) {
           empty="No spending this month." />
       </div>
     </div>
+  );
+}
+
+// The last 6 months of one number, ending at the month being looked at.
+const miniPoints = (txns, month, pick, n = 6) => Array.from({ length: n }, (_, i) => {
+  const key = shiftMonth(month, i - (n - 1));
+  return { key, cents: pick(summarizeMonth(txns, key)) };
+});
+
+function MiniCard({ txns, month, pick, color, title = 'Last 6 months', head }) {
+  const points = useMemo(() => miniPoints(txns, month, pick), [txns, month, pick]);
+  return (
+    <section className="card" aria-label={title}>
+      <div className="card-head"><span className={`card-title ${head}`}>{title}</span></div>
+      <MiniBars points={points} color={color} selectedKey={month} />
+    </section>
+  );
+}
+
+function RowsCard({ title, head, rows }) {
+  return (
+    <section className="card" aria-label={title}>
+      <div className="card-head"><span className={`card-title ${head}`}>{title}</span></div>
+      {rows.map(([label, value]) => (
+        <div className="row stat-row" key={label}><span className="label">{label}</span><span className="strong">{value}</span></div>
+      ))}
+    </section>
   );
 }
 
@@ -185,6 +213,8 @@ function IncomePage({ txns, month, today, onOpen }) {
         <Segmented label="Income view" value={view} onChange={(v) => { setView(v); setSel(null); }}
           options={[['all', 'All income'], ['job', 'Job income only']]} />
         <Hero label={view === 'job' ? `Job income in ${monthLabel(month)}` : `Money in, ${monthLabel(month)}`} cents={total} cls="text-in">
+          <VsLine txns={txns} month={month} today={today} better="up"
+            pick={(x) => (view === 'job' ? x.incomeByCategory['job-income'] ?? 0 : x.income)} />
           {view === 'all' && (s.incomeByCategory.family ?? 0) !== 0 && (
             <div className="sub-amounts">
               <span>Job {formatCents(s.incomeByCategory['job-income'] ?? 0)}</span>
@@ -192,7 +222,7 @@ function IncomePage({ txns, month, today, onOpen }) {
             </div>
           )}
         </Hero>
-        <CompareCard txns={txns} month={month} today={today} better="up"
+        <MiniCard txns={txns} month={month} color="in" head="head-in"
           pick={(x) => (view === 'job' ? x.incomeByCategory['job-income'] ?? 0 : x.income)} />
         <Breakdown title="By category" head="head-in" rows={rows} total={total} color="in" selected={sel} onSelect={setSel} />
       </div>
@@ -211,12 +241,10 @@ function SavedPage({ txns, month, today, onOpen }) {
     <div className="detail-grid">
       <div className="col">
         <Hero label={net >= 0 ? `Saved in ${monthLabel(month)}` : `Taken from savings in ${monthLabel(month)}`} cents={Math.abs(net)} cls="text-save">
-          <div className="sub-amounts">
-            <span><Dot color="save" />Put in {formatCents(put)}</span>
-            <span>Took out {formatCents(took)}</span>
-          </div>
+          <VsLine txns={txns} month={month} today={today} better="up" pick={(x) => x.savedNet} />
         </Hero>
-        <CompareCard txns={txns} month={month} today={today} better="up" signed pick={(x) => x.savedNet} />
+        <MiniCard txns={txns} month={month} color="save" head="head-save" pick={(x) => x.savedNet} />
+        <RowsCard title="Breakdown" head="head-save" rows={[['Put in', formatCents(put)], ['Took out', formatCents(took)], ['Net', formatCents(net, { sign: true })]]} />
         <p className="hint">Transfers between your own accounts. They're never counted as income or spending. A box per savings account comes with M2.6.</p>
       </div>
       <TxnList title="Transfers" list={list} today={today} onOpen={onOpen} empty="No savings transfers this month." />
@@ -228,14 +256,17 @@ function InvestedPage({ txns, month, today, onOpen }) {
   const list = txns.filter((t) => monthKey(t.date) === month && t.kind === 'investing').sort(byNewest);
   const total = list.reduce((a, t) => a - t.amountCents, 0);
   const allTime = txns.filter((t) => t.kind === 'investing').reduce((a, t) => a - t.amountCents, 0);
+  const prev = summarizeMonth(txns, shiftMonth(month, -1)).invested;
   return (
     <div className="detail-grid">
       <div className="col">
         <Hero label={`Invested in ${monthLabel(month)}`} cents={total} cls="text-invest">
-          <div className="sub-amounts"><span><Dot color="invest" />All time {formatCents(allTime)}</span></div>
+          <VsLine txns={txns} month={month} today={today} pick={(x) => x.invested} />
         </Hero>
-        <CompareCard txns={txns} month={month} today={today} pick={(x) => x.invested} />
-        <p className="hint">Betashares and CommSec contributions. The contributions-over-time chart comes with M4.</p>
+        <MiniCard txns={txns} month={month} color="invest" head="head-invest" pick={(x) => x.invested} />
+        <RowsCard title="Breakdown" head="head-invest"
+          rows={[['This month', formatCents(total)], [monthName(shiftMonth(month, -1)), formatCents(prev)], ['All time', formatCents(allTime)]]} />
+        <p className="hint">Betashares and CommSec contributions. moni sees what you buy, not what it's worth; the investing page with prices comes with M4.</p>
       </div>
       <TxnList title="Contributions" list={list} today={today} onOpen={onOpen} empty="Nothing invested this month." />
     </div>
@@ -300,7 +331,7 @@ function AccountPage({ txns, balance, today, onOpen }) {
     const last = history[history.length - 1].date;
     if (range === '1w') return addDays(last, -7);
     const [y, m, d] = last.split('-').map(Number);
-    const back = range === '1m' ? 1 : range === '3m' ? 3 : 12;
+    const back = range === '1m' ? 1 : range === '3m' ? 3 : range === '6m' ? 6 : 12;
     const dt = new Date(Date.UTC(y, m - 1 - back, d));
     return dt.toISOString().slice(0, 10);
   }, [range, history]);
@@ -329,7 +360,7 @@ function AccountPage({ txns, balance, today, onOpen }) {
           </div>
           <BalanceChart points={points} />
           <div className="segmented" role="tablist" aria-label="Range">
-            {[['1w', '1W'], ['1m', '1M'], ['3m', '3M'], ['1y', '1Y'], ['all', 'All']].map(([v, t]) => (
+            {[['1w', '1W'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['all', 'All']].map(([v, t]) => (
               <button key={v} type="button" role="tab" aria-selected={range === v} className={range === v ? 'on' : ''} onClick={() => setRange(v)}>{t}</button>
             ))}
           </div>
@@ -357,7 +388,7 @@ export default function Detail({ page, txns, today, month, setMonth, firstMonth,
           )}
         </div>
       </header>
-      {page.name === 'spending' && <SpendingPage {...props} initialCategory={page.category} />}
+      {page.name === 'spending' && <SpendingPage key={page.category ?? 'all'} {...props} onDetail={onDetail} initialCategory={page.category} />}
       {page.name === 'income' && <IncomePage {...props} />}
       {page.name === 'saved' && <SavedPage {...props} />}
       {page.name === 'invested' && <InvestedPage {...props} />}

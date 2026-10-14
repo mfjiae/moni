@@ -1,4 +1,4 @@
-// Render check for the detail pages' "Compared with last month" card and the account ranges. Fake data only.
+// Render check for the detail pages' "vs last month" line and the account ranges. Fake data only.
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import Detail from '../../components/Detail.jsx';
@@ -18,32 +18,39 @@ const html = (name, over = {}) => renderToStaticMarkup(
   <Detail page={{ name }} txns={txns} today="2026-10-13" month="2026-10" setMonth={noop} firstMonth="2026-09"
     balance={{ cents: 5000, asOf: '2026-10-12' }} onBack={noop} onOpen={noop} {...over} />);
 
-describe('Detail comparison card', () => {
-  it('spending: same day and whole month, with the right numbers', () => {
+describe('Detail "vs last month" line', () => {
+  it('spending: percent against the same day last month', () => {
     const out = html('spending');
-    expect(out).toContain('Compared with September');
-    expect(out).toContain('By the 13th');
-    expect(out).toContain('All of September');
-    expect(out).toContain('September $150.00');   // by the 13th: groceries 100 + invested 50
-    expect(out).toContain('$20.00 less');          // this month 130
-    expect(out).toContain('September $470.00');   // whole month: 100 + 300 + 50 + 20
-    expect(out).toContain('$340.00 less');
+    expect(out).toContain('13% less than September (by the 13th)');   // 130 now vs 150 by the 13th
   });
   it('income, saved and invested show it too', () => {
-    for (const n of ['income', 'saved', 'invested']) expect(html(n)).toContain('Compared with September');
+    expect(html('income')).toContain('% more than September');         // 3000 vs 1000
+    expect(html('invested')).toContain('Same as September');   // 50 vs 50
+    expect(html('saved')).toContain('than September');
   });
   it('a past month compares the whole month only', () => {
     const out = html('spending', { today: '2026-11-05' });   // viewing October from November
-    expect(out).not.toContain('By the 5th');
-    expect(out).toContain('Whole month');
+    expect(out).not.toContain('(by the');
+    expect(out).toContain('72% less than September');         // 130 vs 470
   });
   it('says so when last month is empty', () => {
-    expect(html('spending', { month: '2026-09' })).toContain('Nothing in August to compare with.');
+    expect(html('spending', { month: '2026-09' })).toContain('Nothing in August to compare with yet.');
   });
-  it('account page has 1W and 1M', () => {
+  it('spending page has the line chart, the Where it went link and Day by day', () => {
+    const out = html('spending');
+    expect(out).toContain('pace-chart');
+    expect(out).toContain('Where it went');
+    expect(out).toContain('Day by day');
+    expect(out.match(/class="cal-day /g).length).toBeGreaterThanOrEqual(31);
+  });
+  it('income, saved and invested have 6 mini bars', () => {
+    for (const n of ['income', 'saved', 'invested']) expect(html(n).match(/class="mini-col/g)).toHaveLength(6);
+  });
+  it('account page has 1W, 1M and 6M', () => {
     const out = html('account');
     expect(out).toContain('>1W<');
     expect(out).toContain('>1M<');
+    expect(out).toContain('>6M<');
   });
 });
 
@@ -53,8 +60,9 @@ describe('Spending opened from a Home category', () => {
     txns: [t('2026-10-03', -8000, 'groceries', 'spend', { description: 'FAKE GROCER' }),
            t('2026-10-04', -3000, 'eating-out', 'spend', { description: 'FAKE CAFE' })],
   });
-  it('lists only that category\'s transactions', () => {
+  it('lists only that category\'s transactions, with a chip to clear it', () => {
     const out = mk('groceries');
+    expect(out).toContain('Clear filter');
     expect(out).toContain('FAKE GROCER');
     expect(out).not.toContain('FAKE CAFE');
   });
