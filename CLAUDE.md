@@ -36,8 +36,8 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 - `src/lib/`: pure logic (money, dates, csv, rules, importer, summary), all tested; `store.js` = database actions
 - `src/lib/resort.js` = re-sort / one-time catch-up (pure, tested); `rules-v1.js` = frozen M2 rules, don't edit
 - `src/lib/categories.js`: defaults + user overrides (`setCategoryOverrides`, called by App from the synced `categories` table); use `categoryName()` / `getCategory()`, never a static map
-- `src/components/`: screens (Home, Detail = Spending/Income/Saved/Invested/account pages, Activity, AddTxn, TxnSheet, Settings) and shared UI (`ui.jsx`: Bar, MonthDropdown (Home), MonthSwitch + MonthPicker (other pages), CategorySelect dropdown; `icons.jsx`: line icons, one per category)
-- `summary.js` also holds Home's month maths: `spentByDay`, `cumulativeSpend`, `monthCompare` (this month so far vs last month by the same day), `upcomingRent`
+- `src/components/`: screens (Home = balance, 5 shortcuts, Spent so far, Monthly cash flow, Where it went donut; Detail = Spending/Income/Saved/Invested/account pages and routes `cashflow` + `where` to `FlowPages.jsx` (CashFlowPage, WherePage); `charts.jsx` = Donut, donutRows, FlowBars, MiniBars; `SpendCharts.jsx` = PaceChart line + DayByDay calendar, now on the Spending page; Activity, AddTxn, TxnSheet, Settings) and shared UI (`ui.jsx`: Bar, MonthDropdown (Home), MonthSwitch + MonthPicker (other pages), CategorySelect dropdown; `icons.jsx`: line icons, one per category)
+- `summary.js` also holds `monthSeries`, `spendTotals`, `whereCompare`, `pctChange` (Cash flow / Where it went pages) and Home's month maths: `spentByDay`, `cumulativeSpend`, `monthCompare` (this month so far vs last month by the same day), `upcomingRent`
 - Learned rules live in the `rules` table and run before `DEFAULT_RULES`
 - Savings transfers are hidden from Home's Recent and from Activity unless toggled on
 - `.claude/skills/`: design and review helpers (see "Design helpers" below). Origins and licences in `.claude/skills/SOURCES.md`.
@@ -63,7 +63,7 @@ Ids: eating-out, groceries, shopping, entertainment, personal-care, health, spor
 - Use the whole screen on wide monitors.
 - Big visual changes: show prototypes in chat first, Ken picks, then build. Point out UX problems proactively and suggest ideas.
 
-## LOCKED DESIGN (Ken, 14 Oct 2026; "UI locked"; prototyped in chat, NOT BUILT yet; build only when Ken says "build")
+## LOCKED DESIGN (Ken, 14 Oct 2026; "UI locked"; BUILT 14 Oct 2026 except Activity filters; check live)
 Wherever this section disagrees with the older M2.5b notes below (Home layout, palette hex values, the 4 boxes on Home, Day by day on Home), THIS section wins once built. Prototype figures were sample numbers, not real data.
 
 **Workflow rules (Ken, 14 Oct 2026)**
@@ -102,14 +102,14 @@ Wherever this section disagrees with the older M2.5b notes below (Home layout, p
 **Chart ranges**
 - Cash flow bars M/3M/6M/1Y; Where it went donut M/3M/Y; account balance line 1W/1M/3M/6M/1Y/All; Investing line and per-ETF donut (M4) 1W/1M/3M/6M/1Y/All; Spent so far, Day by day calendar, budget bars: month switcher only. 1W = last 7 days.
 
-**Build order (when Ken says "build")**
+**Build order (steps 1-3 BUILT 14 Oct 2026, 149 tests, pushed together, waiting for Ken's live check; NEXT = step 4, Activity filters, Opus high, needs Ken's "build" first only if the design changes)**
 1. Look + Home A2 + widgets (tokens, tinted cards, shortcuts, donut hover): Sonnet 5.5, medium.
 2. Cash flow page and Where it went page (+ the Spending category filter chip): Sonnet 5.5, medium.
 3. Detail page template changes (line chart, calendar move, mini bars): Sonnet 5.5, medium.
 4. Activity filters: Opus, high.
 
 ## NEXT UPDATE: M2.5b Layout, look and search (Ken, 13 Oct 2026; before M2.6 accounts)
-**STEP 1 DONE (13 Oct 2026), STEP 2 BUILT and reworked to stats-left / transactions-right (134 tests); both waiting only for Ken's live check, he reports bugs as he finds them. Progress rule: after each piece of work, update this status and the memory notes (what is done, which update/step is next). NEXT: M2.5b step 3 (Activity search and filters, Opus, high).** new palette, Home layout, box icons, month dropdown + picker, wide-screen 2 columns from 900px (content up to 1600px; was 3 columns until Day by day moved down), Settings side list, 1W/1M on the account chart. Not yet seen by Ken in a browser: check it live and note what to adjust. Decisions (Ken approved the v3 prototype; change if he wants):
+**STATUS 14 Oct 2026: the LOCKED DESIGN steps 1-3 are built (new palette, Home A2, Cash flow page, Where it went page, Spending page with line chart + calendar, mini bars on Income/Saved/Invested, 6M on the account chart); waiting for Ken's live check. Progress rule: after each piece of work, update this status and the memory notes. NEXT: Activity search and filters (LOCKED DESIGN step 4, Opus, high).** Old notes below are history; where they disagree with LOCKED DESIGN, LOCKED DESIGN wins. new palette, Home layout, box icons, month dropdown + picker, wide-screen 2 columns from 900px (content up to 1600px; was 3 columns until Day by day moved down), Settings side list, 1W/1M on the account chart. Not yet seen by Ken in a browser: check it live and note what to adjust. Decisions (Ken approved the v3 prototype; change if he wants):
 - Home order on phone: month dropdown with a small rose "N to sort" pill to its left (opens Activity > To review), banners (sync), rent warning, balance card, 4 boxes, "Spent so far", "Where it went", "Day by day". Desktop: col 1 = balance + Where it went (fills the column, 8 rows), col 2 = 4 boxes + Spent so far, then Day by day in a row below under col 1. CSS: on phone `.col` is `display:contents` with `order` on the cards.
 - The 4 boxes show a bottom line with the FULL previous month ("September: $186.35"), never "by the 13th". "By the 13th" is only on the Spent so far card and its graph. Saved box reads "$X from savings" / "$X saved".
 - Detail pages (Spending, Money in, Saved, Invested) have a "Compared with September" card: current month = two rows, "By the 13th" and "All of September", each with more/less; a past month = one "Whole month" row; "Nothing in X to compare with" when last month is empty (`compareMonths` in summary.js). Spending compares spent + invested, honoring "without tuition". Spending/less = green, more = orange; income/saved more = green; invested is neutral.
@@ -192,7 +192,8 @@ At the start of every session and every stage, tell Ken which update and stage w
 - Fixed 13 Oct 2026 (check live): Day by day was cluttered sideways in the 3-column Home (boxes moved under the calendar); on detail pages (Spending, Money in, Saved, Invested, account) the big-number card and the comparison card touched with no gap (`.detail-grid .col` now has a 16px gap, same as Home).
 - Fixed 13 Oct 2026 (check live): the empty gaps in Home's third column are gone because Day by day moved to the bottom (prototype B, column 1 width); the more/less line moved onto the "% of September" row.
 - DECIDED (Ken, 13 Oct 2026): the Savings line under the Smart Access balance (prototype had it) waits for M2.6. No balance-only shortcut, no hand-typed figure.
-- Found in the 13 Oct review (not Ken's, not fixed): buttons have no visible keyboard focus ring outside the category dropdown, and there is no `prefers-reduced-motion` handling (little animation exists yet).
+- Found in the 13 Oct review (not Ken's, not fixed): buttons have no visible keyboard focus ring outside the category dropdown. (`prefers-reduced-motion` and tap delay handled 14 Oct 2026.)
+- Known gaps in the 14 Oct build (not Ken's, check live): Cash flow boxes show the selected month even when a longer range is picked; Where it went 3M/Y compares the current month so far against full earlier months for the older months; nav "Cash flow" tab now opens the Cash flow page (was a placeholder).
 - Fixed in M2.5b step 1 (13 Oct 2026, check in the live app): Home's 4 boxes now have a colored icon instead of the top line; desktop content grows to 1600px with 3 columns on Home.
 - Fixed in M2.5: Settings token input / Connect button spacing (the inner form wasn't a flex column); Sync card narrower than "This device" (all Settings cards now share one width); desktop sidebar "99+" badge overlapping "Activity".
 
