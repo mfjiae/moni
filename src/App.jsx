@@ -26,7 +26,7 @@ function NavItem({ id, label, tab, go, badge, className = '' }) {
   return (
     <button type="button" className={`nav-item${tab === id ? ' active' : ''} ${className}`} onClick={() => go(id)}
       aria-current={tab === id ? 'page' : undefined}
-      aria-label={badge ? `${label}, ${badge} to review` : label}>
+      aria-label={badge ? `${label}, ${badge} to sort` : label}>
       <span className="nav-icon">
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{Icon[id]}</svg>
@@ -52,6 +52,7 @@ export default function App() {
   const [tab, setTab] = useState('home');
   const [month, setMonth] = useState(monthKey(today));
   const [filter, setFilter] = useState('all');
+  const [filterKey, setFilterKey] = useState(0);
   const [openId, setOpenId] = useState(null);
   const [toast, setToast] = useState(null);
   const [page, setPage] = useState(null); // detail page: { name, category? }
@@ -118,7 +119,7 @@ export default function App() {
   }, [toast]);
 
   const go = (t, f) => {
-    if (f) setFilter(f);
+    if (f) { setFilter(f); setFilterKey((k) => k + 1); }
     if (page) closeDetail();
     setTab(t);
     window.scrollTo(0, 0);
@@ -145,7 +146,7 @@ export default function App() {
           balance={balance} onBack={() => go('home')} onOpen={setOpenId} onDetail={openDetail} rootLabel="Home" />
       )}
       {tab === 'activity' && (
-        <Activity txns={txns} today={today} filter={filter} setFilter={setFilter} onOpen={setOpenId} onToast={setToast} />
+        <Activity txns={txns} today={today} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
       )}
       {tab === 'add' && <AddTxn today={today} usage={usage} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && <Placeholder title="Budgets" milestone="M3" />}

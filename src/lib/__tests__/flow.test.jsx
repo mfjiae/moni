@@ -1,7 +1,7 @@
 // Cash flow page, Where it went page and their number helpers. Fake data only.
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { monthSeries, spendTotals, whereCompare, pctChange } from '../summary.js';
+import { monthSeries, spendTotals, whereCompare, pctChange, rangeCompare, compareMonths } from '../summary.js';
 import { CashFlowPage, WherePage } from '../../components/FlowPages.jsx';
 import { Donut, donutRows } from '../../components/charts.jsx';
 
@@ -55,9 +55,36 @@ describe('summary helpers', () => {
     const w = whereCompare(txns, '2026-10', 3, '2026-10-13');
     expect(w.total).toBe(10000 + 12000 + 30000 + 91600 + 8000 + 45000 + 91600);
     expect(w.prevTotal).toBe(0);
-    // earlier months are never cut at today's day: from December, the 3 months before are Jul-Sep, whole
+    // while December is running (the 2nd), the 3 months before are Jul, Aug and Sep with Sep cut at the 2nd
     const dec = whereCompare(txns, '2026-12', 3, '2026-12-02');
-    expect(dec.prevTotal).toBe(10000 + 12000 + 30000 + 91600);   // Aug + Sep
+    expect(dec.prevTotal).toBe(10000 + 12000);   // all of Aug + Sep up to the 2nd
+    // a finished period is compared in full
+    expect(whereCompare(txns, '2026-12', 3, '2027-01-10').prevTotal).toBe(10000 + 12000 + 30000 + 91600);
+  });
+});
+
+describe('rangeCompare (Cash flow boxes and headline follow the range)', () => {
+  it('M matches the one-month comparison', () => {
+    const r = rangeCompare(txns, '2026-10', 1, '2026-10-13');
+    const c = compareMonths(txns, '2026-10', '2026-10-13');
+    expect(r.now).toEqual({ income: c.now.income, spent: c.now.spent, savedNet: c.now.savedNet, invested: c.now.invested });
+    expect(r.prevTotal.spent).toBe(c.prevTotal.spent);
+    expect(r.prevThrough.spent).toBe(c.prevThrough.spent);
+  });
+  it('3M adds up three months and compares with the three before', () => {
+    const r = rangeCompare(txns, '2026-10', 3, '2026-10-13');
+    expect(r.now.spent).toBe(10000 + 12000 + 30000 + 91600 + 8000 + 45000 + 91600);
+    expect(r.now.income).toBe(400000 + 450000 + 500000);
+    expect(r.now.invested).toBe(20000);
+    expect(r.now.savedNet).toBe(50000);
+    expect(r.hasPrev).toBe(false);
+    expect(r.prevTotal.spent).toBe(0);
+  });
+  it('the range before is cut at the same day while the month is running', () => {
+    const r = rangeCompare(txns, '2026-11', 2, '2026-11-13');   // now Oct + Nov so far; before Aug + Sep (Sep to the 13th)
+    expect(r.hasPrev).toBe(true);
+    expect(r.prevTotal.spent).toBe(10000 + 12000 + 30000 + 91600);
+    expect(r.prevThrough.spent).toBe(10000 + 12000);
   });
 });
 

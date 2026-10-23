@@ -17,7 +17,7 @@ export function donutRows(rows, max = 8) {
 
 // Donut with a legend. Hover (or tap) a slice or a legend row: that slice stays lit, the rest go gray,
 // and the centre shows only that category's name and amount.
-export function Donut({ rows, total, centerLabel = 'Spent', size = 190 }) {
+export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts = false, className = '' }) {
   const [sel, setSel] = useState(null);
   const [hover, setHover] = useState(null);
   const on = hover ?? sel;
@@ -28,9 +28,9 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190 }) {
   const toggle = (id) => setSel((p) => (p === id ? null : id));
 
   return (
-    <div className="donut-wrap">
-      <div className="donut" style={{ width: size, height: size }}>
-        <svg viewBox="0 0 200 200" width={size} height={size} role="img"
+    <div className={`donut-wrap ${className}`}>
+      <div className="donut" style={size ? { width: size, height: size } : undefined}>
+        <svg viewBox="0 0 200 200" width={size || '100%'} height={size || '100%'} role="img"
           aria-label={`Spending by category, total ${formatCents(total)}`}>
           <g transform="rotate(-90 100 100)">
             <circle cx="100" cy="100" r={r} fill="none" stroke="var(--track)" strokeWidth={sw} opacity="0.5" />
@@ -68,6 +68,7 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190 }) {
               onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}>
               <i className="dot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
               <span className="leg-name">{row.name}</span>
+              {amounts && <span className="leg-amt">{formatCents(row.cents)}</span>}
               <span className="leg-pct">{total > 0 ? `${Math.round((row.cents / total) * 100)}%` : ''}</span>
             </button>
           </li>

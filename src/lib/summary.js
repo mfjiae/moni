@@ -253,10 +253,11 @@ export function spendTotals(txns, key, n, throughDay) {
 
 // Where the money went over the last n months against the n months before that.
 // Rows: biggest first, with this period, the period before, and the change (null if none before).
-// For a single month in progress (n = 1), last month is cut at the same day so the two are fair.
-// Longer periods compare the months as they are (this month so far against whole earlier months).
+// While the newest month is still running, the newest month of the period before is cut at the same day,
+// so both periods cover the same number of days (24 Oct 2026: 3M and Y used to compare this month so far
+// against whole earlier months).
 export function whereCompare(txns, key, n, today) {
-  const day = n === 1 && today && monthKey(today) === key ? Number(today.slice(8)) : undefined;
+  const day = today && monthKey(today) === key ? Number(today.slice(8)) : undefined;
   const now = spendTotals(txns, key, n);
   const before = spendTotals(txns, shiftMonth(key, -n), n, day);
   const positive = (o) => Object.fromEntries(Object.entries(o).filter(([, c]) => c > 0));
@@ -268,5 +269,38 @@ export function whereCompare(txns, key, n, today) {
       const prev = Math.max(before[r.id] ?? 0, 0);
       return { ...r, prev, change: pctChange(r.cents, prev) };
     }),
+  };
+}
+
+// Cash flow page over a range of n months ending at `key` (M = 1, 3M, 6M, 1Y): the four numbers added up
+// over the range, against the n months before it.
+// now = this range (so far); prevThrough = the range before, with its newest month cut at the same day while
+// the current month is running (fair "% more / less" headline); prevTotal = the whole range before (box feet).
+export function rangeCompare(txns, key, n, today) {
+  const isCurrent = monthKey(today) === key;
+  const day = isCurrent ? Number(today.slice(8)) : null;
+  const prevKey = shiftMonth(key, -n);
+  const add = (end, cutDay) => {
+    const out = { income: 0, spent: 0, savedNet: 0, invested: 0 };
+    for (let i = 0; i < n; i++) {
+      const k = shiftMonth(end, -i);
+      let upTo;
+      if (i === 0 && cutDay != null) {
+        const [y, m] = k.split('-').map(Number);
+        upTo = Math.min(cutDay, daysInMonth(y, m));
+      }
+      const s = summarizeMonth(txns, k, upTo);
+      out.income += s.income; out.spent += s.spent; out.savedNet += s.savedNet; out.invested += s.invested;
+    }
+    return out;
+  };
+  const prevMonths = new Set(Array.from({ length: n }, (_, i) => shiftMonth(prevKey, -i)));
+  const prevTotal = add(prevKey);
+  return {
+    n, isCurrent, day, prevKey,
+    hasPrev: txns.some((t) => prevMonths.has(monthKey(t.date))),
+    now: add(key),
+    prevThrough: day == null ? prevTotal : add(prevKey, day),
+    prevTotal,
   };
 }

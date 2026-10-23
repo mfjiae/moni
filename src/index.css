@@ -534,3 +534,106 @@ select.input { appearance: auto; }
 /* Review fixes: no double-tap delay on buttons; no motion for people who ask for less */
 button { touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---------- Activity filters (M2.5b step 4, Ken 24 Oct 2026) ---------- */
+.act-top { display: flex; gap: 8px; align-items: stretch; }
+.act-top .search { margin-top: 0; flex: 1; }
+.fbtn { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.fcount { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: var(--bg); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.act-grid { display: flex; flex-direction: column; gap: 16px; }
+.act-list { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fpanel { gap: 0; }
+.filters { display: flex; flex-direction: column; gap: 20px; }
+.filters .search { margin-top: 0; font-size: 15.5px; }
+.fgroup { display: flex; flex-direction: column; gap: 10px; }
+.fhead { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 600; letter-spacing: 0.7px; text-transform: uppercase; color: var(--muted); }
+.fhead button { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 500; }
+.fselect { font-size: 15.5px; min-height: 42px; }
+.frow2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.frow2 label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.frow2 .input { min-height: 40px; font-size: 15px; padding: 8px 10px; }
+.fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fchip { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 13px; border-radius: 18px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); font-size: 14px; }
+.fchip .dot { width: 8px; height: 8px; border-radius: 4px; }
+.fchip[aria-pressed="true"] { background: var(--surface-raised); color: var(--text); border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+.fcheck { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--muted); min-height: 32px; cursor: pointer; }
+.fcheck input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.fcheck.sort { color: var(--text); }
+.fcheck.sort input { accent-color: var(--review); }
+.fbadge { margin-left: auto; min-width: 22px; padding: 1px 8px; border-radius: 10px; font-size: 12.5px; font-weight: 600; text-align: center; color: var(--review); background: #3A1F2E; }
+.fcats { display: flex; flex-direction: column; }
+.fcat { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 8px; margin: 0 -8px; border-radius: 9px; font-size: 14.5px; cursor: pointer; }
+.fcat:hover { background: var(--surface-raised); }
+.fcat input { width: 17px; height: 17px; accent-color: var(--accent); margin: 0; flex: none; }
+.fcat svg { color: var(--muted); flex: none; }
+.fcat-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fcat-n { color: var(--muted); font-size: 13px; }
+.fcat.zero { opacity: 0.45; }
+.flink { border: 0; background: none; padding: 8px 0; color: var(--accent); font-size: 14px; text-align: left; align-self: flex-start; }
+.fapplied { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 34px; }
+.achip { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 4px 0 12px; border-radius: 16px; background: var(--surface-raised); border: 1px solid var(--border); font-size: 14px; }
+.achip button { width: 26px; height: 26px; border: 0; border-radius: 13px; background: none; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+.achip button:hover { color: var(--text); background: var(--bg); }
+.act-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.act-sum strong { font-size: 19px; font-weight: 600; }
+.resort-row { align-items: center; flex-wrap: wrap; }
+.more-btn { align-self: stretch; color: var(--accent); }
+.fsheet .filters { padding: 4px 0 8px; }
+.fsheet-foot { position: sticky; bottom: calc(-24px - env(safe-area-inset-bottom)); display: flex; gap: 8px; padding: 12px 0 4px; background: var(--surface); border-top: 1px solid var(--border); margin-top: 8px; }
+.fsheet-foot .primary { flex: 1; }
+@media (min-width: 900px) {
+  .act-grid { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 22px; align-items: start; }
+  .fpanel { position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto; }
+  .fpanel.desktop-only { display: flex !important; }
+}
+
+/* ---------- Home compact pass B (Ken, locked 14 Oct 2026; width 1180px on desktop, Ken 24 Oct 2026) ----------
+   Each card is a size container: text, bars and the donut scale with the card's own width (cqi), with a
+   floor so phones stay readable and a ceiling so big screens don't blow up. */
+.home .hc { container-type: inline-size; padding: clamp(14px, 3.4cqi, 20px); gap: 8px; border-radius: 16px; }
+.home .hc-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: clamp(14px, 2.6cqi, 15.5px); font-weight: 600; color: var(--text); }
+.home .hc-side { font-weight: 400; color: var(--muted); font-size: 0.93em; white-space: nowrap; }
+.home .hc-link { padding: 0; font-size: clamp(13.5px, 2.4cqi, 14.5px); font-weight: 500; }
+.home .hc-big { font-size: clamp(28px, 6cqi, 36px); font-weight: 600; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 4px; }
+.home .hc-cap { font-size: clamp(12.5px, 2.2cqi, 13.5px); color: var(--muted); line-height: 1.4; }
+.home .vs { font-size: clamp(13.5px, 2.4cqi, 14.5px); }
+.home .bar { height: 8px; border-radius: 4px; }
+.home .tint .bar { background: color-mix(in srgb, var(--text) 11%, transparent); }
+.home .tint .bar .pace { top: -4px; bottom: -4px; width: 2px; }
+
+.home .balance-card { container-type: inline-size; gap: 2px; padding: clamp(14px, 3.4cqi, 20px); border-radius: 16px; box-shadow: none;
+  background: color-mix(in srgb, var(--balance) 9%, var(--surface)); border-color: color-mix(in srgb, var(--balance) 38%, transparent); }
+.home .balance-label { font-size: 12.5px; letter-spacing: 1px; color: var(--balance); }
+.home .balance-value { font-size: clamp(32px, 7cqi, 42px); color: var(--balance); letter-spacing: -0.6px; margin-top: 2px; }
+.home .balance-note { font-size: 13px; color: var(--muted); }
+
+.home .sc-card { padding: clamp(12px, 3cqi, 16px) clamp(8px, 2cqi, 14px); }
+.home .shortcuts { gap: 4px; }
+.home .sc { gap: 7px; padding: 2px 0; }
+.home .sc-btn { width: clamp(42px, 9cqi, 52px); height: clamp(42px, 9cqi, 52px); }
+.home .sc-btn svg { width: 46%; height: 46%; }
+.home .sc-label { font-size: clamp(12px, 2.4cqi, 13.5px); color: var(--muted); }
+
+.home .flow-rows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; margin: 6px 0 2px; font-size: clamp(14px, 2.4cqi, 15px); }
+.home .flow-rows strong { font-weight: 600; text-align: right; }
+
+/* Where it went: donut with the list beside it; the list keeps a fixed max width (amount and % stay next to
+   the name). On a phone the list goes under the donut. */
+.donut-home { gap: clamp(16px, 4cqi, 28px); align-items: center; justify-content: flex-start; padding-top: 4px; }
+.donut-home .donut { width: clamp(120px, 26cqi, 150px); aspect-ratio: 1; height: auto; }
+.donut-home .donut-centre { padding: 0 22%; }
+.donut-home .donut-name { font-size: 12px; }
+.donut-home .donut-amount { font-size: clamp(14px, 3cqi, 17px); }
+.donut-home .donut-legend { max-width: 400px; flex: 1; gap: 0; }
+.donut-home .leg { min-height: 30px; font-size: clamp(13.5px, 2.4cqi, 14.5px); gap: 10px; }
+.donut-home .leg .dot { width: 9px; height: 9px; }
+.donut-home .leg-amt { font-weight: 500; white-space: nowrap; }
+.donut-home .leg-pct { min-width: 38px; text-align: right; font-size: 0.92em; }
+@container (min-width: 460px) { .donut-home { flex-direction: row; } }
+@container (max-width: 459px) { .donut-home { flex-direction: column; } .donut-home .donut-legend { max-width: none; } }
+
+@media (min-width: 900px) {
+  .screen.home { max-width: 1180px; }
+  .home .home-grid { gap: 16px; }
+  .home .home-grid .col { gap: 14px; }
+}

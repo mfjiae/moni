@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { formatCents } from '../lib/money.js';
 import { monthName, shiftMonth } from '../lib/dates.js';
-import { compareMonths, monthSeries, pctChange, whereCompare } from '../lib/summary.js';
+import { rangeCompare, monthSeries, pctChange, whereCompare } from '../lib/summary.js';
 import { Bar, Segmented } from './ui.jsx';
 import { Icon, CategoryIcon } from './icons.jsx';
 import { Donut, FlowBars, donutRows } from './charts.jsx';
@@ -28,13 +28,15 @@ export function CashFlowPage({ txns, month, today, onDetail }) {
   const [picked, setPicked] = useState(null);
   const n = Number(range);
   const series = useMemo(() => monthSeries(txns, month, n), [txns, month, n]);
-  const cmp = useMemo(() => compareMonths(txns, month, today), [txns, month, today]);
+  // Boxes and the headline follow the range (24 Oct 2026: they used to show only the picked month).
+  const cmp = useMemo(() => rangeCompare(txns, month, n, today), [txns, month, n, today]);
   const selected = series.some((g) => g.key === picked) ? picked : month;
 
-  const prevName = monthName(cmp.prev);
+  const prevName = n === 1 ? monthName(cmp.prevKey) : n === 12 ? 'the year before' : `the ${n} months before`;
+  const footName = n === 1 ? monthName(cmp.prevKey) : n === 12 ? 'Year before' : `${n} months before`;
   const pct = pctChange(cmp.now.spent, cmp.prevThrough.spent);
   const by = cmp.isCurrent ? ' so far' : '';
-  const foot = (text) => (cmp.hasPrev ? `${prevName}: ${text}` : null);
+  const foot = (text) => (cmp.hasPrev ? `${footName}: ${text}` : null);
   const saved = cmp.now.savedNet;
   const prevSaved = cmp.prevTotal.savedNet;
 
@@ -57,7 +59,7 @@ export function CashFlowPage({ txns, month, today, onDetail }) {
         </section>
       </div>
       <div className="col">
-        <div className="boxes" role="group" aria-label="This month">
+        <div className="boxes" role="group" aria-label={n === 1 ? 'This month' : `Last ${n} months`}>
           <Box kind="in" icon="arrow-in" label="In" value={formatCents(cmp.now.income)}
             foot={foot(formatCents(cmp.prevTotal.income))} onClick={() => onDetail('income')} />
           <Box kind="out" icon="arrow-out" label="Spent" value={formatCents(cmp.now.spent)}

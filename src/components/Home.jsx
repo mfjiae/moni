@@ -18,46 +18,47 @@ export function SettingsButton({ onClick }) {
 
 
 
-// Round shortcut buttons, each in its own color.
+// The five shortcuts, together in one card (compact pass B, Ken 14 Oct 2026).
 function Shortcuts({ onNavigate, onDetail }) {
   const items = [
-    ['Spending', 'arrow-out', 'out', () => onDetail('spending')],
-    ['Income', 'arrow-in', 'in', () => onDetail('income')],
+    ['Spending', 'wallet', 'out', () => onDetail('spending')],
+    ['Income', 'banknote', 'in', () => onDetail('income')],
     ['Saved', 'piggy', 'save', () => onDetail('saved')],
-    ['Invested', 'trend', 'invest', () => onDetail('invested')],
+    ['Invested', 'linechart', 'invest', () => onDetail('invested')],
     ['Activity', 'list', 'accent', () => onNavigate('activity', 'all')],
   ];
   return (
-    <nav className="shortcuts" aria-label="Shortcuts">
-      {items.map(([label, icon, c, go]) => (
-        <button type="button" key={label} className="sc" style={{ '--c': `var(--${c === 'accent' ? 'accent' : c})` }} onClick={go}>
-          <span className="sc-btn"><Icon name={icon} size={24} /></span>
-          <span className="sc-label">{label}</span>
-        </button>
-      ))}
+    <nav className="card hc sc-card" aria-label="Shortcuts">
+      <div className="shortcuts">
+        {items.map(([label, icon, c, go]) => (
+          <button type="button" key={label} className="sc" style={{ '--c': `var(--${c})` }} onClick={go}>
+            <span className="sc-btn"><Icon name={icon} size={22} /></span>
+            <span className="sc-label">{label}</span>
+          </button>
+        ))}
+      </div>
     </nav>
   );
 }
 
-// Spent so far: big number, how it compares with last month, and a bar with a marker for today.
-function SpentSoFar({ month, current, today, spent, compare, onClick }) {
+// Spent so far: income on the title row, big number, thin bar with a white line for today, then how it
+// compares with last month by the same day.
+function SpentSoFar({ month, current, today, spent, income, compare, onClick }) {
   const prevName = compare ? monthName(compare.prev) : '';
   const isCurrent = month === current;
   const [y, m] = month.split('-').map(Number);
   const pace = isCurrent ? Number(today.slice(8)) / daysInMonth(y, m) : null;
   const by = compare && compare.isCurrent ? ` by the ${ordinal(compare.day)}` : '';
+  const share = compare ? `${Math.round(compare.share * 100)}% of ${prevName}\u2019s ${formatCents(compare.prevTotal)}` : '';
   return (
-    <button type="button" className="card tint tint-out spent-card" onClick={onClick} aria-label={`${isCurrent ? 'Spent so far' : 'Spent'} ${formatCents(spent)}. Open spending`}>
-      <span className="tint-title">{isCurrent ? 'Spent so far' : `Spent in ${monthName(month)}`}</span>
-      <span className="tint-amount text-out">{formatCents(spent)}</span>
+    <button type="button" className="card hc tint tint-out spent-card" onClick={onClick} aria-label={`${isCurrent ? 'Spent so far' : 'Spent'} ${formatCents(spent)}. Open spending`}>
+      <span className="hc-title"><span>{isCurrent ? 'Spent so far' : `Spent in ${monthName(month)}`}</span><span className="hc-side">{formatCents(income)} in</span></span>
+      <span className="hc-big text-out">{formatCents(spent)}</span>
       {compare ? (
         <>
-          <Bar thick ratio={compare.share} pace={pace} status={compare.share > 1 ? 'over' : 'out'}
+          <Bar ratio={compare.share} pace={pace} status={compare.share > 1 ? 'over' : 'out'}
             label={`${Math.round(compare.share * 100)}% of ${prevName}'s total`} />
-          <span className="row tint-sub">
-            <span>{Math.round(compare.share * 100)}% of {prevName}&rsquo;s {formatCents(compare.prevTotal)}</span>
-            {pace != null && <span className="today-key"><i />Today</span>}
-          </span>
+          <span className="hc-cap">{pace != null ? `white line = today (${Math.round(pace * 100)}% of the month) \u00b7 ` : ''}{share}</span>
           <span className={`vs ${compare.delta > 0 ? 'text-out' : compare.delta < 0 ? 'text-in' : ''}`}>
             {compare.delta === 0
               ? `Same as ${prevName}${by}`
@@ -65,42 +66,39 @@ function SpentSoFar({ month, current, today, spent, compare, onClick }) {
           </span>
         </>
       ) : (
-        <span className="tint-sub">Nothing earlier to compare with yet.</span>
+        <span className="hc-cap">Nothing earlier to compare with yet.</span>
       )}
     </button>
   );
 }
 
-// Monthly cash flow: what came in against what was spent, as two bars.
-function CashFlowCard({ summary, onClick }) {
+// Monthly cash flow: what came in against what was spent, as two thin bars.
+function CashFlowCard({ month, summary, onClick }) {
   const { income, spent } = summary;
   const max = Math.max(income, spent, 1);
   return (
-    <button type="button" className="card tint tint-in flow-card" onClick={onClick} aria-label="Monthly cash flow. Open cash flow">
-      <span className="tint-title">Monthly cash flow</span>
-      <span className="flow-line">
-        <span className="row"><span>In</span><strong className="text-in">{formatCents(income)}</strong></span>
-        <Bar thick ratio={income / max} status="in" label={`In ${formatCents(income)}`} />
+    <button type="button" className="card hc tint tint-in flow-card" onClick={onClick} aria-label="Monthly cash flow. Open cash flow">
+      <span className="hc-title"><span>Monthly cash flow</span><span className="hc-side">{monthName(month)}</span></span>
+      <span className="flow-rows">
+        <span>In</span><Bar ratio={income / max} status="in" label={`In ${formatCents(income)}`} /><strong className="text-in">{formatCents(income)}</strong>
+        <span>Spent</span><Bar ratio={spent / max} status="out" label={`Spent ${formatCents(spent)}`} /><strong className="text-out">{formatCents(spent)}</strong>
       </span>
-      <span className="flow-line">
-        <span className="row"><span>Spent</span><strong className="text-out">{formatCents(spent)}</strong></span>
-        <Bar thick ratio={spent / max} status="out" label={`Spent ${formatCents(spent)}`} />
-      </span>
-      <span className="tint-sub">{income > 0 ? `Spent ${Math.round((spent / income) * 100)}% of what came in` : 'No money in yet'}</span>
+      <span className="hc-cap">{income > 0 ? `Spent ${Math.round((spent / income) * 100)}% of what came in` : 'No money in yet this month'}</span>
     </button>
   );
 }
 
+// Where it went: small donut with the list right beside it (name, amount, percent).
 function WhereCard({ rows, total, onOpen }) {
   return (
-    <section className="card where-card" aria-label="Where it went">
-      <div className="card-head">
-        <span className="card-title head-out">Where it went</span>
-        <button type="button" className="link" onClick={onOpen}>See all</button>
+    <section className="card hc where-card" aria-label="Where it went">
+      <div className="hc-title">
+        <span>Where it went</span>
+        <button type="button" className="link hc-link" onClick={onOpen}>See all</button>
       </div>
       {rows.length === 0
         ? <div className="empty small-empty">No spending yet this month.</div>
-        : <Donut rows={rows} total={total} />}
+        : <Donut rows={rows} total={total} size={null} amounts className="donut-home" />}
     </section>
   );
 }
@@ -147,7 +145,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
   }
 
   return (
-    <main className="screen">
+    <main className="screen home">
       <header className="header">
         <MonthDropdown month={month} setMonth={setMonth} current={current} first={firstMonth} />
         <div className="header-right">
@@ -185,12 +183,12 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
             </button>
           )}
           <Shortcuts onNavigate={onNavigate} onDetail={onDetail} />
-          <SpentSoFar month={month} current={current} today={today} spent={summary.spent} compare={compare}
+          <SpentSoFar month={month} current={current} today={today} spent={summary.spent} income={summary.income} compare={compare}
             onClick={() => onDetail('spending')} />
         </div>
 
         <div className="col">
-          <CashFlowCard summary={summary} onClick={() => onDetail('cashflow')} />
+          <CashFlowCard month={month} summary={summary} onClick={() => onDetail('cashflow')} />
           <WhereCard rows={where.rows} total={where.total} onOpen={() => onDetail('where')} />
         </div>
       </div>

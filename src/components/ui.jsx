@@ -215,7 +215,7 @@ export function ImportButton({ onDone, className = 'btn' }) {
         const parts = [`Added ${r.added}`];
         if (r.duplicates) parts.push(`${r.duplicates} already here`);
         if (r.merged) parts.push(`${r.merged} matched your manual entries`);
-        if (r.review) parts.push(`${r.review} to review`);
+        if (r.review) parts.push(`${r.review} to sort`);
         if (r.errors.length) parts.push(`${r.errors.length} lines couldn't be read`);
         onDone(parts.join(' · '));
       }
