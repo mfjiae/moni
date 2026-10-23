@@ -153,15 +153,13 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
     <main className="screen home">
       <header className="header home-head">
         <MonthDropdown month={month} setMonth={setMonth} current={current} first={firstMonth} />
-        <div className="head-pills">
-          {rent && <RentPill rent={rent} />}
-          {reviewCount > 0 && (
-            <button type="button" className="sort-pill" onClick={() => onNavigate('activity', 'review')}
-              aria-label={`${reviewCount} transactions to sort`}>
-              <Icon name="inbox" size={18} /><span><strong>{reviewCount}</strong> to sort</span>
-            </button>
-          )}
-        </div>
+        {rent && <RentPill rent={rent} />}
+        {reviewCount > 0 && (
+          <button type="button" className="sort-pill" onClick={() => onNavigate('activity', 'review')}
+            aria-label={`${reviewCount} transactions to sort`}>
+            <Icon name="inbox" size={18} /><span><strong>{reviewCount}</strong><span className="sort-text"> to sort</span></span>
+          </button>
+        )}
         <div className="head-gear"><SettingsButton onClick={() => onNavigate('settings')} /></div>
       </header>
 

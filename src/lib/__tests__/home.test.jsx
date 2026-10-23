@@ -27,7 +27,7 @@ describe('Home', () => {
     const out = html();
     expect(out).toContain('$1,234.56');                // balance
     for (const label of ['>Spending<', '>Income<', '>Saved<', '>Invested<', '>Activity<']) expect(out).toContain(label);
-    expect(out).toContain('<strong>1</strong> to sort');
+    expect(out).toContain('<strong>1</strong><span class="sort-text"> to sort</span>');
     expect(out).toContain('Spent so far');
     expect(out).toContain('Monthly cash flow');
     expect(out).toContain('Spent 20% of what came in');

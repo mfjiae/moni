@@ -240,8 +240,9 @@ At the start of every session and every stage, tell Ken which update and stage w
 - [ ] M5: (Ken, 13 Oct 2026) when the Bills tab is built, the "Rent due in N days" pill in the top right of Home opens the Bills page (it is only a warning until then).
 - [ ] M5: Bills tab: bills this month, next bill date, bill calendar, 3-month bar overview, expand to all months, review option; weekly/fortnightly/monthly bills; install polish
 
-## 24 Oct 2026 live-feedback fixes (BUILT, Ken picked: size +10%, header B, caption B, Where it went B, Activity totals B)
-- Home header: phone = month pill + settings gear on row 1, sort/rent pills full-width on row 2; the dropdown arrow floats at the right so the month name is centred between the arrows. Desktop: pills right of the month.
+## 24 Oct 2026 live-feedback fixes (BUILT, Ken picked: size +10%, header 2A (changed from B right after build), caption B, Where it went B, Activity totals B)
+- Home header (2A): phone = month pill, sort pill (number only, "226") and settings gear on ONE row; the rent pill gets its own row under it only when shown; the dropdown arrow floats at the right so the month name is centred between the arrows. Desktop: pills right of the month.
 - Spent so far: "N% of month" label sits under the white line; caption is just "X% of <last month>'s $Y". No "white line =" key.
 - Where it went on phone (card under 460px): no donut, a total plus one stacked bar above the list (hover/tap still lights a slice). Desktop keeps the donut.
 - Activity totals: count on the left, In / Out stacked on the right (one row on desktop).
+- Where it went list now fills the card width: amount and % end at the right edge, under "See all" (Ken, 24 Oct 2026); replaces the 400px list max. Phone dots line up under the title.
