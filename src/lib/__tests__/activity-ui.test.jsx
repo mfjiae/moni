@@ -22,7 +22,8 @@ describe('Activity', () => {
   it('shows filters, totals in and out, and hides savings transfers by default', () => {
     const out = html();
     for (const s of ['Date range', 'Type', 'Category', 'Status', 'Amount', 'To sort only']) expect(out).toContain(s);
-    expect(out).toContain('3 transactions');
+    expect(out).toContain('<strong>3</strong>');
+    expect(out).toContain('transactions<');
     expect(out).toContain('$612.40');      // in
     expect(out).toContain('$59.12');       // out: 34.12 + 25.00
     expect(out).not.toContain('To savings');
@@ -30,7 +31,8 @@ describe('Activity', () => {
   });
   it('Home’s to-sort pill opens it with only the To sort items', () => {
     const out = html({ preset: 'review', presetKey: 1 });
-    expect(out).toContain('1 transaction<');
+    expect(out).toContain('<strong>1</strong>');
+    expect(out).toContain('transaction<');
     expect(out).toContain('To sort only');
     expect(out).toContain('Re-sort with latest rules');
     expect(out).not.toContain('FAKEMART');

@@ -80,7 +80,7 @@ Wherever this section disagrees with the older M2.5b notes below (Home layout, p
 **Home (A2)**
 - Desktop, 2 columns (about 5fr / 7fr). Header: month pill left, rent pill and "N to sort" pill right. Left: Smart Access balance (bright teal, big), the 5 shortcut widgets (Spending, Income, Saved, Invested, Activity), Spent so far (tinted, with a vertical "today" marker on the bar). Right: Monthly cash flow (tinted; In and Spent horizontal bars; "Spent X% of what came in"), then Where it went (donut + legend).
 - Phone, one column in this order: header, balance, shortcuts, Spent so far, Monthly cash flow, Where it went.
-- Desktop Home content is capped at 1180px wide (Ken, 24 Oct 2026; replaces "no extra width cap") so cards end where their content ends on the 27-inch. Other pages keep 1600px.
+- Desktop Home content is capped at 1300px wide (Ken, 24 Oct 2026, +10% after seeing 1180 live; replaces "no extra width cap"; clamp ceilings also +10%) so cards end where their content ends on the 27-inch. Other pages keep 1600px.
 - Where it went on Home: donut with the list beside it, list max 400px (amount and % stay next to the name); no accent bar on the card title.
 - Removed from Home: the 4 boxes, the Spent-vs-last-month graph and Day by day (they move to the Cash flow and Spending pages). No transaction list on Home.
 - Donut: hovering or tapping a slice or legend row keeps that slice lit, grays the rest, and the centre shows only that category's name and amount.
@@ -239,3 +239,9 @@ At the start of every session and every stage, tell Ken which update and stage w
   - Tuition page: all tuition payments by semester
 - [ ] M5: (Ken, 13 Oct 2026) when the Bills tab is built, the "Rent due in N days" pill in the top right of Home opens the Bills page (it is only a warning until then).
 - [ ] M5: Bills tab: bills this month, next bill date, bill calendar, 3-month bar overview, expand to all months, review option; weekly/fortnightly/monthly bills; install polish
+
+## 24 Oct 2026 live-feedback fixes (BUILT, Ken picked: size +10%, header B, caption B, Where it went B, Activity totals B)
+- Home header: phone = month pill + settings gear on row 1, sort/rent pills full-width on row 2; the dropdown arrow floats at the right so the month name is centred between the arrows. Desktop: pills right of the month.
+- Spent so far: "N% of month" label sits under the white line; caption is just "X% of <last month>'s $Y". No "white line =" key.
+- Where it went on phone (card under 460px): no donut, a total plus one stacked bar above the list (hover/tap still lights a slice). Desktop keeps the donut.
+- Activity totals: count on the left, In / Out stacked on the right (one row on desktop).

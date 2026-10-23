@@ -190,9 +190,14 @@ export default function Activity({ txns, today, preset, presetKey, onOpen, onToa
           </div>
 
           <div className="act-sum" aria-live="polite">
-            <span className="small">{sum.count} {sum.count === 1 ? 'transaction' : 'transactions'}</span>
-            <span><span className="small">In </span><strong className="text-in">{formatCents(sum.inCents)}</strong></span>
-            <span><span className="small">Out </span><strong>{formatCents(sum.outCents)}</strong></span>
+            <div className="act-count">
+              <strong>{sum.count}</strong>
+              <span className="small">{sum.count === 1 ? 'transaction' : 'transactions'}</span>
+            </div>
+            <div className="act-io">
+              <span><span className="small">In</span><strong className="text-in">{formatCents(sum.inCents)}</strong></span>
+              <span><span className="small">Out</span><strong>{formatCents(sum.outCents)}</strong></span>
+            </div>
           </div>
 
           {f.toSort && reviewCount > 0 && (

@@ -59,6 +59,19 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts 
           )}
         </div>
       </div>
+      {amounts && (
+        <div className="donut-strip">
+          <span className="donut-strip-total">
+            <span className="small">{picked ? picked.name : centerLabel}</span>
+            <strong>{formatCents(picked ? picked.cents : total)}</strong>
+          </span>
+          <span className="strip-bar" aria-hidden="true">
+            {rows.map((row, i) => (
+              <i key={row.id} style={{ flex: row.cents, background: on == null || on === row.id ? DONUT_COLORS[i % DONUT_COLORS.length] : DIM }} />
+            ))}
+          </span>
+        </div>
+      )}
       <ul className="donut-legend">
         {rows.map((row, i) => (
           <li key={row.id}>

@@ -574,8 +574,13 @@ button { touch-action: manipulation; }
 .achip { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 4px 0 12px; border-radius: 16px; background: var(--surface-raised); border: 1px solid var(--border); font-size: 14px; }
 .achip button { width: 26px; height: 26px; border: 0; border-radius: 13px; background: none; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; }
 .achip button:hover { color: var(--text); background: var(--bg); }
-.act-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.act-sum { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
 .act-sum strong { font-size: 19px; font-weight: 600; }
+.act-count { display: flex; flex-direction: column; gap: 0; }
+.act-io { display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
+.act-io > span { display: flex; align-items: baseline; gap: 10px; }
+.act-io strong { min-width: 7.5em; text-align: right; }
+@media (min-width: 900px) { .act-sum { justify-content: flex-start; gap: 40px; } .act-io { flex-direction: row; gap: 28px; } .act-io strong { min-width: 0; } }
 .resort-row { align-items: center; flex-wrap: wrap; }
 .more-btn { align-self: stretch; color: var(--accent); }
 .fsheet .filters { padding: 4px 0 8px; }
@@ -590,50 +595,84 @@ button { touch-action: manipulation; }
 /* ---------- Home compact pass B (Ken, locked 14 Oct 2026; width 1180px on desktop, Ken 24 Oct 2026) ----------
    Each card is a size container: text, bars and the donut scale with the card's own width (cqi), with a
    floor so phones stay readable and a ceiling so big screens don't blow up. */
-.home .hc { container-type: inline-size; padding: clamp(14px, 3.4cqi, 20px); gap: 8px; border-radius: 16px; }
-.home .hc-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: clamp(14px, 2.6cqi, 15.5px); font-weight: 600; color: var(--text); }
+.home .hc { container-type: inline-size; padding: clamp(14px, 3.4cqi, 22px); gap: 8px; border-radius: 16px; }
+.home .hc-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: clamp(14px, 2.6cqi, 17px); font-weight: 600; color: var(--text); }
 .home .hc-side { font-weight: 400; color: var(--muted); font-size: 0.93em; white-space: nowrap; }
-.home .hc-link { padding: 0; font-size: clamp(13.5px, 2.4cqi, 14.5px); font-weight: 500; }
-.home .hc-big { font-size: clamp(28px, 6cqi, 36px); font-weight: 600; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 4px; }
-.home .hc-cap { font-size: clamp(12.5px, 2.2cqi, 13.5px); color: var(--muted); line-height: 1.4; }
-.home .vs { font-size: clamp(13.5px, 2.4cqi, 14.5px); }
-.home .bar { height: 8px; border-radius: 4px; }
+.home .hc-link { padding: 0; font-size: clamp(13.5px, 2.4cqi, 16px); font-weight: 500; }
+.home .hc-big { font-size: clamp(28px, 6cqi, 40px); font-weight: 600; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 4px; }
+.home .hc-cap { font-size: clamp(12.5px, 2.2cqi, 15px); color: var(--muted); line-height: 1.4; }
+.home .vs { font-size: clamp(13.5px, 2.4cqi, 16px); }
+.home .bar { height: clamp(8px, 1.6cqi, 9px); border-radius: 5px; }
 .home .tint .bar { background: color-mix(in srgb, var(--text) 11%, transparent); }
 .home .tint .bar .pace { top: -4px; bottom: -4px; width: 2px; }
 
-.home .balance-card { container-type: inline-size; gap: 2px; padding: clamp(14px, 3.4cqi, 20px); border-radius: 16px; box-shadow: none;
+.home .balance-card { container-type: inline-size; gap: 2px; padding: clamp(14px, 3.4cqi, 22px); border-radius: 16px; box-shadow: none;
   background: color-mix(in srgb, var(--balance) 9%, var(--surface)); border-color: color-mix(in srgb, var(--balance) 38%, transparent); }
-.home .balance-label { font-size: 12.5px; letter-spacing: 1px; color: var(--balance); }
-.home .balance-value { font-size: clamp(32px, 7cqi, 42px); color: var(--balance); letter-spacing: -0.6px; margin-top: 2px; }
-.home .balance-note { font-size: 13px; color: var(--muted); }
+.home .balance-label { font-size: 13.5px; letter-spacing: 1px; color: var(--balance); }
+.home .balance-value { font-size: clamp(32px, 7cqi, 46px); color: var(--balance); letter-spacing: -0.6px; margin-top: 2px; }
+.home .balance-note { font-size: 14px; color: var(--muted); }
 
 .home .sc-card { padding: clamp(12px, 3cqi, 16px) clamp(8px, 2cqi, 14px); }
 .home .shortcuts { gap: 4px; }
 .home .sc { gap: 7px; padding: 2px 0; }
-.home .sc-btn { width: clamp(42px, 9cqi, 52px); height: clamp(42px, 9cqi, 52px); }
+.home .sc-btn { width: clamp(42px, 9cqi, 57px); height: clamp(42px, 9cqi, 57px); }
 .home .sc-btn svg { width: 46%; height: 46%; }
-.home .sc-label { font-size: clamp(12px, 2.4cqi, 13.5px); color: var(--muted); }
+.home .sc-label { font-size: clamp(12px, 2.4cqi, 15px); color: var(--muted); }
 
-.home .flow-rows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; margin: 6px 0 2px; font-size: clamp(14px, 2.4cqi, 15px); }
+.home .flow-rows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; margin: 6px 0 2px; font-size: clamp(14px, 2.4cqi, 16.5px); }
 .home .flow-rows strong { font-weight: 600; text-align: right; }
 
 /* Where it went: donut with the list beside it; the list keeps a fixed max width (amount and % stay next to
    the name). On a phone the list goes under the donut. */
 .donut-home { gap: clamp(16px, 4cqi, 28px); align-items: center; justify-content: flex-start; padding-top: 4px; }
-.donut-home .donut { width: clamp(120px, 26cqi, 150px); aspect-ratio: 1; height: auto; }
+.donut-home .donut { width: clamp(120px, 26cqi, 165px); aspect-ratio: 1; height: auto; }
 .donut-home .donut-centre { padding: 0 22%; }
-.donut-home .donut-name { font-size: 12px; }
-.donut-home .donut-amount { font-size: clamp(14px, 3cqi, 17px); }
+.donut-home .donut-name { font-size: 13px; }
+.donut-home .donut-amount { font-size: clamp(13px, 2.6cqi, 16px); }
 .donut-home .donut-legend { max-width: 400px; flex: 1; gap: 0; }
-.donut-home .leg { min-height: 30px; font-size: clamp(13.5px, 2.4cqi, 14.5px); gap: 10px; }
+.donut-home .leg { min-height: 33px; font-size: clamp(13.5px, 2.4cqi, 16px); gap: 10px; }
 .donut-home .leg .dot { width: 9px; height: 9px; }
 .donut-home .leg-amt { font-weight: 500; white-space: nowrap; }
 .donut-home .leg-pct { min-width: 38px; text-align: right; font-size: 0.92em; }
 @container (min-width: 460px) { .donut-home { flex-direction: row; } }
-@container (max-width: 459px) { .donut-home { flex-direction: column; } .donut-home .donut-legend { max-width: none; } }
+.donut-strip { display: none; }
+@container (max-width: 459px) {
+  .donut-home { flex-direction: column; align-items: stretch; gap: 10px; }
+  .donut-home .donut { display: none; }
+  .donut-home .donut-legend { max-width: none; }
+  .donut-home .donut-strip { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
+  .donut-strip-total { display: flex; flex-direction: column; gap: 0; }
+  .donut-strip-total strong { font-size: clamp(26px, 7cqi, 30px); font-weight: 600; letter-spacing: -0.4px; line-height: 1.15; }
+  .strip-bar { display: flex; gap: 2px; height: 14px; border-radius: 7px; overflow: hidden; }
+  .strip-bar i { display: block; min-width: 3px; transition: background 120ms; }
+}
 
 @media (min-width: 900px) {
-  .screen.home { max-width: 1180px; }
+  .screen.home { max-width: 1300px; }
   .home .home-grid { gap: 16px; }
   .home .home-grid .col { gap: 14px; }
+}
+
+/* Home header (Ken, 24 Oct 2026, option B): phone = month pill + settings on row 1, the sort/rent pills full-width
+   on row 2. The dropdown arrow floats at the right so the month name is truly centred between the arrows. */
+.home-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "month gear" "pills pills"; align-items: center; gap: 4px 8px; }
+.home-head .month-pill { grid-area: month; justify-self: start; min-width: 0; }
+.home-head .head-gear { grid-area: gear; }
+.home-head .head-gear .icon-btn { margin-right: -10px; }
+.home-head .head-pills { grid-area: pills; display: flex; gap: 8px; }
+.home-head .head-pills:empty { display: none; }
+.home-head .head-pills > * { flex: 1; justify-content: center; }
+.home .month-drop { position: relative; padding: 0 22px; font-size: 21px; gap: 0; }
+.home .month-drop-label { min-width: 7.6em; }
+.home .month-drop svg { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); }
+.home .month-pill { padding: 0 2px; }
+.home .month-pill .icon-btn { width: 36px; }
+.pace-label { position: relative; display: block; height: 16px; margin-top: -2px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.pace-label > span { position: absolute; top: 0; }
+@media (min-width: 900px) {
+  .home-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "month pills"; }
+  .home-head .head-gear { display: none; }
+  .home-head .head-pills > * { flex: none; }
+  .home .month-drop { font-size: 27px; padding: 0 26px; }
+  .home .month-drop-label { min-width: 7.2em; }
 }

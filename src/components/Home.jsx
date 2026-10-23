@@ -58,7 +58,12 @@ function SpentSoFar({ month, current, today, spent, income, compare, onClick }) 
         <>
           <Bar ratio={compare.share} pace={pace} status={compare.share > 1 ? 'over' : 'out'}
             label={`${Math.round(compare.share * 100)}% of ${prevName}'s total`} />
-          <span className="hc-cap">{pace != null ? `white line = today (${Math.round(pace * 100)}% of the month) \u00b7 ` : ''}{share}</span>
+          {pace != null && (
+            <span className="pace-label" aria-hidden="true">
+              <span style={{ left: `${pace * 100}%`, transform: `translateX(-${pace * 100}%)` }}>{Math.round(pace * 100)}% of month</span>
+            </span>
+          )}
+          <span className="hc-cap">{share}</span>
           <span className={`vs ${compare.delta > 0 ? 'text-out' : compare.delta < 0 ? 'text-in' : ''}`}>
             {compare.delta === 0
               ? `Same as ${prevName}${by}`
@@ -146,9 +151,9 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
 
   return (
     <main className="screen home">
-      <header className="header">
+      <header className="header home-head">
         <MonthDropdown month={month} setMonth={setMonth} current={current} first={firstMonth} />
-        <div className="header-right">
+        <div className="head-pills">
           {rent && <RentPill rent={rent} />}
           {reviewCount > 0 && (
             <button type="button" className="sort-pill" onClick={() => onNavigate('activity', 'review')}
@@ -156,8 +161,8 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
               <Icon name="inbox" size={18} /><span><strong>{reviewCount}</strong> to sort</span>
             </button>
           )}
-          <SettingsButton onClick={() => onNavigate('settings')} />
         </div>
+        <div className="head-gear"><SettingsButton onClick={() => onNavigate('settings')} /></div>
       </header>
 
       {sync?.lastError && (
