@@ -702,3 +702,47 @@ button { touch-action: manipulation; }
 .acct-opt.on { border-color: var(--balance); background: color-mix(in srgb, var(--balance) 7%, transparent); }
 .import-warn { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: #FFCB9A; background: #3A2A1E; }
 .sheet .acct-pick + .btn, .sheet .import-warn + .btn { margin-top: 14px; width: 100%; }
+
+/* ---------- Budgets (M3): layout C, needs attention first ---------- */
+.budgets .bud-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.budgets .bud-controls .segmented { min-width: 240px; }
+.bud-grid { display: flex; flex-direction: column; gap: 16px; }
+.bud-grid .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 900px) {
+  .bud-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; gap: 20px; }
+}
+.bud-summary { gap: 12px; }
+.bud-big { font-size: clamp(34px, 9vw, 46px); font-weight: 600; letter-spacing: -0.6px; line-height: 1.05; }
+.bud-big-label { font-size: 16px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+.bud-summary .bar.thick { background: color-mix(in srgb, var(--text) 11%, var(--surface)); }
+.bud-summary .bar .pace { top: -4px; bottom: -4px; }
+.bud-group { gap: 8px; }
+.bud-title::before { display: none; }
+.bud-title.over { color: var(--over); }
+.bud-title.faster { color: var(--review); }
+.bud-note { margin-top: -4px; }
+.bud-list { display: flex; flex-direction: column; }
+.bud-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 8px; margin: 0 -8px; width: calc(100% + 16px); background: none; border: 0; border-radius: 12px; color: inherit; text-align: left; font: inherit; }
+button.bud-row { cursor: pointer; }
+button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
+.bud-icon { width: 38px; height: 38px; border-radius: 12px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--budget); background: color-mix(in srgb, var(--budget) 16%, transparent); }
+.bud-icon.over { color: var(--over); background: color-mix(in srgb, var(--over) 16%, transparent); }
+.bud-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.bud-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; }
+.bud-name { font-size: 15.5px; font-weight: 500; min-width: 0; }
+.bud-amt { font-size: 14px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bud-amt strong { color: var(--text); font-weight: 600; }
+.bud-amt strong.text-over { color: var(--over); }
+.bud-fixed { gap: 10px; }
+.bud-fixed-row { display: flex; align-items: center; gap: 12px; }
+.bud-fixed-name { flex: 1; min-width: 0; font-size: 15.5px; font-weight: 500; white-space: nowrap; }
+.bud-fixed-status { font-size: 13px; padding: 3px 10px; border-radius: 12px; background: var(--surface-raised); color: var(--muted); white-space: nowrap; }
+.bud-fixed-status.paid { color: var(--in); }
+.bud-fixed-status.due { color: #FFCB9A; background: #3A2A1E; }
+.bud-fixed-row strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.bud-paste { min-height: 160px; resize: vertical; font-family: inherit; line-height: 1.5; }
+.bud-preview { display: flex; flex-direction: column; gap: 6px; background: var(--surface-raised); border-radius: 12px; padding: 12px 14px; }
+.bud-prev-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14.5px; }
+.bud-prev-row strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.bud-prev-row.total { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 2px; }
+.bud-bad { display: flex; flex-direction: column; gap: 4px; }

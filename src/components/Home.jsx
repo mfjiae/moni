@@ -6,6 +6,7 @@ import { summarizeMonth, categoryRows, monthCompare, upcomingRent } from '../lib
 import { currentBalance } from '../lib/importer.js';
 import { SAVERS } from '../lib/accounts.js';
 import { Bar, ImportButton, MonthDropdown } from './ui.jsx';
+import { cashFlowCaption } from '../lib/budgets.js';
 import { Icon } from './icons.jsx';
 import { Donut, donutRows } from './charts.jsx';
 
@@ -82,6 +83,7 @@ function SpentSoFar({ month, current, today, spent, income, compare, onClick }) 
 function CashFlowCard({ month, summary, onClick }) {
   const { income, spent } = summary;
   const max = Math.max(income, spent, 1);
+  const cap = cashFlowCaption(income, spent);
   return (
     <button type="button" className="card hc tint tint-in flow-card" onClick={onClick} aria-label="Monthly cash flow. Open cash flow">
       <span className="hc-title"><span>Monthly cash flow</span><span className="hc-side">{monthName(month)}</span></span>
@@ -89,7 +91,11 @@ function CashFlowCard({ month, summary, onClick }) {
         <span>In</span><Bar ratio={income / max} status="in" label={`In ${formatCents(income)}`} /><strong className="text-in">{formatCents(income)}</strong>
         <span>Spent</span><Bar ratio={spent / max} status="out" label={`Spent ${formatCents(spent)}`} /><strong className="text-out">{formatCents(spent)}</strong>
       </span>
-      <span className="hc-cap">{income > 0 ? `Spent ${Math.round((spent / income) * 100)}% of what came in` : 'No money in yet this month'}</span>
+      <span className="hc-cap">
+        {cap.kind === 'pct' && `Spent ${cap.percent}% of what came in`}
+        {cap.kind === 'over' && <span className="text-out">Spent {formatCents(cap.overCents)} more than came in</span>}
+        {cap.kind === 'none' && 'No money in yet this month'}
+      </span>
     </button>
   );
 }

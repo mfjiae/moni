@@ -12,6 +12,7 @@ import Activity from './components/Activity.jsx';
 import AddTxn from './components/AddTxn.jsx';
 import TxnSheet from './components/TxnSheet.jsx';
 import Settings from './components/Settings.jsx';
+import Budgets from './components/Budgets.jsx';
 import { syncNow } from './lib/sync.js';
 import { countedView, SAVERS, balanceKey } from './lib/accounts.js';
 
@@ -39,15 +40,6 @@ function NavItem({ id, label, tab, go, badge, className = '' }) {
   );
 }
 
-function Placeholder({ title, milestone }) {
-  return (
-    <main className="screen">
-      <header className="header"><div className="title">{title}</div></header>
-      <div className="empty">Coming in {milestone}.</div>
-    </main>
-  );
-}
-
 export default function App() {
   const today = todaySydney();
   const [tab, setTab] = useState('home');
@@ -72,6 +64,7 @@ export default function App() {
   }, []);
   const sync = useLiveQuery(() => db.meta.get('sync'), []);
   const cats = useLiveQuery(() => db.categories.toArray(), []);
+  const plans = useLiveQuery(() => db.budgetPlans.toArray(), []);
 
   // Your renamed / hidden / added categories (synced) apply everywhere.
   const catsReady = useMemo(() => { setCategoryOverrides(cats ?? []); return cats !== undefined; }, [cats]);
@@ -133,7 +126,7 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  if (txns === undefined || !catsReady) return <div className="app"><div className="empty">Loading…</div></div>;
+  if (txns === undefined || !catsReady || plans === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
 
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
   const open = openId != null ? (txns.find((t) => t.uid === openId) ?? allTxns.find((t) => t.uid === openId)) : null;
@@ -157,7 +150,9 @@ export default function App() {
         <Activity txns={txns} today={today} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
       )}
       {tab === 'add' && <AddTxn today={today} usage={usage} onDone={() => go('home')} onToast={setToast} />}
-      {tab === 'budgets' && <Placeholder title="Budgets" milestone="M3" />}
+      {tab === 'budgets' && (
+        <Budgets txns={txns} plans={plans} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} onToast={setToast} />
+      )}
       {tab === 'settings' && <Settings sync={sync} txns={txns} onToast={setToast} />}
 
       {open && <TxnSheet key={open.uid} txn={open} usage={usage} onClose={() => setOpenId(null)} onToast={setToast} />}

@@ -36,6 +36,10 @@ db.version(2).stores({
 // v3: drop the old tables.
 db.version(3).stores({ transactions: null, rules: null });
 
+// v4 (M3 Budgets): the old v1 `budgets` table had a month key and never held data; replace it with
+// `budgetPlans`, from-month records with a uid so they sync (see budgets.js).
+db.version(4).stores({ budgets: null, budgetPlans: 'uid, categoryId' });
+
 // Ask the browser not to evict our data under storage pressure.
 // Some browsers (Firefox, Zen) show a prompt, so only ask once per device.
 export async function requestPersistentStorage() {

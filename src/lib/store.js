@@ -8,6 +8,7 @@ import { kindForCategory, customCategoryId } from './categories.js';
 import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync } from './sync.js';
 import { MAIN, balanceKey, guessAccount, looksLike } from './accounts.js';
+import { planChange, planChanges } from './budgets.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -177,4 +178,31 @@ export async function migrateRules() {
   const n = await applyPlan(plan);
   await db.meta.put({ key: 'rulesVersion', value: RULES_VERSION, at: Date.now(), changed: n });
   return n;
+}
+
+// ---------- Budgets (M3; synced) ----------
+
+async function applyBudgetPlan(plan) {
+  if (!plan.puts.length && !plan.deletes.length) return;
+  const now = Date.now();
+  await db.transaction('rw', db.budgetPlans, db.tombstones, async () => {
+    if (plan.deletes.length) {
+      await db.budgetPlans.bulkDelete(plan.deletes);
+      await db.tombstones.bulkPut(plan.deletes.map((key) => ({ key, deletedAt: now })));
+    }
+    if (plan.puts.length) await db.budgetPlans.bulkPut(plan.puts);
+  });
+  requestSync();
+}
+
+// One category's monthly amount (cents; 0 removes it), from `fromMonth` on, or from the beginning with alsoPast.
+export async function setBudget(categoryId, cents, fromMonth, alsoPast = false) {
+  const records = await db.budgetPlans.toArray();
+  await applyBudgetPlan(planChange(records, categoryId, cents, fromMonth, alsoPast, Date.now()));
+}
+
+// The paste box: [{ categoryId, cents }, ...] all at once.
+export async function setBudgets(changes, fromMonth, alsoPast = false) {
+  const records = await db.budgetPlans.toArray();
+  await applyBudgetPlan(planChanges(records, changes, fromMonth, alsoPast, Date.now()));
 }

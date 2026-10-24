@@ -71,6 +71,13 @@ describe('Home', () => {
     expect(out).toContain('No spending yet this month.');
     expect(out).toContain('Nothing earlier to compare with yet.');
   });
+  it('cash flow wording A: over 100% says how much more was spent than came in; nothing in says so', () => {
+    const over = html({ txns: [t('2026-10-01', 295, 'interest', { kind: 'income' }), t('2026-10-03', -961700, 'shopping')] });
+    expect(over).toContain('Spent $9,614.05 more than came in');
+    expect(over).not.toContain('of what came in');
+    const none = html({ txns: [t('2026-10-03', -2500, 'shopping')] });
+    expect(none).toContain('No money in yet this month');
+  });
   it('shows the welcome card when there are no transactions', () => {
     expect(html({ txns: [] })).toContain('Start with your bank history');
   });
