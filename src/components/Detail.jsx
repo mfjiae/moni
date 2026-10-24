@@ -6,6 +6,7 @@ import { monthKey, monthLabel, monthName, longDay, relativeDay, ordinal, addDays
 import { categoryName } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, balanceHistory, compareMonths, monthCompare, spentByDay, pctChange } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
+import { accountOf, isMain, transferOther, getAccount, accountTxns, accountsWithData, pairTransfers, MAIN } from '../lib/accounts.js';
 import { Bar, MonthSwitch, Chevron, Segmented } from './ui.jsx';
 import TxnRow from './TxnRow.jsx';
 import { groupByDay } from '../lib/daygroups.js';
@@ -25,7 +26,7 @@ function Back({ onBack, label }) {
 
 // Day-grouped transactions (CommBank style): a header per day (date, how long ago, net total), paged by whole days.
 // The button says exactly how many more it will show.
-function TxnList({ title, list, today, onOpen, empty }) {
+function TxnList({ title, list, today, onOpen, empty, metaFor, showAccount = true }) {
   const [limit, setLimit] = useState(30);
   const { groups, shown } = useMemo(() => groupByDay(list, limit), [list, limit]);
   const next = useMemo(() => groupByDay(list, limit + 30).shown - shown, [list, limit, shown]);
@@ -41,7 +42,7 @@ function TxnList({ title, list, today, onOpen, empty }) {
                 <span className="day-date">{longDay(g.date)}{rel && <span className="day-rel">{rel}</span>}</span>
                 <span className="day-total">{formatCents(g.netCents, { sign: true })}</span>
               </div>
-              {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} />)}
+              {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} meta={metaFor?.(t)} showAccount={showAccount} />)}
             </div>
           );
         })
@@ -237,6 +238,16 @@ function SavedPage({ txns, month, today, onOpen }) {
   const put = list.filter((t) => t.amountCents < 0).reduce((a, t) => a - t.amountCents, 0);
   const took = list.filter((t) => t.amountCents > 0).reduce((a, t) => a + t.amountCents, 0);
   const net = put - took;
+  // Net put into each savings account this month (the saver named in the transfer).
+  const byAccount = useMemo(() => {
+    const m = new Map();
+    for (const t of list) {
+      const id = isMain(accountOf(t)) ? transferOther(t.description) : accountOf(t);
+      if (!id || isMain(id)) continue;
+      m.set(id, (m.get(id) ?? 0) - t.amountCents);
+    }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [list]);
   return (
     <div className="detail-grid">
       <div className="col">
@@ -245,7 +256,10 @@ function SavedPage({ txns, month, today, onOpen }) {
         </Hero>
         <MiniCard txns={txns} month={month} color="save" head="head-save" pick={(x) => x.savedNet} />
         <RowsCard title="Breakdown" head="head-save" rows={[['Put in', formatCents(put)], ['Took out', formatCents(took)], ['Net', formatCents(net, { sign: true })]]} />
-        <p className="hint">Transfers between your own accounts. They're never counted as income or spending. A box per savings account comes with M2.6.</p>
+        {byAccount.length > 0 && (
+          <RowsCard title="By account" head="head-save" rows={byAccount.map(([id, c]) => [getAccount(id).long, formatCents(c, { sign: true })])} />
+        )}
+        <p className="hint">Transfers between your own accounts, counted once each (from the Smart Access side when both CSVs are in). They're never income or spending. Savings interest shows under Money in.</p>
       </div>
       <TxnList title="Transfers" list={list} today={today} onOpen={onOpen} empty="No savings transfers this month." />
     </div>
@@ -322,9 +336,34 @@ function BalanceChart({ points }) {
   );
 }
 
-function AccountPage({ txns, balance, today, onOpen }) {
+// One page for every account (M2.6, option A): chips on top switch account and never move. Each account
+// shows its own statement: balance, balance chart and every row (a saver's matched transfers included).
+function AccountPage({ allTxns, balance, saverBalances, today, onOpen, initialAccount }) {
+  const accounts = useMemo(() => accountsWithData(allTxns), [allTxns]);
+  const [acct, setAcct] = useState(initialAccount ?? MAIN);
+  const main = isMain(acct);
+  const info = getAccount(acct);
+  const txns = useMemo(() => accountTxns(allTxns, acct), [allTxns, acct]);
+  const bankBal = main ? balance : saverBalances?.[acct] ?? null;
+  const matched = useMemo(() => (main ? null : pairTransfers(allTxns)), [allTxns, main]);
+  const metaFor = matched ? (t) => (matched.has(t.uid) ? 'matched' : transferOther(t.description) ? 'counted here' : undefined) : undefined;
+  return (
+    <>
+      {accounts.length > 1 && (
+        <div className="acct-chips" role="group" aria-label="Account">
+          {accounts.map((a) => (
+            <button key={a.id} type="button" className="acct-chip" aria-pressed={a.id === acct} onClick={() => setAcct(a.id)}>{a.name}</button>
+          ))}
+        </div>
+      )}
+      <AccountBody key={acct} txns={txns} bankBal={bankBal} main={main} info={info} today={today} onOpen={onOpen} metaFor={metaFor} />
+    </>
+  );
+}
+
+function AccountBody({ txns, bankBal: balance, main, info, today, onOpen, metaFor }) {
   const [range, setRange] = useState('1y');
-  const bal = currentBalance(balance, txns);
+  const bal = main ? currentBalance(balance, txns) : balance?.cents ?? null;
   const history = useMemo(() => balanceHistory(txns), [txns]);
   const cutoff = useMemo(() => {
     if (range === 'all' || !history.length) return '';
@@ -346,7 +385,7 @@ function AccountPage({ txns, balance, today, onOpen }) {
   return (
     <div className="detail-grid">
       <div className="col">
-        <Hero label="Smart Access balance" cents={bal ?? 0} cls="">
+        <Hero label={`${info.long} balance`} cents={bal ?? 0} cls={main ? '' : 'text-save'}>
           {balance && (
             <div className="sub-amounts">
               <span>Bank {formatCents(balance.cents)} on {longDay(balance.asOf)}</span>
@@ -365,16 +404,18 @@ function AccountPage({ txns, balance, today, onOpen }) {
             ))}
           </div>
           <p className="hint">From the bank's running balance in your CSV imports. Pending transactions aren't in the export, so the bank app can be slightly ahead.</p>
+          {!main && <p className="hint">"Matched" transfers are already counted from the Smart Access side, so they count once. "Counted here" ones have no Smart Access twin yet.</p>}
         </section>
       </div>
-      <TxnList title="All transactions" list={list} today={today} onOpen={onOpen} empty="No transactions yet." />
+      <TxnList title="All transactions" list={list} today={today} onOpen={onOpen} empty="No transactions yet. Import this account's CSV."
+        metaFor={metaFor} showAccount={false} />
     </div>
   );
 }
 
-const TITLES = { spending: 'Spending', income: 'Money in', saved: 'Saved', invested: 'Invested', account: 'Smart Access', cashflow: 'Cash flow', where: 'Where it went' };
+const TITLES = { spending: 'Spending', income: 'Money in', saved: 'Saved', invested: 'Invested', account: 'Accounts', cashflow: 'Cash flow', where: 'Where it went' };
 
-export default function Detail({ page, txns, today, month, setMonth, firstMonth, balance, onBack, onOpen, onDetail, rootLabel = 'Home' }) {
+export default function Detail({ page, txns, allTxns, today, month, setMonth, firstMonth, balance, saverBalances, onBack, onOpen, onDetail, rootLabel = 'Home' }) {
   const current = monthKey(today);
   const props = { txns, month, today, onOpen };
   return (
@@ -394,7 +435,9 @@ export default function Detail({ page, txns, today, month, setMonth, firstMonth,
       {page.name === 'invested' && <InvestedPage {...props} />}
       {page.name === 'cashflow' && <CashFlowPage {...props} onDetail={onDetail} />}
       {page.name === 'where' && <WherePage {...props} onDetail={onDetail} />}
-      {page.name === 'account' && <AccountPage txns={txns} balance={balance} today={today} onOpen={onOpen} />}
+      {page.name === 'account' && (
+        <AccountPage allTxns={allTxns ?? txns} balance={balance} saverBalances={saverBalances} today={today} onOpen={onOpen} initialAccount={page.account} />
+      )}
     </main>
   );
 }

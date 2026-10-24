@@ -679,3 +679,26 @@ button { touch-action: manipulation; }
   .home .month-drop-label { min-width: 7.2em; }
   .home .month-pill .icon-btn { width: 40px; }
 }
+
+/* Balance card with Smart Access and Savings side by side (M2.6, Ken 24 Oct 2026, option B). Each half is
+   its own button; the card stays one box. Without a saver balance the card looks as before. */
+.bal-half { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.balance-card:has(.bal-half:hover) { border-color: var(--balance); }
+.balance-card.split { display: grid; grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); gap: clamp(12px, 3cqi, 20px); align-items: stretch; }
+.bal-rule { background: color-mix(in srgb, var(--balance) 25%, transparent); }
+.home .balance-card.split .balance-value { font-size: clamp(24px, 6.4cqi, 40px); white-space: nowrap; }
+.home .balance-card.split .balance-note { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bal-half.save .balance-label, .home .bal-half.save .balance-value { color: var(--save); }
+.acct-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.acct-chip { min-height: 38px; padding: 0 14px; border-radius: 19px; border: 1px solid var(--border); background: none; color: var(--muted); font: inherit; font-size: 14.5px; }
+.acct-chip[aria-pressed="true"] { background: var(--surface-raised); color: var(--text); border-color: var(--balance); }
+.acct-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 11.5px; color: var(--muted); vertical-align: 1px; }
+.import-facts { margin: 0 0 12px; }
+.acct-pick { display: flex; flex-direction: column; gap: 8px; }
+.acct-opt { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
+.acct-opt input { width: 18px; height: 18px; accent-color: var(--balance); flex: none; margin: 0; }
+.acct-opt > span { display: flex; flex-direction: column; min-width: 0; }
+.acct-opt-name { font-weight: 500; }
+.acct-opt.on { border-color: var(--balance); background: color-mix(in srgb, var(--balance) 7%, transparent); }
+.import-warn { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: #FFCB9A; background: #3A2A1E; }
+.sheet .acct-pick + .btn, .sheet .import-warn + .btn { margin-top: 14px; width: 100%; }

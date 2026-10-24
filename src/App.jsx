@@ -13,6 +13,7 @@ import AddTxn from './components/AddTxn.jsx';
 import TxnSheet from './components/TxnSheet.jsx';
 import Settings from './components/Settings.jsx';
 import { syncNow } from './lib/sync.js';
+import { countedView, SAVERS, balanceKey } from './lib/accounts.js';
 
 const Icon = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
@@ -60,8 +61,15 @@ export default function App() {
   const pageRef = useRef(null);
   useEffect(() => { pageRef.current = page; }, [page]);
 
-  const txns = useLiveQuery(() => db.txns.toArray(), []);
+  // allTxns = every account's rows as stored; txns = what moni counts (Smart Access + saver-only rows,
+  // each transfer once; see accounts.js). Every total uses txns; the account pages use allTxns.
+  const allTxns = useLiveQuery(() => db.txns.toArray(), []);
+  const txns = useMemo(() => (allTxns ? countedView(allTxns) : undefined), [allTxns]);
   const balance = useLiveQuery(() => db.meta.get('balance'), []);
+  const saverBalances = useLiveQuery(async () => {
+    const list = await Promise.all(SAVERS.map((a) => db.meta.get(balanceKey(a.id))));
+    return Object.fromEntries(SAVERS.map((a, i) => [a.id, list[i] ?? null]));
+  }, []);
   const sync = useLiveQuery(() => db.meta.get('sync'), []);
   const cats = useLiveQuery(() => db.categories.toArray(), []);
 
@@ -128,17 +136,17 @@ export default function App() {
   if (txns === undefined || !catsReady) return <div className="app"><div className="empty">Loading…</div></div>;
 
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
-  const open = openId != null ? txns.find((t) => t.uid === openId) : null;
+  const open = openId != null ? (txns.find((t) => t.uid === openId) ?? allTxns.find((t) => t.uid === openId)) : null;
 
   return (
     <div className="app">
       {tab === 'home' && !page && (
-        <Home txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} sync={sync}
+        <Home txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} sync={sync}
           onNavigate={go} onDetail={openDetail} onOpen={setOpenId} onToast={setToast} />
       )}
       {(tab === 'home' || tab === 'cashflow') && page && (
         <Detail page={page} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
-          balance={balance} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail}
+          balance={balance} saverBalances={saverBalances} allTxns={allTxns} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail}
           rootLabel={tab === 'cashflow' ? 'Cash flow' : 'Home'} />
       )}
       {tab === 'cashflow' && !page && (

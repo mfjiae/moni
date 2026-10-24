@@ -1,6 +1,7 @@
 // Pure import logic (no database), so it can be tested.
 import { categorize } from './rules.js';
 import { csvUid } from './ids.js';
+import { MAIN, isMain, accountImportKey, balanceKey } from './accounts.js';
 
 const dayNumber = (iso) => {
   const [y, m, d] = iso.split('-').map(Number);
@@ -11,14 +12,17 @@ const dayNumber = (iso) => {
 // manualTxns: unmatched manual entries; a bank row with the same amount within
 // 4 days replaces the manual entry (keeping its category and note), so a purchase
 // you typed in by hand isn't counted twice once the bank CSV arrives.
-export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [], rules, now = Date.now() } = {}) {
+// account: which account the CSV is from (M2.6). Saver rows get the account in their import key;
+// manual entries are Smart Access only, so only Smart Access rows can replace them.
+export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [], rules, now = Date.now(), account = MAIN } = {}) {
   const seen = new Set(existingKeys);
   const usedManual = new Set();
   const toAdd = [];
   const mergedManualIds = [];
   let duplicates = 0;
 
-  for (const r of rows) {
+  for (const row of rows) {
+    const r = { ...row, importKey: accountImportKey(account, row.importKey) };
     if (seen.has(r.importKey)) { duplicates++; continue; }
     seen.add(r.importKey);
 
@@ -34,6 +38,7 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
       balanceCents: r.balanceCents,
       importKey: r.importKey,
       source: 'csv',
+      account,
       kind: c.kind,
       categoryId: c.categoryId,
       refund: c.refund,
@@ -41,7 +46,7 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
       note: '',
     };
 
-    if (c.kind !== 'saving') {
+    if (c.kind !== 'saving' && isMain(account)) {
       const m = manualTxns.find((t) => !usedManual.has(t.uid) &&
         t.amountCents === r.amountCents &&
         Math.abs(dayNumber(t.date) - dayNumber(r.date)) <= 4);
@@ -63,11 +68,14 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
 }
 
 // The newest row carries the bank balance. Only move forward in time.
-export function nextBalance(rows, current) {
+// Each account has its own balance (M2.6): a saver CSV never touches the Smart Access one.
+// Rows are newest first, so the first row of the newest day is the closing balance.
+export function nextBalance(rows, current, account = MAIN) {
   if (!rows.length) return current ?? null;
-  const newest = rows.reduce((a, b) => (b.postedDate > a.postedDate ? b : a), rows[0]);
+  const newestDate = rows.reduce((a, b) => (b.postedDate > a ? b.postedDate : a), rows[0].postedDate);
+  const newest = rows.find((r) => r.postedDate === newestDate);
   if (current && current.asOf > newest.postedDate) return current;
-  return { key: 'balance', cents: newest.balanceCents, asOf: newest.postedDate };
+  return { key: balanceKey(account), cents: newest.balanceCents, asOf: newest.postedDate };
 }
 
 // Bank balance plus any manual entries dated after it.

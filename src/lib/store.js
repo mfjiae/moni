@@ -7,13 +7,31 @@ import { prepareImport, nextBalance } from './importer.js';
 import { kindForCategory, customCategoryId } from './categories.js';
 import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync } from './sync.js';
+import { MAIN, balanceKey, guessAccount, looksLike } from './accounts.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
   return [...usableUserRules(await db.userRules.toArray()), ...DEFAULT_RULES];
 }
 
-export async function importCsvText(text) {
+// What the import picker shows before importing: row count, dates, closing balance and moni's guess.
+export async function previewCsv(text) {
+  const { rows, errors } = parseNetBankCsv(text);
+  const existingKeys = new Set(await db.txns.orderBy('importKey').keys());
+  const dates = rows.map((r) => r.postedDate).sort();
+  const newest = rows.find((r) => r.postedDate === dates[dates.length - 1]);
+  return {
+    rows,
+    errors,
+    from: dates[0] ?? null,
+    to: dates[dates.length - 1] ?? null,
+    closingCents: newest ? newest.balanceCents : null,
+    looks: looksLike(rows),
+    guess: guessAccount(rows, existingKeys),
+  };
+}
+
+export async function importCsvText(text, account = MAIN) {
   const { rows, errors } = parseNetBankCsv(text);
   if (!rows.length) return { rows: 0, added: 0, duplicates: 0, merged: 0, review: 0, errors };
 
@@ -25,7 +43,7 @@ export async function importCsvText(text) {
     if (t.key.startsWith('csv|')) existingKeys.add(t.key.slice(4));
   }
   const manualTxns = await db.txns.filter((t) => t.source === 'manual').toArray();
-  const plan = prepareImport(rows, { existingKeys, manualTxns, rules, now });
+  const plan = prepareImport(rows, { existingKeys, manualTxns, rules, now, account });
 
   await db.transaction('rw', db.txns, db.meta, db.tombstones, async () => {
     if (plan.toAdd.length) await db.txns.bulkPut(plan.toAdd);
@@ -33,7 +51,7 @@ export async function importCsvText(text) {
       await db.txns.bulkDelete(plan.mergedManualIds);
       await db.tombstones.bulkPut(plan.mergedManualIds.map((key) => ({ key, deletedAt: now })));
     }
-    const bal = nextBalance(rows, await db.meta.get('balance'));
+    const bal = nextBalance(rows, await db.meta.get(balanceKey(account)), account);
     if (bal) await db.meta.put({ ...bal, updatedAt: now });
   });
   requestSync();

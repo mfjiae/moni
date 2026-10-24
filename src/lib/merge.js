@@ -1,6 +1,8 @@
 // Pure merge logic for syncing between devices (tested).
 //
-// A snapshot = { version, txns, rules, categories, tombstones, balance }.
+// A snapshot = { version, txns, rules, categories, tombstones, balance, balances }.
+// (balances = the savings accounts' balances by account id, added in M2.6; `balance` stays Smart Access.
+// An older app version drops `balances`; the next sync from a new version puts them back.)
 // (categories = your renames, hidden flags and custom categories; added in M2.5.
 // An older app version simply ignores them, and the next sync from a new one puts them back.)
 // - Every record has a stable `uid` and an `updatedAt` (ms).
@@ -28,6 +30,7 @@ export function normalize(s) {
     categories: [...(s?.categories ?? [])].sort(byUid),
     tombstones: { ...(s?.tombstones ?? {}) },
     balance: s?.balance ?? null,
+    balances: { ...(s?.balances ?? {}) },
   };
 }
 
@@ -65,5 +68,7 @@ export function mergeSnapshots(local, remote) {
     categories: mergeRecords(l.categories, r.categories, tombstones),
     tombstones,
     balance: newerBalance(l.balance, r.balance),
+    balances: Object.fromEntries([...new Set([...Object.keys(l.balances), ...Object.keys(r.balances)])]
+      .map((id) => [id, newerBalance(l.balances[id], r.balances[id])])),
   });
 }

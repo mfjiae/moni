@@ -1,8 +1,10 @@
 // Small shared pieces.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { pickerGroups, getCategory, categoryName } from '../lib/categories.js';
-import { importCsvText, addCategory } from '../lib/store.js';
+import { importCsvText, previewCsv, addCategory } from '../lib/store.js';
+import { ACCOUNTS, pickWarning } from '../lib/accounts.js';
 import { monthLabel, shiftMonth, monthShort } from '../lib/dates.js';
+import { formatCents } from '../lib/money.js';
 import { Icon } from './icons.jsx';
 
 // True on desktop-width screens (matches the CSS breakpoint).
@@ -198,27 +200,45 @@ export function useCategoryUsage(txns) {
   }, [txns]);
 }
 
+const dayYear = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+// Import (M2.6, Ken 24 Oct 2026, option A + warning): pick the file, then say which account it is from.
+// moni pre-picks its guess; a warning shows under the list (so the choices never move) when the pick
+// doesn't fit the file.
 export function ImportButton({ onDone, className = 'btn' }) {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(null); // { text, preview, account }
 
   async function handle(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    try {
+      const text = await file.text();
+      const preview = await previewCsv(text);
+      if (!preview.rows.length) {
+        onDone('That file had no transactions moni could read. Is it a NetBank CSV export?');
+        return;
+      }
+      setPending({ text, preview, account: preview.guess });
+    } catch (err) {
+      onDone(`Couldn't read that file: ${err.message}`);
+    }
+  }
+
+  async function confirm() {
+    const { text, account } = pending;
+    setPending(null);
     setBusy(true);
     try {
-      const r = await importCsvText(await file.text());
-      if (!r.rows) {
-        onDone('That file had no transactions moni could read. Is it a NetBank CSV export?');
-      } else {
-        const parts = [`Added ${r.added}`];
-        if (r.duplicates) parts.push(`${r.duplicates} already here`);
-        if (r.merged) parts.push(`${r.merged} matched your manual entries`);
-        if (r.review) parts.push(`${r.review} to sort`);
-        if (r.errors.length) parts.push(`${r.errors.length} lines couldn't be read`);
-        onDone(parts.join(' · '));
-      }
+      const r = await importCsvText(text, account);
+      const parts = [`Added ${r.added}`];
+      if (r.duplicates) parts.push(`${r.duplicates} already here`);
+      if (r.merged) parts.push(`${r.merged} matched your manual entries`);
+      if (r.review) parts.push(`${r.review} to sort`);
+      if (r.errors.length) parts.push(`${r.errors.length} lines couldn't be read`);
+      onDone(parts.join(' · '));
     } catch (err) {
       onDone(`Import failed: ${err.message}`);
     } finally {
@@ -226,12 +246,37 @@ export function ImportButton({ onDone, className = 'btn' }) {
     }
   }
 
+  const p = pending?.preview;
+  const warning = pending ? pickWarning(p.rows, pending.account) : null;
   return (
     <>
       <button type="button" className={className} disabled={busy} onClick={() => input.current?.click()}>
         {busy ? 'Importing…' : 'Import NetBank CSV'}
       </button>
       <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={handle} />
+      {pending && (
+        <Sheet title="Which account is this CSV from?" onClose={() => setPending(null)}>
+          <p className="small import-facts">
+            {p.rows.length} rows · {dayYear(p.from)} to {dayYear(p.to)} · ends at {formatCents(p.closingCents)}
+          </p>
+          <div className="acct-pick" role="radiogroup" aria-label="Account">
+            {ACCOUNTS.map((a) => (
+              <label key={a.id} className={`acct-opt${pending.account === a.id ? ' on' : ''}`}>
+                <input type="radio" name="import-account" value={a.id} checked={pending.account === a.id}
+                  onChange={() => setPending({ ...pending, account: a.id })} />
+                <span>
+                  <span className="acct-opt-name">{a.long}</span>
+                  <span className="small">{p.guess === a.id && a.type === 'saver' ? 'Looks like a savings CSV (only transfers and interest)' : a.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {warning && <p className="import-warn" role="alert">{warning}</p>}
+          <button type="button" className="btn primary" onClick={confirm}>
+            {warning ? 'Import anyway' : `Import ${p.rows.length} rows`}
+          </button>
+        </Sheet>
+      )}
     </>
   );
 }

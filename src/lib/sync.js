@@ -3,6 +3,7 @@
 import { db } from './db.js';
 import { mergeSnapshots, normalize, sameSnapshot, stableStringify } from './merge.js';
 import { checkRepo, readFile, writeFile, SyncError } from './github.js';
+import { SAVERS, balanceKey } from './accounts.js';
 
 export const DATA_PATH = 'moni.json';
 export const DEFAULT_REPO = 'mfjiae/moni-data';
@@ -10,19 +11,25 @@ export const DEFAULT_REPO = 'mfjiae/moni-data';
 export const getSyncConfig = () => db.meta.get('sync');
 
 async function readLocal() {
-  const [txns, rules, categories, tombs, balance] = await Promise.all([
+  const [txns, rules, categories, tombs, balance, ...saverBalances] = await Promise.all([
     db.txns.toArray(),
     db.userRules.toArray(),
     db.categories.toArray(),
     db.tombstones.toArray(),
     db.meta.get('balance'),
+    ...SAVERS.map((a) => db.meta.get(balanceKey(a.id))),
   ]);
+  const balances = {};
+  SAVERS.forEach((a, i) => {
+    if (saverBalances[i]) { const { key: _k, ...b } = saverBalances[i]; balances[a.id] = b; }
+  });
   return normalize({
     txns,
     rules,
     categories,
     tombstones: Object.fromEntries(tombs.map((t) => [t.key, t.deletedAt])),
     balance: balance ?? null,
+    balances,
   });
 }
 
@@ -49,6 +56,12 @@ async function writeLocal(merged) {
       if (!cur || stableStringify(cur) !== stableStringify(merged.balance)) {
         await db.meta.put({ ...merged.balance, key: 'balance' });
       }
+    }
+    for (const [id, b] of Object.entries(merged.balances ?? {})) {
+      if (!b) continue;
+      const key = balanceKey(id);
+      const cur = await db.meta.get(key);
+      if (!cur || stableStringify(cur) !== stableStringify({ ...b, key })) await db.meta.put({ ...b, key });
     }
   });
 }

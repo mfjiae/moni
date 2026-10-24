@@ -4,6 +4,7 @@ import { monthKey, monthName, longDay, ordinal, daysInMonth } from '../lib/dates
 import { kindForCategory } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, monthCompare, upcomingRent } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
+import { SAVERS } from '../lib/accounts.js';
 import { Bar, ImportButton, MonthDropdown } from './ui.jsx';
 import { Icon } from './icons.jsx';
 import { Donut, donutRows } from './charts.jsx';
@@ -118,7 +119,37 @@ function RentPill({ rent }) {
   );
 }
 
-export default function Home({ txns, today, month, setMonth, firstMonth, balance, sync, onNavigate, onDetail, onToast }) {
+// Balance card (M2.6, option B): Smart Access and Savings side by side once a saver has money in it.
+// Savings = every saver with a balance above $0 (an emptied one, like xx2103, drops out). Each half opens
+// its account page.
+function BalanceCard({ bal, balance, saverBalances, onDetail }) {
+  const savers = SAVERS.map((a) => ({ ...a, b: saverBalances?.[a.id] })).filter((a) => a.b && a.b.cents > 0);
+  const main = (
+    <button type="button" className="bal-half" onClick={() => onDetail('account', { account: 'xx6193' })}
+      aria-label={`Smart Access balance ${formatCents(bal)}. Open account`}>
+      <span className="balance-label">Smart Access</span>
+      <span className="balance-value">{formatCents(bal)}</span>
+      <span className="balance-note">{savers.length ? 'as of ' : 'Bank as of '}{longDay(balance.asOf)}{bal !== balance.cents ? ' + manual entries' : ''}</span>
+    </button>
+  );
+  if (!savers.length) return <div className="balance-card">{main}</div>;
+  const total = savers.reduce((a, s) => a + s.b.cents, 0);
+  const newest = savers.reduce((a, s) => (s.b.asOf > a ? s.b.asOf : a), savers[0].b.asOf);
+  return (
+    <div className="balance-card split">
+      {main}
+      <i className="bal-rule" aria-hidden="true" />
+      <button type="button" className="bal-half save" onClick={() => onDetail('account', { account: savers[0].id })}
+        aria-label={`Savings balance ${formatCents(total)}. Open savings account`}>
+        <span className="balance-label">Savings</span>
+        <span className="balance-value">{formatCents(total)}</span>
+        <span className="balance-note">{savers.map((s) => s.id).join(' + ')} · {longDay(newest)}</span>
+      </button>
+    </div>
+  );
+}
+
+export default function Home({ txns, today, month, setMonth, firstMonth, balance, saverBalances, sync, onNavigate, onDetail, onToast }) {
   const current = monthKey(today);
   const summary = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const reviewCount = useMemo(() => txns.filter((t) => t.kind === 'review').length, [txns]);
@@ -178,13 +209,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
 
       <div className="home-grid">
         <div className="col">
-          {bal != null && (
-            <button type="button" className="balance-card" onClick={() => onDetail('account')} aria-label={`Balance ${formatCents(bal)}. Open account`}>
-              <span className="balance-label">Smart Access</span>
-              <span className="balance-value">{formatCents(bal)}</span>
-              <span className="balance-note">Bank as of {longDay(balance.asOf)}{bal !== balance.cents ? ' + manual entries' : ''}</span>
-            </button>
-          )}
+          {bal != null && <BalanceCard bal={bal} balance={balance} saverBalances={saverBalances} onDetail={onDetail} />}
           <Shortcuts onNavigate={onNavigate} onDetail={onDetail} />
           <SpentSoFar month={month} current={current} today={today} spent={summary.spent} income={summary.income} compare={compare}
             onClick={() => onDetail('spending')} />

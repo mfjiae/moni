@@ -13,6 +13,8 @@ export const DEFAULT_RULES = [
   // Own savings accounts (xx2066 main savings, xx2103 2nd savings)
   { match: { contains: ['TRANSFER TO XX2066', 'TRANSFER TO XX2103'] }, kind: 'saving', categoryId: 'saving' },
   { match: { contains: ['TRANSFER FROM XX2066', 'TRANSFER FROM XX2103'] }, kind: 'saving', categoryId: 'saving' },
+  // ...and the same transfers seen from a saver's own CSV (M2.6)
+  { match: { contains: ['TRANSFER TO XX6193', 'TRANSFER FROM XX6193'] }, kind: 'saving', categoryId: 'saving' },
 
   // Income
   { match: { startsWith: 'SALARY' }, kind: 'income', categoryId: 'job-income' },
