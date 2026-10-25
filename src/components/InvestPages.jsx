@@ -82,17 +82,20 @@ export function ManageEtfsSheet({ txns, etfs, colorOf, onClose }) {
   const [confirm, setConfirm] = useState(null);     // { type: 'remove' | 'merge', ticker, to?, buys }
   const [newText, setNewText] = useState('');
   const [msg, setMsg] = useState(null);             // { text, bad }
-  const say = (text, bad = false) => setMsg({ text, bad });
+  const say = (text, tone = 'ok') => setMsg({ text, tone });
   const buys = (tk) => buyCount(txns, tk);
   const plural = (n) => `${n} ${n === 1 ? 'buy' : 'buys'}`;
 
   async function add() {
-    try { const tk = await addEtf(newText); setNewText(''); say(`${tk} added`); } catch (e) { say(e.message, true); }
+    let tk;
+    try { tk = cleanTicker(newText); } catch (e) { say(e.message, 'bad'); return; }
+    if (etfs.includes(tk)) { say(`${tk} is already in your list`, 'warn'); return; }   // nothing is saved
+    await addEtf(tk); setNewText(''); say(`${tk} added`);
   }
   async function startRename() {
     const { ticker, text } = renaming;
     let to;
-    try { to = cleanTicker(text); } catch (e) { say(e.message, true); return; }
+    try { to = cleanTicker(text); } catch (e) { say(e.message, 'bad'); return; }
     if (to === ticker) { setRenaming(null); return; }
     if (etfs.includes(to)) { setMsg(null); setConfirm({ type: 'merge', ticker, to, buys: buys(ticker) }); return; }
     const r = await renameEtf(ticker, to);
@@ -138,7 +141,7 @@ export function ManageEtfsSheet({ txns, etfs, colorOf, onClose }) {
               <button type="button" className="btn primary" onClick={add} disabled={!newText.trim()}>Add</button>
             </div>
         </>
-        {msg && <span className={`small ${msg.bad ? 'text-over' : 'text-in'}`} role="status">{msg.text}</span>}
+        {msg && <span className={`small ${{ ok: 'text-in', bad: 'text-over', warn: 'text-review' }[msg.tone]}`} role="status">{msg.text}</span>}
       </div>
       {confirm && (
         <div className="etf-dialog-wrap" onClick={() => setConfirm(null)}>

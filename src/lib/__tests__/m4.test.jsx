@@ -247,3 +247,9 @@ describe('Manage ETFs plans', () => {
     expect(html).toContain('New ticker, like BGBL');
   });
 });
+
+describe('Manage ETFs: adding a ticker you already have', () => {
+  it('cleanTicker treats bgbl and BGBL as the same name', () => {
+    expect(cleanTicker('bgbl')).toBe(cleanTicker(' BGBL '));
+  });
+});
