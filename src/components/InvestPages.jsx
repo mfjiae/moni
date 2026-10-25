@@ -50,8 +50,8 @@ export function InvestmentsPage({ txns, today, onOpen, etfs }) {
           {bands.length > 0 && <span className="small">Hover or tap an ETF to light up only its band</span>}
         </section>
         <section className="card" aria-label="By ETF">
-          <div className="card-head"><span className="card-title head-invest">By ETF</span><span className="small">{RANGE_TEXT[range]}</span></div>
-          <button type="button" className="link manage-link" onClick={() => setManage(true)}>Manage ETFs</button>
+          <div className="card-head"><span className="card-title head-invest">By ETF</span>
+            <button type="button" className="link manage-link" onClick={() => setManage(true)}>Manage ETFs</button></div>
           {donut.length
             ? <Donut rows={donut} total={donutTotal} centerLabel="Put in" size={132} amounts colors={donut.map((r) => colorOf(r.id))}
               ariaLabel={`Put in by ETF, total ${formatCents(donutTotal)}`} className="donut-etf" />
@@ -108,23 +108,7 @@ export function ManageEtfsSheet({ txns, etfs, colorOf, onClose }) {
   return (
     <Sheet title="Manage ETFs" onClose={onClose}>
       <div className="sheet-body">
-        {confirm ? (
-          <div className="etf-confirm" role="alertdialog" aria-label="Confirm">
-            <strong>{confirm.type === 'merge' ? `Merge ${confirm.ticker} into ${confirm.to}?` : `Remove ${confirm.ticker}?`}</strong>
-            <span className="small">
-              {confirm.type === 'merge'
-                ? `${plural(confirm.buys)} tagged ${confirm.ticker} will count as ${confirm.to}. This can't be split apart again.`
-                : confirm.buys > 0
-                  ? `${plural(confirm.buys)} use ${confirm.ticker}. They'll become Not tagged so you can tag them again. Nothing else changes.`
-                  : `${confirm.ticker} isn't used by any buy. Nothing else changes.`}
-            </span>
-            <div className="btn-row">
-              <button type="button" className={`btn ${confirm.type === 'merge' ? 'primary' : 'danger'}`} onClick={doConfirm}>{confirm.type === 'merge' ? 'Merge' : 'Remove'}</button>
-              <button type="button" className="btn" onClick={() => setConfirm(null)}>Cancel</button>
-            </div>
-          </div>
-        ) : (
-          <>
+        <>
             {etfs.length === 0 && <div className="empty small-empty">No ETFs yet. Add one below.</div>}
             <div className="etf-manage" role="list">
               {etfs.map((tk) => (
@@ -153,10 +137,25 @@ export function ManageEtfsSheet({ txns, etfs, colorOf, onClose }) {
                 onChange={(e) => setNewText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} />
               <button type="button" className="btn primary" onClick={add} disabled={!newText.trim()}>Add</button>
             </div>
-          </>
-        )}
+        </>
         {msg && <span className={`small ${msg.bad ? 'text-over' : 'text-in'}`} role="status">{msg.text}</span>}
       </div>
+      {confirm && (
+        <div className="etf-dialog-wrap" onClick={() => setConfirm(null)}>
+          <div className="etf-dialog" role="alertdialog" aria-modal="true" aria-label="Confirm" onClick={(e) => e.stopPropagation()}>
+            <strong className="etf-dialog-title">{confirm.type === 'merge' ? `Merge ${confirm.ticker} into ${confirm.to}?` : `Remove ${confirm.ticker}?`}</strong>
+            <p>
+              {confirm.type === 'merge' ? `${confirm.to} already exists. The ${plural(confirm.buys)} tagged ${confirm.ticker} move to ${confirm.to}, and ${confirm.ticker} is removed. This can't be split apart again.`
+                : confirm.buys > 0 ? <>{plural(confirm.buys)} use {confirm.ticker}. They'll become <b className="text-review">Not tagged</b> so you can tag them again. Nothing else changes.</>
+                  : 'No buys use it. It just disappears from your list.'}
+            </p>
+            <div className="etf-dialog-btns">
+              <button type="button" className="btn" onClick={() => setConfirm(null)}>Cancel</button>
+              <button type="button" className={`btn ${confirm.type === 'merge' ? 'merge-fill' : 'remove-fill'}`} onClick={doConfirm}>{confirm.type === 'merge' ? 'Merge' : 'Remove'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Sheet>
   );
 }
