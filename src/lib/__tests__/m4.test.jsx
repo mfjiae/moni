@@ -195,3 +195,55 @@ describe('syncing the ETF list', () => {
     expect(mergeSnapshots({ ...base, txns: [t1] }, { ...base, txns: [t2] }).txns[0].etfSplit).toEqual(t2.etfSplit);
   });
 });
+
+// ---- Manage ETFs (M4.2) ----
+import { buyCount, renameInSplit, planRenameEtf, planRemoveEtf } from '../investing.js';
+import { ManageEtfsSheet } from '../../components/InvestPages.jsx';
+
+describe('Manage ETFs plans', () => {
+  const recs = [{ uid: 'etf|AAA', ticker: 'AAA' }, { uid: 'etf|BBB', ticker: 'BBB' }, { uid: 'etf|ZZZ', ticker: 'ZZZ' }];
+  it('counts buys per ticker', () => {
+    expect(buyCount(txns, 'AAA')).toBe(3);
+    expect(buyCount(txns, 'BBB')).toBe(2);
+    expect(buyCount(txns, 'ZZZ')).toBe(0);
+  });
+  it('rename rewrites every split and moves the list record', () => {
+    const p = planRenameEtf(recs, txns, 'AAA', ' qqq ', 5);
+    expect(p.to).toBe('QQQ');
+    expect(p.merge).toBe(false);
+    expect(p.updates).toHaveLength(3);
+    expect(p.updates.find((u) => u.uid === 'b').etfSplit).toEqual([{ ticker: 'QQQ', cents: 18000 }, { ticker: 'BBB', cents: 12000 }]);
+    expect(p.put).toEqual({ uid: 'etf|QQQ', ticker: 'QQQ', updatedAt: 5 });
+    expect(p.del).toEqual(['etf|AAA']);
+  });
+  it('rename to an existing ticker merges and adds cents when a split would have it twice', () => {
+    const p = planRenameEtf(recs, txns, 'AAA', 'BBB');
+    expect(p.merge).toBe(true);
+    expect(p.updates.find((u) => u.uid === 'b').etfSplit).toEqual([{ ticker: 'BBB', cents: 30000 }]);
+    expect(renameInSplit([{ ticker: 'A', cents: 1 }, { ticker: 'B', cents: 2 }], 'A', 'B')).toEqual([{ ticker: 'B', cents: 3 }]);
+  });
+  it('rename to the same name does nothing; junk throws', () => {
+    expect(planRenameEtf(recs, txns, 'AAA', 'aaa').updates).toEqual([]);
+    expect(() => planRenameEtf(recs, txns, 'AAA', 'not a ticker')).toThrow();
+  });
+  it('remove makes the whole buy Not tagged, even a split one', () => {
+    const p = planRemoveEtf(txns, 'AAA');
+    expect(p.buys).toBe(3);
+    expect(p.updates.find((u) => u.uid === 'b').etfSplit).toEqual([]);
+    expect(p.del).toEqual(['etf|AAA']);
+    expect(planRemoveEtf(txns, 'ZZZ').updates).toEqual([]);
+  });
+  it('after a remove the buys count as Not tagged', () => {
+    const after = txns.map((t) => (t.uid === 'a' ? { ...t, etfSplit: [] } : t));
+    expect(etfShares(after[0])).toEqual({ [UNTAGGED]: 20000 });
+  });
+  it('the sheet lists each ETF with its buy count, Rename, Remove and the add box', () => {
+    const html = renderToStaticMarkup(<ManageEtfsSheet txns={txns} etfs={['AAA', 'BBB', 'ZZZ']} colorOf={() => '#fff'} onClose={() => {}} />);
+    expect(html).toContain('Manage ETFs');
+    expect(html).toContain('3 buys');
+    expect(html).toContain('0 buys');
+    expect(html).toContain('Rename');
+    expect(html).toContain('Remove');
+    expect(html).toContain('New ticker, like BGBL');
+  });
+});

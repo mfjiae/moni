@@ -1,9 +1,11 @@
 // M4 pages (Ken, 25 Oct 2026, "UI locked"): Investments (I-B layout with the I-C stacked chart) and
 // Tuition (U2 bars + list, with the semester-on-semester chip and the same semester a year earlier).
 import { useMemo, useState } from 'react';
+import { Sheet } from './ui.jsx';
+import { renameEtf, removeEtf, addEtf } from '../lib/store.js';
 import { formatCents } from '../lib/money.js';
 import { monthKey, monthName, monthShort, monthLabel, longDay } from '../lib/dates.js';
-import { investView, splitOf, RANGES, UNTAGGED } from '../lib/investing.js';
+import { investView, splitOf, buyCount, cleanTicker, RANGES, UNTAGGED } from '../lib/investing.js';
 import { tuitionView } from '../lib/tuition.js';
 import { Donut, StackedArea } from './charts.jsx';
 import TxnList from './TxnList.jsx';
@@ -19,6 +21,7 @@ const pointLabel = (key, daily) => (daily ? `${Number(key.slice(8))} ${monthShor
 
 export function InvestmentsPage({ txns, today, onOpen, etfs }) {
   const [range, setRange] = useState('6m');
+  const [manage, setManage] = useState(false);
   const v = useMemo(() => investView(txns, range, today, etfs), [txns, range, today, etfs]);
   const colorOf = (id) => (id === UNTAGGED ? UNTAGGED_COLOR : ETF_COLORS[Math.max(etfs.indexOf(id), 0) % ETF_COLORS.length]);
   const nameOf = (id) => (id === UNTAGGED ? 'Not tagged' : id);
@@ -48,6 +51,7 @@ export function InvestmentsPage({ txns, today, onOpen, etfs }) {
         </section>
         <section className="card" aria-label="By ETF">
           <div className="card-head"><span className="card-title head-invest">By ETF</span><span className="small">{RANGE_TEXT[range]}</span></div>
+          <button type="button" className="link manage-link" onClick={() => setManage(true)}>Manage ETFs</button>
           {donut.length
             ? <Donut rows={donut} total={donutTotal} centerLabel="Put in" size={132} amounts colors={donut.map((r) => colorOf(r.id))}
               ariaLabel={`Put in by ETF, total ${formatCents(donutTotal)}`} className="donut-etf" />
@@ -67,7 +71,93 @@ export function InvestmentsPage({ txns, today, onOpen, etfs }) {
       </div>
       <TxnList title="Investing transactions" list={list} today={today} onOpen={onOpen} tagsFor={tagsFor}
         empty="Nothing invested during this time." />
+      {manage && <ManageEtfsSheet txns={txns} etfs={etfs} colorOf={colorOf} onClose={() => setManage(false)} />}
     </div>
+  );
+}
+
+// Manage ETFs (Ken, 25 Oct 2026, design E-A): add, rename, remove. Rename to an existing ticker merges.
+export function ManageEtfsSheet({ txns, etfs, colorOf, onClose }) {
+  const [renaming, setRenaming] = useState(null);   // { ticker, text }
+  const [confirm, setConfirm] = useState(null);     // { type: 'remove' | 'merge', ticker, to?, buys }
+  const [newText, setNewText] = useState('');
+  const [msg, setMsg] = useState(null);             // { text, bad }
+  const say = (text, bad = false) => setMsg({ text, bad });
+  const buys = (tk) => buyCount(txns, tk);
+  const plural = (n) => `${n} ${n === 1 ? 'buy' : 'buys'}`;
+
+  async function add() {
+    try { const tk = await addEtf(newText); setNewText(''); say(`${tk} added`); } catch (e) { say(e.message, true); }
+  }
+  async function startRename() {
+    const { ticker, text } = renaming;
+    let to;
+    try { to = cleanTicker(text); } catch (e) { say(e.message, true); return; }
+    if (to === ticker) { setRenaming(null); return; }
+    if (etfs.includes(to)) { setMsg(null); setConfirm({ type: 'merge', ticker, to, buys: buys(ticker) }); return; }
+    const r = await renameEtf(ticker, to);
+    setRenaming(null); say(`${ticker} renamed to ${r.to}`);
+  }
+  async function doConfirm() {
+    const c = confirm;
+    setConfirm(null);
+    if (c.type === 'merge') { await renameEtf(c.ticker, c.to); setRenaming(null); say(`${c.ticker} merged into ${c.to}`); }
+    else { await removeEtf(c.ticker); say(`${c.ticker} removed`); }
+  }
+
+  return (
+    <Sheet title="Manage ETFs" onClose={onClose}>
+      <div className="sheet-body">
+        {confirm ? (
+          <div className="etf-confirm" role="alertdialog" aria-label="Confirm">
+            <strong>{confirm.type === 'merge' ? `Merge ${confirm.ticker} into ${confirm.to}?` : `Remove ${confirm.ticker}?`}</strong>
+            <span className="small">
+              {confirm.type === 'merge'
+                ? `${plural(confirm.buys)} tagged ${confirm.ticker} will count as ${confirm.to}. This can't be split apart again.`
+                : confirm.buys > 0
+                  ? `${plural(confirm.buys)} use ${confirm.ticker}. They'll become Not tagged so you can tag them again. Nothing else changes.`
+                  : `${confirm.ticker} isn't used by any buy. Nothing else changes.`}
+            </span>
+            <div className="btn-row">
+              <button type="button" className={`btn ${confirm.type === 'merge' ? 'primary' : 'danger'}`} onClick={doConfirm}>{confirm.type === 'merge' ? 'Merge' : 'Remove'}</button>
+              <button type="button" className="btn" onClick={() => setConfirm(null)}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {etfs.length === 0 && <div className="empty small-empty">No ETFs yet. Add one below.</div>}
+            <div className="etf-manage" role="list">
+              {etfs.map((tk) => (
+                <div className="etf-mrow" role="listitem" key={tk}>
+                  <span className="etf-dot" style={{ background: colorOf(tk) }} aria-hidden="true" />
+                  {renaming?.ticker === tk ? (
+                    <>
+                      <input className="input" aria-label={`New name for ${tk}`} autoFocus value={renaming.text} autoCapitalize="characters"
+                        onChange={(e) => setRenaming({ ticker: tk, text: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === 'Enter') startRename(); if (e.key === 'Escape') setRenaming(null); }} />
+                      <button type="button" className="btn small-btn primary" onClick={startRename}>Save</button>
+                      <button type="button" className="btn small-btn" onClick={() => setRenaming(null)}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="etf-mname"><strong>{tk}</strong><span className="small">{plural(buys(tk))}</span></span>
+                      <button type="button" className="btn small-btn" onClick={() => { setMsg(null); setRenaming({ ticker: tk, text: tk }); }}>Rename</button>
+                      <button type="button" className="btn small-btn danger" onClick={() => { setMsg(null); setConfirm({ type: 'remove', ticker: tk, buys: buys(tk) }); }}>Remove</button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="etf-add">
+              <input className="input" aria-label="New ticker" placeholder="New ticker, like BGBL" value={newText} autoCapitalize="characters"
+                onChange={(e) => setNewText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} />
+              <button type="button" className="btn primary" onClick={add} disabled={!newText.trim()}>Add</button>
+            </div>
+          </>
+        )}
+        {msg && <span className={`small ${msg.bad ? 'text-over' : 'text-in'}`} role="status">{msg.text}</span>}
+      </div>
+    </Sheet>
   );
 }
 

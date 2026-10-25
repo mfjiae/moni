@@ -138,3 +138,42 @@ export function investView(txns, range, today, order = []) {
     untagged: inRange.filter((t) => !splitOf(t)).length,
   };
 }
+
+// ---------- Manage ETFs (M4.2): rename, merge, remove. Pure plans; store.js applies them. ----------
+
+// How many buys carry this ticker in their split (valid or not, so nothing is left behind on rename/remove).
+export const buyCount = (txns, ticker) =>
+  txns.filter((t) => t.kind === 'investing' && Array.isArray(t.etfSplit) && t.etfSplit.some((p) => p?.ticker === ticker)).length;
+
+// A split with `from` renamed to `to`. If `to` is already in it, the two amounts are added (no ticker twice).
+export function renameInSplit(split, from, to) {
+  const out = [];
+  for (const p of split) {
+    const ticker = p.ticker === from ? to : p.ticker;
+    const same = out.find((q) => q.ticker === ticker);
+    if (same) same.cents += p.cents;
+    else out.push({ ...p, ticker });
+  }
+  return out;
+}
+
+// Rename `from` to `to`. merge = `to` already exists (in the list or on a buy), so the two become one.
+// Returns { to, merge, buys, updates: [{ uid, etfSplit }], put: record|null, del: [uid] }. Throws on a bad ticker.
+export function planRenameEtf(records, txns, from, toText, now = Date.now()) {
+  const to = cleanTicker(toText);
+  const used = new Set(txns.filter((t) => t.kind === 'investing').flatMap((t) => (Array.isArray(t.etfSplit) ? t.etfSplit.map((p) => p?.ticker) : [])));
+  const merge = to !== from && ((records ?? []).some((r) => r.ticker === to) || used.has(to));
+  if (to === from) return { to, merge: false, buys: 0, updates: [], put: null, del: [] };
+  const updates = txns
+    .filter((t) => t.kind === 'investing' && Array.isArray(t.etfSplit) && t.etfSplit.some((p) => p?.ticker === from))
+    .map((t) => ({ uid: t.uid, etfSplit: renameInSplit(t.etfSplit, from, to) }));
+  return { to, merge, buys: updates.length, updates, put: { uid: etfUid(to), ticker: to, updatedAt: now }, del: [etfUid(from)] };
+}
+
+// Remove an ETF: its buys become Not tagged (the whole buy, even if it was split with another ETF).
+export function planRemoveEtf(txns, ticker) {
+  const updates = txns
+    .filter((t) => t.kind === 'investing' && Array.isArray(t.etfSplit) && t.etfSplit.some((p) => p?.ticker === ticker))
+    .map((t) => ({ uid: t.uid, etfSplit: [] }));
+  return { buys: updates.length, updates, del: [etfUid(ticker)] };
+}

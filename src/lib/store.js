@@ -9,7 +9,7 @@ import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync } from './sync.js';
 import { MAIN, balanceKey, guessAccount, looksLike, transferRow } from './accounts.js';
 import { planChange, planChanges } from './budgets.js';
-import { cleanTicker, etfUid } from './investing.js';
+import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -239,4 +239,33 @@ export async function addEtf(text) {
 export async function setEtfSplit(uid, split) {
   await db.txns.update(uid, { etfSplit: split, updatedAt: Date.now() });
   requestSync();
+}
+
+// Rename an ETF (or merge it into one that exists). Every buy's tag and the synced list follow.
+// Returns { to, merge, buys }.
+export async function renameEtf(from, toText) {
+  const plan = planRenameEtf(await db.etfs.toArray(), await db.txns.toArray(), from, toText);
+  if (!plan.put) return plan;
+  const now = Date.now();
+  await db.transaction('rw', db.txns, db.etfs, db.tombstones, async () => {
+    for (const u of plan.updates) await db.txns.update(u.uid, { etfSplit: u.etfSplit, updatedAt: now });
+    await db.etfs.put({ ...plan.put, updatedAt: now });
+    await db.etfs.bulkDelete(plan.del);
+    await db.tombstones.bulkPut(plan.del.map((key) => ({ key, deletedAt: now })));
+  });
+  requestSync();
+  return plan;
+}
+
+// Remove an ETF from the list. Its buys become Not tagged. Returns { buys }.
+export async function removeEtf(ticker) {
+  const plan = planRemoveEtf(await db.txns.toArray(), ticker);
+  const now = Date.now();
+  await db.transaction('rw', db.txns, db.etfs, db.tombstones, async () => {
+    for (const u of plan.updates) await db.txns.update(u.uid, { etfSplit: u.etfSplit, updatedAt: now });
+    await db.etfs.bulkDelete(plan.del);
+    await db.tombstones.bulkPut(plan.del.map((key) => ({ key, deletedAt: now })));
+  });
+  requestSync();
+  return plan;
 }
