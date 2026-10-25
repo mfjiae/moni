@@ -775,3 +775,40 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 .sem-group + .sem-group > .day-head { border-top: 1px solid var(--border); margin-top: 4px; }
 .sem-group .day-head + .txn, .sem-group .sem-vs + .txn { border-top: 0; }
 @media (max-width: 480px) { .donut-etf { flex-direction: column; align-items: stretch; } .donut-etf .donut { align-self: center; } }
+
+/* ---------- M4.1 (Ken, 25 Oct 2026): Where it went taps, Spending chips, typed transfers ---------- */
+/* Home Where it went (H-B): the lit row shows an "Open" pill where the percent was; the percent column is
+   wide enough for the pill, so nothing moves when it appears. */
+.donut-legend li { position: relative; }
+.donut-home .leg-pct { min-width: 56px; }
+.donut-legend li.has-open .leg-pct { visibility: hidden; }
+.leg-open { position: absolute; right: 0; top: 50%; transform: translateY(-50%); height: 28px; padding: 0 10px; border: 0; border-radius: 14px; background: var(--accent); color: var(--bg); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.leg-open:focus-visible, .cat-chip:focus-visible, .swap-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Spending: category chips (S-B). One scrolling row on a phone, wrapping on desktop. */
+.cat-chips-wrap { position: relative; margin: 0 -16px; }
+.cat-chips { display: flex; gap: 8px; padding: 2px 16px 4px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
+.cat-chips::-webkit-scrollbar { display: none; }
+.cat-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 13px; border-radius: 19px; border: 1px solid var(--border); background: var(--surface-raised); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.cat-chip .n { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.cat-chip.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); color: var(--accent); }
+.cat-chip.on .n { color: var(--accent); }
+@media (min-width: 900px) {
+  .cat-chips { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+}
+.spend-totals { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13.5px; color: var(--muted); padding-bottom: 4px; }
+.spend-totals .link { font-size: 13.5px; }
+
+/* Add transaction: Transfer tab (A-A) */
+.transfer-pick { display: flex; flex-direction: column; gap: 6px; }
+.acc-pick { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--muted); }
+.acc-pick:focus-within { border-color: var(--accent); }
+.acc-pick select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.acc-text { display: flex; flex-direction: column; gap: 1px; }
+.acc-name { font-size: 16px; font-weight: 600; }
+.acc-pick.main .acc-name { color: var(--balance); }
+.acc-pick.save .acc-name { color: var(--save); }
+.swap-btn { align-self: center; width: 40px; height: 40px; margin: 2px 0 -6px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-raised); color: var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+/* Balance estimate chip: "+1 typed" / "estimate" until a CSV covers it */
+.est-chip { align-self: flex-start; margin-top: 4px; padding: 1px 8px; border-radius: 10px; background: #3A1F2E; color: var(--review); font-size: 12px; font-weight: 600; white-space: nowrap; }

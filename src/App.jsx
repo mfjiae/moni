@@ -14,7 +14,7 @@ import TxnSheet from './components/TxnSheet.jsx';
 import Settings from './components/Settings.jsx';
 import Budgets from './components/Budgets.jsx';
 import { syncNow } from './lib/sync.js';
-import { countedView, SAVERS, balanceKey } from './lib/accounts.js';
+import { countedView, estimateBalances, SAVERS, balanceKey } from './lib/accounts.js';
 import { etfList, lastPick } from './lib/investing.js';
 
 const Icon = {
@@ -63,6 +63,7 @@ export default function App() {
     const list = await Promise.all(SAVERS.map((a) => db.meta.get(balanceKey(a.id))));
     return Object.fromEntries(SAVERS.map((a, i) => [a.id, list[i] ?? null]));
   }, []);
+  const est = useMemo(() => (allTxns ? estimateBalances(allTxns, balance ?? null, saverBalances ?? {}) : null), [allTxns, balance, saverBalances]);
   const sync = useLiveQuery(() => db.meta.get('sync'), []);
   const cats = useLiveQuery(() => db.categories.toArray(), []);
   const plans = useLiveQuery(() => db.budgetPlans.toArray(), []);
@@ -138,12 +139,12 @@ export default function App() {
   return (
     <div className="app">
       {tab === 'home' && !page && (
-        <Home txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} sync={sync}
+        <Home txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} est={est} sync={sync}
           onNavigate={go} onDetail={openDetail} onOpen={setOpenId} onToast={setToast} />
       )}
       {(tab === 'home' || tab === 'cashflow') && page && (
         <Detail page={page} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
-          balance={balance} saverBalances={saverBalances} allTxns={allTxns} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail} etfs={etfs}
+          balance={balance} saverBalances={saverBalances} est={est} allTxns={allTxns} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail} etfs={etfs}
           rootLabel={tab === 'cashflow' ? 'Cash flow' : 'Home'} />
       )}
       {tab === 'cashflow' && !page && (
@@ -153,7 +154,7 @@ export default function App() {
       {tab === 'activity' && (
         <Activity txns={txns} today={today} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
       )}
-      {tab === 'add' && <AddTxn today={today} usage={usage} onDone={() => go('home')} onToast={setToast} />}
+      {tab === 'add' && <AddTxn today={today} usage={usage} est={est} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && (
         <Budgets txns={txns} plans={plans} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} onToast={setToast} />
       )}

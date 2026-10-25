@@ -4,11 +4,11 @@ import { monthKey, monthName, longDay, ordinal, daysInMonth } from '../lib/dates
 import { kindForCategory } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, monthCompare, upcomingRent } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
-import { SAVERS } from '../lib/accounts.js';
+import { SAVERS, estimateChip } from '../lib/accounts.js';
 import { Bar, ImportButton, MonthDropdown } from './ui.jsx';
 import { cashFlowCaption } from '../lib/budgets.js';
 import { Icon } from './icons.jsx';
-import { Donut, donutRows } from './charts.jsx';
+import { Donut } from './charts.jsx';
 
 export function SettingsButton({ onClick }) {
   return (
@@ -101,7 +101,9 @@ function CashFlowCard({ month, summary, onClick }) {
 }
 
 // Where it went: small donut with the list right beside it (name, amount, percent).
-function WhereCard({ rows, total, onOpen }) {
+// Every category gets its own row (Ken, 25 Oct 2026; no "Everything else"); tapping one opens Spending
+// for that category (H-B).
+function WhereCard({ rows, total, onOpen, onCategory }) {
   return (
     <section className="card hc where-card" aria-label="Where it went">
       <div className="hc-title">
@@ -110,7 +112,7 @@ function WhereCard({ rows, total, onOpen }) {
       </div>
       {rows.length === 0
         ? <div className="empty small-empty">No spending yet this month.</div>
-        : <Donut rows={rows} total={total} size={null} amounts className="donut-home" />}
+        : <Donut rows={rows} total={total} size={null} amounts className="donut-home" onOpen={onCategory} minSlice={5} />}
     </section>
   );
 }
@@ -128,34 +130,42 @@ function RentPill({ rent }) {
 // Balance card (M2.6, option B): Smart Access and Savings side by side once a saver has money in it.
 // Savings = every saver with a balance above $0 (an emptied one, like xx2103, drops out). Each half opens
 // its account page.
-function BalanceCard({ bal, balance, saverBalances, onDetail }) {
-  const savers = SAVERS.map((a) => ({ ...a, b: saverBalances?.[a.id] })).filter((a) => a.b && a.b.cents > 0);
+function BalanceCard({ bal, balance, saverBalances, est, onDetail }) {
+  // est (M4.1): bank balance + what moni knows happened since (typed entries, the other account's CSV).
+  const mainCents = est?.main?.cents ?? bal;
+  const mainChip = est?.main ? estimateChip(est.main) : (bal !== balance.cents ? 'estimate' : null);
+  const savers = SAVERS.map((a) => ({ ...a, b: est?.savers?.[a.id] ?? saverBalances?.[a.id] })).filter((a) => a.b && a.b.cents > 0);
   const main = (
     <button type="button" className="bal-half" onClick={() => onDetail('account', { account: 'xx6193' })}
-      aria-label={`Smart Access balance ${formatCents(bal)}. Open account`}>
+      aria-label={`Smart Access balance ${formatCents(mainCents)}${mainChip ? `, ${mainChip}` : ''}. Open account`}>
       <span className="balance-label">Smart Access</span>
-      <span className="balance-value">{formatCents(bal)}</span>
-      <span className="balance-note">{savers.length ? 'as of ' : 'Bank as of '}{longDay(balance.asOf)}{bal !== balance.cents ? ' + manual entries' : ''}</span>
+      <span className="balance-value">{formatCents(mainCents)}</span>
+      <span className="balance-note">{savers.length ? 'as of ' : 'Bank as of '}{longDay(balance.asOf)}</span>
+      {mainChip && <span className="est-chip">{mainChip}</span>}
     </button>
   );
   if (!savers.length) return <div className="balance-card">{main}</div>;
   const total = savers.reduce((a, s) => a + s.b.cents, 0);
   const newest = savers.reduce((a, s) => (s.b.asOf > a ? s.b.asOf : a), savers[0].b.asOf);
+  const typed = savers.reduce((a, s) => a + (s.b.typed ?? 0), 0);
+  const other = savers.reduce((a, s) => a + (s.b.other ?? 0), 0);
+  const saveChip = estimateChip({ typed, other });
   return (
     <div className="balance-card split">
       {main}
       <i className="bal-rule" aria-hidden="true" />
       <button type="button" className="bal-half save" onClick={() => onDetail('account', { account: savers[0].id })}
-        aria-label={`Savings balance ${formatCents(total)}. Open savings account`}>
+        aria-label={`Savings balance ${formatCents(total)}${saveChip ? `, ${saveChip}` : ''}. Open savings account`}>
         <span className="balance-label">Savings</span>
         <span className="balance-value">{formatCents(total)}</span>
         <span className="balance-note">{savers.map((s) => s.id).join(' + ')} · {longDay(newest)}</span>
+        {saveChip && <span className="est-chip">{saveChip}</span>}
       </button>
     </div>
   );
 }
 
-export default function Home({ txns, today, month, setMonth, firstMonth, balance, saverBalances, sync, onNavigate, onDetail, onToast }) {
+export default function Home({ txns, today, month, setMonth, firstMonth, balance, saverBalances, est, sync, onNavigate, onDetail, onToast }) {
   const current = monthKey(today);
   const summary = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const reviewCount = useMemo(() => txns.filter((t) => t.kind === 'review').length, [txns]);
@@ -168,7 +178,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
     const totals = {};
     for (const [id, c] of Object.entries(summary.byCategory)) if (c > 0 && kindForCategory(id) === 'spend') totals[id] = c;
     const { total, rows } = categoryRows(totals);
-    return { total, rows: donutRows(rows) };
+    return { total, rows };
   }, [summary]);
 
   if (!txns.length) {
@@ -215,7 +225,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
 
       <div className="home-grid">
         <div className="col">
-          {bal != null && <BalanceCard bal={bal} balance={balance} saverBalances={saverBalances} onDetail={onDetail} />}
+          {bal != null && <BalanceCard bal={bal} balance={balance} saverBalances={saverBalances} est={est} onDetail={onDetail} />}
           <Shortcuts onNavigate={onNavigate} onDetail={onDetail} />
           <SpentSoFar month={month} current={current} today={today} spent={summary.spent} income={summary.income} compare={compare}
             onClick={() => onDetail('spending')} />
@@ -223,7 +233,8 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
 
         <div className="col">
           <CashFlowCard month={month} summary={summary} onClick={() => onDetail('cashflow')} />
-          <WhereCard rows={where.rows} total={where.total} onOpen={() => onDetail('where')} />
+          <WhereCard rows={where.rows} total={where.total} onOpen={() => onDetail('where')}
+            onCategory={(id) => onDetail('spending', { category: id })} />
         </div>
       </div>
     </main>

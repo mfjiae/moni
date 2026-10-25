@@ -6,13 +6,15 @@ import TxnRow from './TxnRow.jsx';
 
 // Day-grouped transactions (CommBank style): a header per day (date, how long ago, net total), paged by whole days.
 // The button says exactly how many more it will show.
-export default function TxnList({ title, list, today, onOpen, empty, metaFor, tagsFor, showAccount = true }) {
+// headSide replaces the count at the top right; toolbar sits between the title row and the list (Spending's chips).
+export default function TxnList({ title, list, today, onOpen, empty, metaFor, tagsFor, showAccount = true, headSide, toolbar }) {
   const [limit, setLimit] = useState(30);
   const { groups, shown } = useMemo(() => groupByDay(list, limit), [list, limit]);
   const next = useMemo(() => groupByDay(list, limit + 30).shown - shown, [list, limit, shown]);
   return (
     <section className="card list txn-box" aria-label={title}>
-      <div className="card-head"><span className="card-title">{title}</span><span className="small">{list.length}</span></div>
+      <div className="card-head"><span className="card-title">{title}</span>{headSide ?? <span className="small">{list.length}</span>}</div>
+      {toolbar}
       {list.length
         ? groups.map((g) => {
           const rel = relativeDay(g.date, today);

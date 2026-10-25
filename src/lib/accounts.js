@@ -147,3 +147,62 @@ export function accountsWithData(txns) {
   const seen = new Set(txns.map(accountOf));
   return ACCOUNTS.filter((a) => isMain(a.id) || seen.has(a.id));
 }
+
+// ---- Typed transfers and balance estimates (M4.1, Ken 25 Oct 2026, A-A) ----
+// A transfer you type in is stored ONCE, as the Smart Access row the bank would show
+// ("Transfer to xx2066" -$200, or "Transfer from xx2066" +$200), so it counts once like a CSV row.
+// When the Smart Access CSV arrives, the bank row replaces it (importer.js). When the saver CSV arrives,
+// the saver row is matched to it (pairTransfers), exactly as for a CSV row.
+
+// The Smart Access-side row for a transfer between Smart Access and a saver. Throws when it isn't one.
+export function transferRow({ from, to, cents }) {
+  if (!Number.isInteger(cents) || cents <= 0) throw new Error('Enter an amount, like 50.00');
+  if (from === to) throw new Error('Pick two different accounts');
+  if (!isMain(from) && !isMain(to)) throw new Error('One side must be Smart Access');
+  const saver = isMain(from) ? to : from;
+  if (!SAVERS.some((a) => a.id === saver)) throw new Error('Pick a savings account');
+  return isMain(from)
+    ? { amountCents: -cents, description: `Transfer to ${saver}`, saver }
+    : { amountCents: cents, description: `Transfer from ${saver}`, saver };
+}
+
+// Balances moni shows: each account's bank balance (from its newest CSV) plus what has happened since
+// that moni already knows about. allTxns = every stored row; balance = Smart Access meta; savers =
+// { id: meta | null }. Returns { main, savers: { id: ... } }, each null (no bank balance yet) or
+// { cents, bank, asOf, extra, typed, other }: typed = typed-in entries counted, other = transfers seen
+// only in the other account's CSV so far.
+// - Smart Access: + typed-in entries dated after its balance (not 'internal'), + saver-side transfers
+//   to/from Smart Access with no Smart Access twin yet, dated after it.
+// - A saver: + Smart Access-side transfers to/from that saver (typed or from the CSV) with no saver twin
+//   yet, dated after its balance.
+export function estimateBalances(allTxns, balance, savers = {}) {
+  const pairs = pairTransfers(allTxns);
+  const pairedMain = new Set(pairs.values());
+  const after = (t, b) => posted(t) > b.asOf;
+  const est = (b) => (b ? { cents: b.cents, bank: b.cents, asOf: b.asOf, extra: 0, typed: 0, other: 0 } : null);
+  const main = est(balance);
+  const out = Object.fromEntries(SAVERS.map((a) => [a.id, est(savers?.[a.id])]));
+  for (const t of allTxns) {
+    const acct = accountOf(t);
+    const other = transferOther(t.description);
+    if (isMain(acct)) {
+      if (main && t.source === 'manual' && t.kind !== 'internal' && after(t, main)) {
+        main.cents += t.amountCents; main.extra += t.amountCents; main.typed++;
+      }
+      const s = other && !isMain(other) ? out[other] : null;
+      if (s && !pairedMain.has(t.uid) && after(t, s)) {
+        s.cents -= t.amountCents; s.extra -= t.amountCents;
+        if (t.source === 'manual') s.typed++; else s.other++;
+      }
+    } else if (main && other && isMain(other) && !pairs.has(t.uid) && after(t, main)) {
+      main.cents -= t.amountCents; main.extra -= t.amountCents; main.other++;
+    }
+  }
+  return { main, savers: out };
+}
+
+// The chip under a balance: "+1 typed", "+2 typed" when every change is typed in, else "estimate".
+export function estimateChip(e) {
+  if (!e || (!e.typed && !e.other)) return null;
+  return e.other ? 'estimate' : `+${e.typed} typed`;
+}

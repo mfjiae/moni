@@ -1,13 +1,14 @@
 // Detail pages opened from Home's boxes and balance (CommBank-style, simple version for M2.5;
 // the full Cash flow pages come in M4).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatCents } from '../lib/money.js';
 import { monthKey, monthLabel, monthName, longDay, ordinal, addDays, shiftMonth } from '../lib/dates.js';
-import { categoryName } from '../lib/categories.js';
+import { categoryName, allCategories } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, balanceHistory, compareMonths, monthCompare, spentByDay, pctChange } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
 import { accountOf, isMain, transferOther, getAccount, accountTxns, accountsWithData, pairTransfers, MAIN } from '../lib/accounts.js';
-import { Bar, MonthSwitch, Chevron, Segmented } from './ui.jsx';
+import { Bar, MonthSwitch, Chevron, Segmented, Sheet } from './ui.jsx';
+import { CategoryIcon } from './icons.jsx';
 import TxnList from './TxnList.jsx';
 import { InvestmentsPage, TuitionPage } from './InvestPages.jsx';
 import { CashFlowPage, WherePage } from './FlowPages.jsx';
@@ -83,26 +84,96 @@ function VsLine({ txns, month, today, pick, better = null }) {
 
 const Dot = ({ color }) => <span className="dot" style={{ background: `var(--${color})` }} />;
 
+// Spending's category filter (S-B, Ken 25 Oct 2026): pure, tested. monthList = the month's spending and
+// investing rows. Returns chips (categories in the month, biggest first, with counts), the shown list and
+// its totals (count, net out: refunds reduce it).
+export function spendFilter(monthList, sel) {
+  const by = new Map();
+  for (const t of monthList) {
+    const c = by.get(t.categoryId) ?? { id: t.categoryId, count: 0, cents: 0 };
+    c.count++; c.cents += -t.amountCents;
+    by.set(t.categoryId, c);
+  }
+  const chips = [...by.values()].sort((a, b) => b.cents - a.cents || b.count - a.count).map((c) => ({ ...c, name: categoryName(c.id) }));
+  const list = sel.length ? monthList.filter((t) => sel.includes(t.categoryId)) : monthList;
+  return { chips, list, count: list.length, out: list.reduce((a, t) => a - t.amountCents, 0) };
+}
+
+function SpendChips({ chips, total, sel, setSel }) {
+  const toggle = (id) => setSel(sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]);
+  return (
+    <div className="cat-chips-wrap">
+      <div className="cat-chips" role="group" aria-label="Filter by category">
+        <button type="button" className={`cat-chip${sel.length ? '' : ' on'}`} aria-pressed={!sel.length} onClick={() => setSel([])}>
+          All <span className="n">{total}</span>
+        </button>
+        {chips.map((c) => (
+          <button type="button" key={c.id} className={`cat-chip${sel.includes(c.id) ? ' on' : ''}`} aria-pressed={sel.includes(c.id)} onClick={() => toggle(c.id)}>
+            {c.name} <span className="n">{c.count}</span>{sel.includes(c.id) && <span aria-hidden="true"> ✓</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// "More filters": every spending category (plus Investing) with this month's count; zero ones dimmed.
+function SpendFilterSheet({ chips, sel, setSel, count, onClose }) {
+  const counts = new Map(chips.map((c) => [c.id, c.count]));
+  const cats = allCategories()
+    .filter((c) => (c.type === 'spend' && !c.hidden) || c.id === 'investing' || counts.has(c.id))
+    .map((c) => ({ id: c.id, name: c.name, count: counts.get(c.id) ?? 0 }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const toggle = (id) => setSel(sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]);
+  return (
+    <Sheet title="Category" onClose={onClose}>
+      <div className="sheet-body">
+        {sel.length > 0 && <button type="button" className="link" style={{ alignSelf: 'flex-start' }} onClick={() => setSel([])}>Clear</button>}
+        <div className="fcats">
+          {cats.map((c) => (
+            <label key={c.id} className={`fcat${c.count ? '' : ' zero'}`}>
+              <input type="checkbox" checked={sel.includes(c.id)} onChange={() => toggle(c.id)} />
+              <CategoryIcon id={c.id} size={16} />
+              <span className="fcat-name">{c.name}</span>
+              <span className="fcat-n">{c.count}</span>
+            </label>
+          ))}
+        </div>
+        <button type="button" className="btn primary" onClick={onClose}>Show {count} {count === 1 ? 'result' : 'results'}</button>
+      </div>
+    </Sheet>
+  );
+}
+
 function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory }) {
   const [noTuition, setNoTuition] = useState('all');
-  const [sel, setSel] = useState(initialCategory ?? null);
+  const [sel, setSel] = useState(initialCategory ? [initialCategory] : []);
+  const [sheet, setSheet] = useState(false);
   const s = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const exclude = useMemo(() => (noTuition === 'without' ? ['tuition'] : []), [noTuition]);
   const { total } = categoryRows(s.byCategory, { exclude });
   const tuition = s.byCategory.tuition ?? 0;
   const compare = useMemo(() => monthCompare(txns, month, today, exclude), [txns, month, today, exclude]);
   const byDay = useMemo(() => spentByDay(txns, month, exclude), [txns, month, exclude]);
-  const list = txns
+  const monthList = useMemo(() => txns
     .filter((t) => monthKey(t.date) === month && (t.kind === 'spend' || t.kind === 'investing'))
-    .filter((t) => !exclude.includes(t.categoryId) && (!sel || t.categoryId === sel))
-    .sort(byNewest);
+    .filter((t) => !exclude.includes(t.categoryId))
+    .sort(byNewest), [txns, month, exclude]);
+  const f = useMemo(() => spendFilter(monthList, sel), [monthList, sel]);
   const prevName = compare ? monthName(compare.prev) : '';
   const hasTuition = useMemo(() => txns.some((t) => t.categoryId === 'tuition' && t.kind === 'spend'), [txns]);
+  const title = sel.length === 1 ? categoryName(sel[0]) : 'Transactions';
+  // Opened for one category (Home's Where it went): on a phone the list sits far down, so jump to it.
+  useEffect(() => {
+    if (!initialCategory || typeof window === 'undefined' || window.innerWidth >= 900) return;
+    const id = requestAnimationFrame(() => document.querySelector('.detail-grid .txn-box')?.scrollIntoView({ block: 'start' }));
+    return () => cancelAnimationFrame(id);
+  }, [initialCategory]);
 
   return (
     <div className="detail-grid">
       <div className="col">
-        <Segmented label="Tuition" value={noTuition} onChange={(v) => { setNoTuition(v); if (v === 'without' && sel === 'tuition') setSel(null); }}
+        <Segmented label="Tuition" value={noTuition} onChange={(v) => { setNoTuition(v); if (v === 'without') setSel((x) => x.filter((id) => id !== 'tuition')); }}
           options={[['all', 'Everything'], ['without', 'Without tuition']]} />
         <Hero label={`Everything that left in ${monthLabel(month)}`} cents={total} cls="text-out">
           <VsLine txns={txns} month={month} today={today} better="down"
@@ -131,18 +202,19 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
           </button>
         )}
       </div>
-      <div className="col">
-        {sel && (
-          <div className="chips">
-            <button type="button" className="chip selected filter-chip" onClick={() => setSel(null)}
-              aria-label={`Showing ${categoryName(sel)} only. Clear filter`}>
-              {categoryName(sel)} <span aria-hidden="true">×</span>
-            </button>
-          </div>
-        )}
-        <TxnList title={sel ? categoryName(sel) : 'Transactions'} list={list} today={today} onOpen={onOpen}
-          empty="No spending this month." />
-      </div>
+      <TxnList title={title} list={f.list} today={today} onOpen={onOpen} empty={sel.length ? 'Nothing in these categories this month.' : 'No spending this month.'}
+        headSide={monthList.length > 0 && <button type="button" className="link" onClick={() => setSheet(true)}>More filters</button>}
+        toolbar={monthList.length > 0 && (
+          <>
+            <SpendChips chips={f.chips} total={monthList.length} sel={sel} setSel={setSel} />
+            <div className="spend-totals">
+              <span>{f.count} {f.count === 1 ? 'payment' : 'payments'}
+                {sel.length > 0 && <> · <button type="button" className="link" onClick={() => setSel([])}>Clear</button></>}</span>
+              <span>{formatCents(Math.abs(f.out))} {f.out >= 0 ? 'out' : 'back'}</span>
+            </div>
+          </>
+        )} />
+      {sheet && <SpendFilterSheet chips={f.chips} sel={sel} setSel={setSel} count={f.count} onClose={() => setSheet(false)} />}
     </div>
   );
 }
@@ -294,7 +366,7 @@ function BalanceChart({ points }) {
 
 // One page for every account (M2.6, option A): chips on top switch account and never move. Each account
 // shows its own statement: balance, balance chart and every row (a saver's matched transfers included).
-function AccountPage({ allTxns, balance, saverBalances, today, onOpen, initialAccount }) {
+function AccountPage({ est, allTxns, balance, saverBalances, today, onOpen, initialAccount }) {
   const accounts = useMemo(() => accountsWithData(allTxns), [allTxns]);
   const [acct, setAcct] = useState(initialAccount ?? MAIN);
   const main = isMain(acct);
@@ -312,14 +384,17 @@ function AccountPage({ allTxns, balance, saverBalances, today, onOpen, initialAc
           ))}
         </div>
       )}
-      <AccountBody key={acct} txns={txns} bankBal={bankBal} main={main} info={info} today={today} onOpen={onOpen} metaFor={metaFor} />
+      <AccountBody key={acct} txns={txns} bankBal={bankBal} est={main ? est?.main : est?.savers?.[acct]} main={main} info={info} today={today} onOpen={onOpen} metaFor={metaFor} />
     </>
   );
 }
 
-function AccountBody({ txns, bankBal: balance, main, info, today, onOpen, metaFor }) {
+function AccountBody({ txns, bankBal: balance, est, main, info, today, onOpen, metaFor }) {
   const [range, setRange] = useState('1y');
-  const bal = main ? currentBalance(balance, txns) : balance?.cents ?? null;
+  const bal = est ? est.cents : main ? currentBalance(balance, txns) : balance?.cents ?? null;
+  const since = est
+    ? [est.typed && `${est.typed} typed`, est.other && `${est.other} from the other account's CSV`].filter(Boolean).join(', ')
+    : 'manual entries';
   const history = useMemo(() => balanceHistory(txns), [txns]);
   const cutoff = useMemo(() => {
     if (range === 'all' || !history.length) return '';
@@ -345,7 +420,7 @@ function AccountBody({ txns, bankBal: balance, main, info, today, onOpen, metaFo
           {balance && (
             <div className="sub-amounts">
               <span>Bank {formatCents(balance.cents)} on {longDay(balance.asOf)}</span>
-              {bal !== balance.cents && <span>Manual entries since {formatCents(bal - balance.cents, { sign: true })}</span>}
+              {bal !== balance.cents && <span>Since then {formatCents(bal - balance.cents, { sign: true })} ({since})</span>}
             </div>
           )}
         </Hero>
@@ -371,7 +446,7 @@ function AccountBody({ txns, bankBal: balance, main, info, today, onOpen, metaFo
 
 const TITLES = { spending: 'Spending', income: 'Money in', saved: 'Saved', invested: 'Investments', tuition: 'Tuition', account: 'Accounts', cashflow: 'Cash flow', where: 'Where it went' };
 
-export default function Detail({ page, txns, allTxns, today, month, setMonth, firstMonth, balance, saverBalances, onBack, onOpen, onDetail, etfs = [], rootLabel = 'Home' }) {
+export default function Detail({ page, txns, allTxns, today, month, setMonth, firstMonth, balance, saverBalances, est, onBack, onOpen, onDetail, etfs = [], rootLabel = 'Home' }) {
   const current = monthKey(today);
   const props = { txns, month, today, onOpen };
   return (
@@ -393,7 +468,7 @@ export default function Detail({ page, txns, allTxns, today, month, setMonth, fi
       {page.name === 'cashflow' && <CashFlowPage {...props} onDetail={onDetail} />}
       {page.name === 'where' && <WherePage {...props} onDetail={onDetail} />}
       {page.name === 'account' && (
-        <AccountPage allTxns={allTxns ?? txns} balance={balance} saverBalances={saverBalances} today={today} onOpen={onOpen} initialAccount={page.account} />
+        <AccountPage allTxns={allTxns ?? txns} balance={balance} saverBalances={saverBalances} est={est} today={today} onOpen={onOpen} initialAccount={page.account} />
       )}
     </main>
   );

@@ -15,18 +15,52 @@ export function donutRows(rows, max = 8) {
   return [...rows.slice(0, max - 1), { id: '__rest', name: 'Everything else', cents }];
 }
 
+// "8%", or "<1%" for a share under 1% (so a small category never reads as "0%").
+export function pctLabel(cents, total) {
+  if (!(total > 0)) return '';
+  const share = cents / total;
+  if (share > 0 && share < 0.01) return '<1%';
+  return `${Math.round(share * 100)}%`;
+}
+
+// Slice lengths around a circle of length C. With `min`, every non-zero slice gets at least `min` so a tiny
+// category stays visible; the bigger ones give up the difference. The list keeps the true percent.
+export function sliceLengths(rows, total, C, min = 0) {
+  const raw = rows.map((r) => (total > 0 ? (Math.max(r.cents, 0) / total) * C : 0));
+  if (!min) return raw;
+  const small = raw.map((x) => x > 0 && x < min);
+  const extra = raw.reduce((a, x, i) => a + (small[i] ? min - x : 0), 0);
+  const big = raw.reduce((a, x, i) => a + (small[i] ? 0 : x), 0);
+  if (!extra || big <= extra) return raw;
+  const f = (big - extra) / big;
+  return raw.map((x, i) => (small[i] ? min : x * f));
+}
+
+const GRAY = '#B8B1A8';
+
 // Donut with a legend. Hover (or tap) a slice or a legend row: that slice stays lit, the rest go gray,
 // and the centre shows only that category's name and amount.
-export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts = false, className = '', colors, ariaLabel }) {
-  const col = (i) => colors?.[i] ?? DONUT_COLORS[i % DONUT_COLORS.length];
+// onOpen (Home, H-B, Ken 25 Oct 2026): a mouse click opens the category straight away; a tap (or keyboard)
+// lights it first and shows an "Open" button on its row, which opens it.
+// Colors: the first 7 rows get the vivid palette, the rest gray.
+export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts = false, className = '', colors, ariaLabel, onOpen, minSlice = 0 }) {
+  const col = (i) => colors?.[i] ?? (i < DONUT_COLORS.length - 1 ? DONUT_COLORS[i] : GRAY);
   const [sel, setSel] = useState(null);
   const [hover, setHover] = useState(null);
+  const ptr = useRef(null);
   const on = hover ?? sel;
   const r = 70, sw = 26, C = 2 * Math.PI * r;
-  const lens = rows.map((row) => (total > 0 ? (row.cents / total) * C : 0));
+  const lens = sliceLengths(rows, total, C, minSlice);
   const slices = rows.map((row, i) => ({ row, i, len: lens[i], start: lens.slice(0, i).reduce((a, x) => a + x, 0) }));
   const picked = on != null ? rows.find((x) => x.id === on) : null;
   const toggle = (id) => setSel((p) => (p === id ? null : id));
+  const down = (e) => { ptr.current = e.pointerType; };
+  const click = (id) => {
+    const mouse = ptr.current === 'mouse';
+    ptr.current = null;
+    if (onOpen && mouse) onOpen(id); else toggle(id);
+  };
+  const stripMin = total * 0.008;
 
   return (
     <div className={`donut-wrap ${className}`}>
@@ -42,7 +76,8 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts 
                 style={{ cursor: 'pointer', transition: 'stroke 120ms' }}
                 onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(row.id)}
                 onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}
-                onClick={() => toggle(row.id)} />
+                onPointerDown={down}
+                onClick={() => click(row.id)} />
             ))}
           </g>
         </svg>
@@ -68,25 +103,33 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts 
           </span>
           <span className="strip-bar" aria-hidden="true">
             {rows.map((row, i) => (
-              <i key={row.id} style={{ flex: row.cents, background: on == null || on === row.id ? col(i) : DIM }} />
+              <i key={row.id} style={{ flex: minSlice ? Math.max(row.cents, stripMin) : row.cents, background: on == null || on === row.id ? col(i) : DIM }} />
             ))}
           </span>
         </div>
       )}
       <ul className="donut-legend">
-        {rows.map((row, i) => (
-          <li key={row.id}>
-            <button type="button" className={`leg${on === row.id ? ' lit' : ''}${on != null && on !== row.id ? ' dim' : ''}`}
-              aria-pressed={sel === row.id} onClick={() => toggle(row.id)}
-              onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(row.id)}
-              onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}>
-              <i className="dot" style={{ background: col(i) }} />
-              <span className="leg-name">{row.name}</span>
-              {amounts && <span className="leg-amt">{formatCents(row.cents)}</span>}
-              <span className="leg-pct">{total > 0 ? `${Math.round((row.cents / total) * 100)}%` : ''}</span>
-            </button>
-          </li>
-        ))}
+        {rows.map((row, i) => {
+          const openBtn = onOpen && sel === row.id;
+          return (
+            <li key={row.id} className={openBtn ? 'has-open' : undefined}>
+              <button type="button" className={`leg${on === row.id ? ' lit' : ''}${on != null && on !== row.id ? ' dim' : ''}`}
+                aria-pressed={sel === row.id} onClick={() => click(row.id)} onPointerDown={down}
+                onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(row.id)}
+                onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}>
+                <i className="dot" style={{ background: col(i) }} />
+                <span className="leg-name">{row.name}</span>
+                {amounts && <span className="leg-amt">{formatCents(row.cents)}</span>}
+                <span className="leg-pct">{pctLabel(row.cents, total)}</span>
+              </button>
+              {openBtn && (
+                <button type="button" className="leg-open" onClick={() => onOpen(row.id)} aria-label={`Open ${row.name}`}>
+                  Open <span aria-hidden="true">›</span>
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

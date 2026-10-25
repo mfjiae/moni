@@ -7,7 +7,7 @@ import { prepareImport, nextBalance } from './importer.js';
 import { kindForCategory, customCategoryId } from './categories.js';
 import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync } from './sync.js';
-import { MAIN, balanceKey, guessAccount, looksLike } from './accounts.js';
+import { MAIN, balanceKey, guessAccount, looksLike, transferRow } from './accounts.js';
 import { planChange, planChanges } from './budgets.js';
 import { cleanTicker, etfUid } from './investing.js';
 
@@ -77,6 +77,23 @@ export async function addManual({ date, time, amountCents, description, category
     source: 'manual',
     kind: kindForCategory(categoryId),
     categoryId,
+    refund: false,
+    note: note ?? '',
+  });
+  requestSync();
+}
+
+// A transfer between Smart Access and a saver, typed in (M4.1). Stored once, as the Smart Access row the
+// bank would show; see transferRow in accounts.js. Throws on a bad pick.
+export async function addTransfer({ date, time, from, to, cents, note }) {
+  const row = transferRow({ from, to, cents });
+  const now = Date.now();
+  await db.txns.add({
+    uid: newUid(), updatedAt: now, createdAt: now,
+    date, postedDate: date, time, amountCents: row.amountCents,
+    description: row.description, rawDescription: row.description,
+    source: 'manual', transfer: true,
+    kind: 'saving', categoryId: 'saving',
     refund: false,
     note: note ?? '',
   });

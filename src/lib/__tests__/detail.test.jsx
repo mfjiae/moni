@@ -67,7 +67,8 @@ describe('Spending opened from a Home category', () => {
   });
   it('lists only that category\'s transactions, with a chip to clear it', () => {
     const out = mk('groceries');
-    expect(out).toContain('Clear filter');
+    expect(out).toContain('>Clear<');
+    expect(out).toMatch(/aria-pressed="true"[^>]*>Groceries/);
     expect(out).toContain('FAKE GROCER');
     expect(out).not.toContain('FAKE CAFE');
   });

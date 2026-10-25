@@ -1,7 +1,7 @@
 // Pure import logic (no database), so it can be tested.
 import { categorize } from './rules.js';
 import { csvUid } from './ids.js';
-import { MAIN, isMain, accountImportKey, balanceKey } from './accounts.js';
+import { MAIN, isMain, accountImportKey, balanceKey, transferOther } from './accounts.js';
 
 const dayNumber = (iso) => {
   const [y, m, d] = iso.split('-').map(Number);
@@ -46,14 +46,21 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
       note: '',
     };
 
-    if (c.kind !== 'saving' && isMain(account)) {
-      const m = manualTxns.find((t) => !usedManual.has(t.uid) &&
-        t.amountCents === r.amountCents &&
-        Math.abs(dayNumber(t.date) - dayNumber(r.date)) <= 4);
+    // A typed transfer (M4.1) only matches the bank's own transfer row to the same saver; other typed
+    // entries only match rows that aren't own-account transfers.
+    const other = transferOther(r.description);
+    if (isMain(account) && (c.kind !== 'saving' || other)) {
+      const near = (t) => !usedManual.has(t.uid) && t.amountCents === r.amountCents &&
+        Math.abs(dayNumber(t.date) - dayNumber(r.date)) <= 4;
+      const m = c.kind === 'saving'
+        ? manualTxns.find((t) => t.transfer && near(t) && transferOther(t.description) === other)
+        : manualTxns.find((t) => !t.transfer && near(t));
       if (m) {
         usedManual.add(m.uid);
         mergedManualIds.push(m.uid);
-        txn = { ...txn, kind: m.kind, categoryId: m.categoryId, note: m.note || m.description };
+        txn = m.transfer
+          ? { ...txn, note: m.note }
+          : { ...txn, kind: m.kind, categoryId: m.categoryId, note: m.note || m.description };
       }
     }
     toAdd.push(txn);
