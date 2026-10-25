@@ -281,10 +281,11 @@ export function ImportButton({ onDone, className = 'btn' }) {
   );
 }
 
-export function Sheet({ title, onClose, children }) {
+export function Sheet({ title, onClose, children, handle = false }) {
   return (
     <div className="overlay" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        {handle && <div className="sheet-handle" aria-hidden="true" />}
         <div className="sheet-head">
           <span className="card-title plain">{title}</span>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>

@@ -106,8 +106,8 @@ export function ManageEtfsSheet({ txns, etfs, colorOf, onClose }) {
   }
 
   return (
-    <Sheet title="Manage ETFs" onClose={onClose}>
-      <div className="sheet-body">
+    <Sheet title="Manage ETFs" onClose={onClose} handle>
+      <div className="sheet-body etf-sheet-body">
         <>
             {etfs.length === 0 && <div className="empty small-empty">No ETFs yet. Add one below.</div>}
             <div className="etf-manage" role="list">

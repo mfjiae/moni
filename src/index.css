@@ -840,3 +840,11 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 .etf-dialog-btns .btn { flex: 1; font-weight: 600; }
 .btn.remove-fill { background: #FF5468; border-color: #FF5468; color: #111010; }
 .btn.merge-fill { background: #2EF2D4; border-color: #2EF2D4; color: #111010; }
+.sheet-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 6px auto 0; }
+.etf-sheet-body { min-height: 400px; gap: 8px; }
+.etf-sheet-body .etf-add { margin-top: auto; border-top: 1px solid var(--border); padding-top: 14px; }
+.etf-mrow { min-height: 56px; padding: 0; }
+.etf-mrow .btn { min-height: 0; padding: 7px 12px; border-radius: 14px; font-size: 13.5px; font-weight: 600; }
+.etf-mrow .btn.danger { color: #FF5468; }
+.etf-mname strong { font-size: 16px; font-weight: 600; }
+.etf-mname .small { color: var(--muted); }
