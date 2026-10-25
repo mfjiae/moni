@@ -787,14 +787,17 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 
 /* Spending: category chips (S-B). One scrolling row on a phone, wrapping on desktop. */
 .cat-chips-wrap { position: relative; margin: 0 -16px; }
-.cat-chips { display: flex; gap: 8px; padding: 2px 16px 4px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
+.cat-chips { display: flex; gap: 8px; padding: 2px 16px 4px; overflow-x: auto; scrollbar-width: none; }
+/* The fade at the right edge is an overlay, not a mask: a mask put thin hairlines through chips on some Android browsers. */
+.cat-chips-wrap::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 36px; background: linear-gradient(90deg, transparent, var(--surface)); pointer-events: none; }
 .cat-chips::-webkit-scrollbar { display: none; }
 .cat-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 13px; border-radius: 19px; border: 1px solid var(--border); background: var(--surface-raised); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; }
 .cat-chip .n { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .cat-chip.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); color: var(--accent); }
 .cat-chip.on .n { color: var(--accent); }
 @media (min-width: 900px) {
-  .cat-chips { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .cat-chips { flex-wrap: wrap; overflow: visible; }
+  .cat-chips-wrap::after { display: none; }
 }
 .spend-totals { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13.5px; color: var(--muted); padding-bottom: 4px; }
 .spend-totals .link { font-size: 13.5px; }
@@ -812,3 +815,9 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 
 /* Balance estimate chip: "+1 typed" / "estimate" until a CSV covers it */
 .est-chip { align-self: flex-start; margin-top: 4px; padding: 1px 8px; border-radius: 10px; background: #3A1F2E; color: var(--review); font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+/* Day by day: the title never wraps; the busiest-day pill shrinks (with ...) instead. */
+.day-card .card-head { gap: 10px; }
+.day-card .card-title { white-space: nowrap; flex: none; }
+.day-card .busy-pill { min-width: 0; }
+@media (max-width: 520px) { .day-card .bd-day, .day-card .busy-pill svg { display: none; } }

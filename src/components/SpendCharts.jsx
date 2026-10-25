@@ -97,7 +97,7 @@ export function DayByDay({ txns, month, today, byDay, exclude = [] }) {
         <span className="card-title head-out">Day by day</span>
         {busiestIdx >= 0 && (
           <span className="busy-pill">
-            <Icon name="flame" size={15} />Busiest day: {longDay(`${month}-${String(busiestIdx + 1).padStart(2, '0')}`).split(' ')[0]} {ordinal(busiestIdx + 1)} &middot; {formatCents(days[busiestIdx])}
+            <Icon name="flame" size={15} />Busiest<span className="bd-day"> day</span>: {longDay(`${month}-${String(busiestIdx + 1).padStart(2, '0')}`).split(' ')[0]} {ordinal(busiestIdx + 1)} &middot; {formatCents(days[busiestIdx])}
           </span>
         )}
       </div>
