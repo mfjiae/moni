@@ -248,7 +248,8 @@ At the start of every session and every stage, tell Ken which update and stage w
   - Tuition page (opened from Spending, "Tuition · By semester" card, shown when there is tuition): U2 bars per semester + payments grouped by semester. Jan–Jun = Autumn, Jul–Dec = Spring (Ken pays at the start of each). Header chip = % vs the semester just before (Spring 2026 vs Autumn 2026; grey 0%, orange up, green down); line under it = "vs <that semester> · ±N% vs <same semester a year earlier>". Refunds reduce their semester. Logic `src/lib/tuition.js`.
   - `TxnList` moved to `src/components/TxnList.jsx` (takes `tagsFor`); `TxnRow` takes `tags`; `Donut` takes `colors` and `ariaLabel`; `StackedArea` chart in charts.jsx.
 - [ ] Later (Ken, 25 Oct 2026, "keep the idea"): savings goal, "save $X by date Y" with a progress bar on the Saved page.
-- [ ] Later: ETF list management in Settings (rename/remove a ticker); today tickers are only added from the transaction sheet.
+- [ ] NEXT UPDATE (Ken, 25 Oct 2026, "note it, don't build yet"): ETF list management in Settings: rename or remove a ticker (fixes typos like BGLB). Today tickers are only added from the transaction sheet. Prototype first, wait for "UI locked", then "build".
+- [ ] Ken, 25 Oct 2026, noted not built: "Everything else" row in Home's Where it went is not clickable and he can't see what is inside it. Ask him what he wants (e.g. tap it to list the small categories, or open Spending without a filter).
 - [ ] M5: (Ken, 13 Oct 2026) when the Bills tab is built, the "Rent due in N days" pill in the top right of Home opens the Bills page (it is only a warning until then).
 - [ ] M5: Bills tab (Ken, 25 Oct 2026: his bills are fortnightly, monthly and half-yearly; tuition is the half-yearly one, paid at the start of each semester): bills this month, next bill date, bill calendar, 3-month bar overview, expand to all months, review option; weekly/fortnightly/monthly bills; install polish
 
