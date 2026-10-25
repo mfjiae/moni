@@ -11,11 +11,12 @@ export const DEFAULT_REPO = 'mfjiae/moni-data';
 export const getSyncConfig = () => db.meta.get('sync');
 
 async function readLocal() {
-  const [txns, rules, categories, budgets, tombs, balance, ...saverBalances] = await Promise.all([
+  const [txns, rules, categories, budgets, etfs, tombs, balance, ...saverBalances] = await Promise.all([
     db.txns.toArray(),
     db.userRules.toArray(),
     db.categories.toArray(),
     db.budgetPlans.toArray(),
+    db.etfs.toArray(),
     db.tombstones.toArray(),
     db.meta.get('balance'),
     ...SAVERS.map((a) => db.meta.get(balanceKey(a.id))),
@@ -29,6 +30,7 @@ async function readLocal() {
     rules,
     categories,
     budgets,
+    etfs,
     tombstones: Object.fromEntries(tombs.map((t) => [t.key, t.deletedAt])),
     balance: balance ?? null,
     balances,
@@ -38,8 +40,8 @@ async function readLocal() {
 // Apply the merged snapshot without losing edits made while the sync was running:
 // a record is only overwritten by a version at least as new, and only deleted by a newer delete.
 async function writeLocal(merged) {
-  await db.transaction('rw', db.txns, db.userRules, db.categories, db.budgetPlans, db.tombstones, db.meta, async () => {
-    for (const [table, list] of [[db.txns, merged.txns], [db.userRules, merged.rules], [db.categories, merged.categories], [db.budgetPlans, merged.budgets]]) {
+  await db.transaction('rw', db.txns, db.userRules, db.categories, db.budgetPlans, db.etfs, db.tombstones, db.meta, async () => {
+    for (const [table, list] of [[db.txns, merged.txns], [db.userRules, merged.rules], [db.categories, merged.categories], [db.budgetPlans, merged.budgets], [db.etfs, merged.etfs]]) {
       const current = new Map((await table.toArray()).map((r) => [r.uid, r]));
       // (categories are keyed by id, which is also their uid)
       const puts = list.filter((r) => {

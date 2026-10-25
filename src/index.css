@@ -746,3 +746,32 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 .bud-prev-row strong { font-weight: 600; font-variant-numeric: tabular-nums; }
 .bud-prev-row.total { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 2px; }
 .bud-bad { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- M4: Investments, ETF tags, Tuition ---------- */
+.stacked { display: block; overflow: visible; }
+.donut-etf { flex-direction: row; align-items: center; gap: 18px; }
+.donut-etf .donut-legend { flex: 1; }
+.donut-etf .leg { width: calc(100% + 16px); min-height: 34px; font-size: 14.5px; }
+.donut-etf .leg-amt { font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.donut-etf .leg-pct { min-width: 38px; text-align: right; }
+.donut-etf .donut-name { font-size: 12.5px; }
+.donut-etf .donut-amount { font-size: 15px; }
+.etf-tag { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: color-mix(in srgb, var(--invest) 22%, var(--surface)); color: #D6A8FF; vertical-align: 1px; }
+.etf-tag.none { background: #3A1F2E; color: var(--review); }
+.etf-split { display: flex; flex-direction: column; gap: 8px; }
+.etf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.etf-row.multi { grid-template-columns: minmax(0, 1fr) 130px 44px; }
+.etf-amt { text-align: right; }
+.etf-left { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--border); }
+.etf-split .link { padding: 6px 0; }
+.sem-bars { display: block; margin-top: 4px; }
+.sem-head .day-date { white-space: nowrap; min-width: 0; }
+.sem-head .day-total { white-space: nowrap; }
+.sem-chip { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.sem-chip.up { background: #3A231C; color: var(--out); }
+.sem-chip.down { background: color-mix(in srgb, var(--in) 14%, var(--surface)); color: var(--in); }
+.sem-chip.flat { background: var(--surface-raised); color: var(--muted); }
+.sem-vs { margin-top: -6px; padding-bottom: 4px; }
+.sem-group + .sem-group > .day-head { border-top: 1px solid var(--border); margin-top: 4px; }
+.sem-group .day-head + .txn, .sem-group .sem-vs + .txn { border-top: 0; }
+@media (max-width: 480px) { .donut-etf { flex-direction: column; align-items: stretch; } .donut-etf .donut { align-self: center; } }

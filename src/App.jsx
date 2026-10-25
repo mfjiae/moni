@@ -15,6 +15,7 @@ import Settings from './components/Settings.jsx';
 import Budgets from './components/Budgets.jsx';
 import { syncNow } from './lib/sync.js';
 import { countedView, SAVERS, balanceKey } from './lib/accounts.js';
+import { etfList, lastPick } from './lib/investing.js';
 
 const Icon = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
@@ -65,6 +66,9 @@ export default function App() {
   const sync = useLiveQuery(() => db.meta.get('sync'), []);
   const cats = useLiveQuery(() => db.categories.toArray(), []);
   const plans = useLiveQuery(() => db.budgetPlans.toArray(), []);
+  const etfRecords = useLiveQuery(() => db.etfs.toArray(), []);
+  const etfs = useMemo(() => (txns && etfRecords ? etfList(etfRecords, txns) : []), [etfRecords, txns]);
+  const lastEtf = useMemo(() => (txns ? lastPick(txns) : null), [txns]);
 
   // Your renamed / hidden / added categories (synced) apply everywhere.
   const catsReady = useMemo(() => { setCategoryOverrides(cats ?? []); return cats !== undefined; }, [cats]);
@@ -126,7 +130,7 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  if (txns === undefined || !catsReady || plans === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
+  if (txns === undefined || !catsReady || plans === undefined || etfRecords === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
 
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
   const open = openId != null ? (txns.find((t) => t.uid === openId) ?? allTxns.find((t) => t.uid === openId)) : null;
@@ -139,12 +143,12 @@ export default function App() {
       )}
       {(tab === 'home' || tab === 'cashflow') && page && (
         <Detail page={page} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
-          balance={balance} saverBalances={saverBalances} allTxns={allTxns} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail}
+          balance={balance} saverBalances={saverBalances} allTxns={allTxns} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail} etfs={etfs}
           rootLabel={tab === 'cashflow' ? 'Cash flow' : 'Home'} />
       )}
       {tab === 'cashflow' && !page && (
         <Detail page={{ name: 'cashflow' }} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
-          balance={balance} onBack={() => go('home')} onOpen={setOpenId} onDetail={openDetail} rootLabel="Home" />
+          balance={balance} onBack={() => go('home')} onOpen={setOpenId} onDetail={openDetail} etfs={etfs} rootLabel="Home" />
       )}
       {tab === 'activity' && (
         <Activity txns={txns} today={today} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
@@ -155,7 +159,7 @@ export default function App() {
       )}
       {tab === 'settings' && <Settings sync={sync} txns={txns} onToast={setToast} />}
 
-      {open && <TxnSheet key={open.uid} txn={open} usage={usage} onClose={() => setOpenId(null)} onToast={setToast} />}
+      {open && <TxnSheet key={open.uid} txn={open} usage={usage} etfs={etfs} lastEtf={lastEtf} onClose={() => setOpenId(null)} onToast={setToast} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
 

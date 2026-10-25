@@ -40,6 +40,9 @@ db.version(3).stores({ transactions: null, rules: null });
 // `budgetPlans`, from-month records with a uid so they sync (see budgets.js).
 db.version(4).stores({ budgets: null, budgetPlans: 'uid, categoryId' });
 
+// v5 (M4): your ETF list (tickers you tag investing transactions with; synced). See investing.js.
+db.version(5).stores({ etfs: 'uid' });
+
 // Ask the browser not to evict our data under storage pressure.
 // Some browsers (Firefox, Zen) show a prompt, so only ask once per device.
 export async function requestPersistentStorage() {

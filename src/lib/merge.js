@@ -1,12 +1,13 @@
 // Pure merge logic for syncing between devices (tested).
 //
-// A snapshot = { version, txns, rules, categories, budgets, tombstones, balance, balances }.
+// A snapshot = { version, txns, rules, categories, budgets, etfs, tombstones, balance, balances }.
 // (balances = the savings accounts' balances by account id, added in M2.6; `balance` stays Smart Access.
 // An older app version drops `balances`; the next sync from a new version puts them back.)
 // (categories = your renames, hidden flags and custom categories; added in M2.5.
 // An older app version simply ignores them, and the next sync from a new one puts them back.)
 // (budgets = from-month budget records, added in M3. An older app version drops them when it writes;
 // the next sync from a new version puts them back.)
+// (etfs = your ETF list, added in M4; same rule as budgets. ETF tags live on the transactions themselves.)
 // - Every record has a stable `uid` and an `updatedAt` (ms).
 // - The newest edit of a record wins.
 // - A tombstone { uid: deletedAt } removes a record unless it was edited after the delete.
@@ -31,6 +32,7 @@ export function normalize(s) {
     rules: [...(s?.rules ?? [])].sort(byUid),
     categories: [...(s?.categories ?? [])].sort(byUid),
     budgets: [...(s?.budgets ?? [])].sort(byUid),
+    etfs: [...(s?.etfs ?? [])].sort(byUid),
     tombstones: { ...(s?.tombstones ?? {}) },
     balance: s?.balance ?? null,
     balances: { ...(s?.balances ?? {}) },
@@ -70,6 +72,7 @@ export function mergeSnapshots(local, remote) {
     rules: mergeRecords(l.rules, r.rules, tombstones),
     categories: mergeRecords(l.categories, r.categories, tombstones),
     budgets: mergeRecords(l.budgets, r.budgets, tombstones),
+    etfs: mergeRecords(l.etfs, r.etfs, tombstones),
     tombstones,
     balance: newerBalance(l.balance, r.balance),
     balances: Object.fromEntries([...new Set([...Object.keys(l.balances), ...Object.keys(r.balances)])]

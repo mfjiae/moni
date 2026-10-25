@@ -21,7 +21,8 @@ export const amountClass = (t) => {
 };
 
 // showAccount: tag rows from a savings account (Activity, Income...); account pages turn it off.
-export default function TxnRow({ t, meta, onOpen, showAccount = true }) {
+// tags: small chips after the name, e.g. the ETFs an investing transaction bought: [{ text, cls }].
+export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
   const cat = t.kind === 'review' ? 'To sort' : categoryName(t.categoryId);
   const muted = t.kind === 'saving' || t.kind === 'internal';
   return (
@@ -32,6 +33,7 @@ export default function TxnRow({ t, meta, onOpen, showAccount = true }) {
           {t.kind === 'review' ? <span className="text-review">{cat}</span> : cat}
           {meta ? ` · ${meta}` : ''}
           {t.source === 'manual' ? ' · manual' : ''}
+          {tags?.map((g) => <span key={g.text} className={`etf-tag${g.cls ? ` ${g.cls}` : ''}`}>{g.text}</span>)}
         </span>
       </div>
       <span className={`amount${amountClass(t)}`}>{formatCents(t.amountCents, { sign: true })}</span>

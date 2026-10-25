@@ -23,9 +23,8 @@ describe('Detail "vs last month" line', () => {
     const out = html('spending');
     expect(out).toContain('13% less than September (by the 13th)');   // 130 now vs 150 by the 13th
   });
-  it('income, saved and invested show it too', () => {
+  it('income and saved show it too (Invested became the M4 Investments page)', () => {
     expect(html('income')).toContain('% more than September');         // 3000 vs 1000
-    expect(html('invested')).toContain('Same as September');   // 50 vs 50
     expect(html('saved')).toContain('than September');
   });
   it('a past month compares the whole month only', () => {
@@ -43,8 +42,14 @@ describe('Detail "vs last month" line', () => {
     expect(out).toContain('Day by day');
     expect(out.match(/class="cal-day /g).length).toBeGreaterThanOrEqual(31);
   });
-  it('income, saved and invested have 6 mini bars', () => {
-    for (const n of ['income', 'saved', 'invested']) expect(html(n).match(/class="mini-col/g)).toHaveLength(6);
+  it('income and saved have 6 mini bars', () => {
+    for (const n of ['income', 'saved']) expect(html(n).match(/class="mini-col/g)).toHaveLength(6);
+  });
+  it('invested opens the M4 Investments page with ranges and no month switcher', () => {
+    const out = html('invested');
+    expect(out).toContain('Investments');
+    expect(out).toContain('Put in, last 6 months');
+    expect(out).not.toContain('Previous month');
   });
   it('account page has 1W, 1M and 6M', () => {
     const out = html('account');

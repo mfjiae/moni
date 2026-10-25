@@ -17,7 +17,8 @@ export function donutRows(rows, max = 8) {
 
 // Donut with a legend. Hover (or tap) a slice or a legend row: that slice stays lit, the rest go gray,
 // and the centre shows only that category's name and amount.
-export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts = false, className = '' }) {
+export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts = false, className = '', colors, ariaLabel }) {
+  const col = (i) => colors?.[i] ?? DONUT_COLORS[i % DONUT_COLORS.length];
   const [sel, setSel] = useState(null);
   const [hover, setHover] = useState(null);
   const on = hover ?? sel;
@@ -31,12 +32,12 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts 
     <div className={`donut-wrap ${className}`}>
       <div className="donut" style={size ? { width: size, height: size } : undefined}>
         <svg viewBox="0 0 200 200" width={size || '100%'} height={size || '100%'} role="img"
-          aria-label={`Spending by category, total ${formatCents(total)}`}>
+          aria-label={ariaLabel ?? `Spending by category, total ${formatCents(total)}`}>
           <g transform="rotate(-90 100 100)">
             <circle cx="100" cy="100" r={r} fill="none" stroke="var(--track)" strokeWidth={sw} opacity="0.5" />
             {slices.map(({ row, i, len, start: st }) => (
               <circle key={row.id} cx="100" cy="100" r={r} fill="none" strokeWidth={on === row.id ? sw + 4 : sw}
-                stroke={on == null || on === row.id ? DONUT_COLORS[i % DONUT_COLORS.length] : DIM}
+                stroke={on == null || on === row.id ? col(i) : DIM}
                 strokeDasharray={`${Math.max(len - 2, 0.5)} ${C - Math.max(len - 2, 0.5)}`} strokeDashoffset={-st}
                 style={{ cursor: 'pointer', transition: 'stroke 120ms' }}
                 onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(row.id)}
@@ -67,7 +68,7 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts 
           </span>
           <span className="strip-bar" aria-hidden="true">
             {rows.map((row, i) => (
-              <i key={row.id} style={{ flex: row.cents, background: on == null || on === row.id ? DONUT_COLORS[i % DONUT_COLORS.length] : DIM }} />
+              <i key={row.id} style={{ flex: row.cents, background: on == null || on === row.id ? col(i) : DIM }} />
             ))}
           </span>
         </div>
@@ -79,7 +80,7 @@ export function Donut({ rows, total, centerLabel = 'Spent', size = 190, amounts 
               aria-pressed={sel === row.id} onClick={() => toggle(row.id)}
               onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(row.id)}
               onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}>
-              <i className="dot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+              <i className="dot" style={{ background: col(i) }} />
               <span className="leg-name">{row.name}</span>
               {amounts && <span className="leg-amt">{formatCents(row.cents)}</span>}
               <span className="leg-pct">{total > 0 ? `${Math.round((row.cents / total) * 100)}%` : ''}</span>
@@ -154,5 +155,45 @@ export function MiniBars({ points, color, selectedKey }) {
         </span>
       ))}
     </div>
+  );
+}
+
+// Running total stacked by band (Investments page, I-C chart). bands: [{ id, name, color, values[] }] bottom first;
+// labels: one per point. Hover or tap a band to light only it.
+export function StackedArea({ bands, labels, ariaLabel }) {
+  const [sel, setSel] = useState(null);
+  const [hover, setHover] = useState(null);
+  const on = hover ?? sel;
+  const W = 420, H = 168, B = 140, T = 8, L = 4, R = 4;
+  const n = labels.length;
+  if (!bands.length || n === 0) return <div className="empty small-empty">Nothing put in during this time.</div>;
+  const pts = n === 1 ? 2 : n;
+  const vals = (b) => (n === 1 ? [b.values[0], b.values[0]] : b.values);
+  const tops = [];
+  let base = Array(pts).fill(0);
+  for (const b of bands) { const v = vals(b); const top = base.map((x, i) => x + Math.max(v[i], 0)); tops.push({ b, low: base, top }); base = top; }
+  const max = Math.max(1, ...base);
+  const x = (i) => L + (i * (W - L - R)) / (pts - 1);
+  const y = (v) => B - (v / max) * (B - T);
+  const every = Math.max(1, Math.ceil(n / 6));
+  return (
+    <svg className="stacked" viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={ariaLabel}>
+      {tops.map(({ b, low, top }) => {
+        const d = `M${top.map((v, i) => `${x(i)} ${y(v)}`).join(' L')} L${low.map((v, i) => `${x(i)} ${y(v)}`).reverse().join(' L')} Z`;
+        return (
+          <path key={b.id} d={d} fill={on == null || on === b.id ? b.color : DIM} style={{ cursor: 'pointer', transition: 'fill 120ms' }}
+            onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(b.id)}
+            onPointerLeave={(e) => e.pointerType === 'mouse' && setHover(null)}
+            onClick={() => setSel((p) => (p === b.id ? null : b.id))}>
+            <title>{`${b.name}: ${formatCents(vals(b)[pts - 1])}`}</title>
+          </path>
+        );
+      })}
+      <line x1="0" x2={W} y1={B} y2={B} stroke="var(--border)" />
+      {labels.map((lab, i) => ((n - 1 - i) % every === 0 ? (
+        <text key={i} x={n === 1 ? W / 2 : x(i)} y={H - 6} textAnchor={n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}
+          fill="var(--muted)" fontSize="16">{lab}</text>
+      ) : null))}
+    </svg>
   );
 }

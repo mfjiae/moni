@@ -9,6 +9,7 @@ import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync } from './sync.js';
 import { MAIN, balanceKey, guessAccount, looksLike } from './accounts.js';
 import { planChange, planChanges } from './budgets.js';
+import { cleanTicker, etfUid } from './investing.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -205,4 +206,20 @@ export async function setBudget(categoryId, cents, fromMonth, alsoPast = false) 
 export async function setBudgets(changes, fromMonth, alsoPast = false) {
   const records = await db.budgetPlans.toArray();
   await applyBudgetPlan(planChanges(records, changes, fromMonth, alsoPast, Date.now()));
+}
+
+// ---------- Investments (M4; synced) ----------
+
+// Add a ticker to your ETF list. Returns the cleaned ticker.
+export async function addEtf(text) {
+  const ticker = cleanTicker(text);
+  await db.etfs.put({ uid: etfUid(ticker), ticker, updatedAt: Date.now() });
+  requestSync();
+  return ticker;
+}
+
+// Tag an investing transaction: split = [{ ticker, cents }] adding up to its size, or [] for Not tagged.
+export async function setEtfSplit(uid, split) {
+  await db.txns.update(uid, { etfSplit: split, updatedAt: Date.now() });
+  requestSync();
 }

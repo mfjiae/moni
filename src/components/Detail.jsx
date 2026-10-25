@@ -2,14 +2,14 @@
 // the full Cash flow pages come in M4).
 import { useMemo, useState } from 'react';
 import { formatCents } from '../lib/money.js';
-import { monthKey, monthLabel, monthName, longDay, relativeDay, ordinal, addDays, shiftMonth } from '../lib/dates.js';
+import { monthKey, monthLabel, monthName, longDay, ordinal, addDays, shiftMonth } from '../lib/dates.js';
 import { categoryName } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, balanceHistory, compareMonths, monthCompare, spentByDay, pctChange } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
 import { accountOf, isMain, transferOther, getAccount, accountTxns, accountsWithData, pairTransfers, MAIN } from '../lib/accounts.js';
 import { Bar, MonthSwitch, Chevron, Segmented } from './ui.jsx';
-import TxnRow from './TxnRow.jsx';
-import { groupByDay } from '../lib/daygroups.js';
+import TxnList from './TxnList.jsx';
+import { InvestmentsPage, TuitionPage } from './InvestPages.jsx';
 import { CashFlowPage, WherePage } from './FlowPages.jsx';
 import { MiniBars } from './charts.jsx';
 import { PaceChart, DayByDay } from './SpendCharts.jsx';
@@ -21,36 +21,6 @@ function Back({ onBack, label }) {
     <button type="button" className="btn ghost back" onClick={onBack}>
       <Chevron dir="left" /> {label}
     </button>
-  );
-}
-
-// Day-grouped transactions (CommBank style): a header per day (date, how long ago, net total), paged by whole days.
-// The button says exactly how many more it will show.
-function TxnList({ title, list, today, onOpen, empty, metaFor, showAccount = true }) {
-  const [limit, setLimit] = useState(30);
-  const { groups, shown } = useMemo(() => groupByDay(list, limit), [list, limit]);
-  const next = useMemo(() => groupByDay(list, limit + 30).shown - shown, [list, limit, shown]);
-  return (
-    <section className="card list txn-box" aria-label={title}>
-      <div className="card-head"><span className="card-title">{title}</span><span className="small">{list.length}</span></div>
-      {list.length
-        ? groups.map((g) => {
-          const rel = relativeDay(g.date, today);
-          return (
-            <div key={g.date} role="group" aria-label={longDay(g.date)}>
-              <div className="day-head">
-                <span className="day-date">{longDay(g.date)}{rel && <span className="day-rel">{rel}</span>}</span>
-                <span className="day-total">{formatCents(g.netCents, { sign: true })}</span>
-              </div>
-              {g.items.map((t) => <TxnRow key={t.uid} t={t} onOpen={onOpen} meta={metaFor?.(t)} showAccount={showAccount} />)}
-            </div>
-          );
-        })
-        : <div className="empty small-empty">{empty}</div>}
-      {list.length > shown && (
-        <button type="button" className="btn ghost more" onClick={() => setLimit(limit + 30)}>Show {next} more &middot; {list.length - shown} left</button>
-      )}
-    </section>
   );
 }
 
@@ -127,6 +97,7 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
     .filter((t) => !exclude.includes(t.categoryId) && (!sel || t.categoryId === sel))
     .sort(byNewest);
   const prevName = compare ? monthName(compare.prev) : '';
+  const hasTuition = useMemo(() => txns.some((t) => t.categoryId === 'tuition' && t.kind === 'spend'), [txns]);
 
   return (
     <div className="detail-grid">
@@ -153,6 +124,12 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
           <span className="link-text">By category <Chevron /></span>
         </button>
         <DayByDay key={month} txns={txns} month={month} today={today} byDay={byDay} exclude={exclude} />
+        {hasTuition && (
+          <button type="button" className="card link-card" onClick={() => onDetail('tuition')}>
+            <span className="card-title head-out">Tuition</span>
+            <span className="link-text">By semester <Chevron /></span>
+          </button>
+        )}
       </div>
       <div className="col">
         {sel && (
@@ -262,27 +239,6 @@ function SavedPage({ txns, month, today, onOpen }) {
         <p className="hint">Transfers between your own accounts, counted once each (from the Smart Access side when both CSVs are in). They're never income or spending. Savings interest shows under Money in.</p>
       </div>
       <TxnList title="Transfers" list={list} today={today} onOpen={onOpen} empty="No savings transfers this month." />
-    </div>
-  );
-}
-
-function InvestedPage({ txns, month, today, onOpen }) {
-  const list = txns.filter((t) => monthKey(t.date) === month && t.kind === 'investing').sort(byNewest);
-  const total = list.reduce((a, t) => a - t.amountCents, 0);
-  const allTime = txns.filter((t) => t.kind === 'investing').reduce((a, t) => a - t.amountCents, 0);
-  const prev = summarizeMonth(txns, shiftMonth(month, -1)).invested;
-  return (
-    <div className="detail-grid">
-      <div className="col">
-        <Hero label={`Invested in ${monthLabel(month)}`} cents={total} cls="text-invest">
-          <VsLine txns={txns} month={month} today={today} pick={(x) => x.invested} />
-        </Hero>
-        <MiniCard txns={txns} month={month} color="invest" head="head-invest" pick={(x) => x.invested} />
-        <RowsCard title="Breakdown" head="head-invest"
-          rows={[['This month', formatCents(total)], [monthName(shiftMonth(month, -1)), formatCents(prev)], ['All time', formatCents(allTime)]]} />
-        <p className="hint">Betashares and CommSec contributions. moni sees what you buy, not what it's worth; the investing page with prices comes with M4.</p>
-      </div>
-      <TxnList title="Contributions" list={list} today={today} onOpen={onOpen} empty="Nothing invested this month." />
     </div>
   );
 }
@@ -413,9 +369,9 @@ function AccountBody({ txns, bankBal: balance, main, info, today, onOpen, metaFo
   );
 }
 
-const TITLES = { spending: 'Spending', income: 'Money in', saved: 'Saved', invested: 'Invested', account: 'Accounts', cashflow: 'Cash flow', where: 'Where it went' };
+const TITLES = { spending: 'Spending', income: 'Money in', saved: 'Saved', invested: 'Investments', tuition: 'Tuition', account: 'Accounts', cashflow: 'Cash flow', where: 'Where it went' };
 
-export default function Detail({ page, txns, allTxns, today, month, setMonth, firstMonth, balance, saverBalances, onBack, onOpen, onDetail, rootLabel = 'Home' }) {
+export default function Detail({ page, txns, allTxns, today, month, setMonth, firstMonth, balance, saverBalances, onBack, onOpen, onDetail, etfs = [], rootLabel = 'Home' }) {
   const current = monthKey(today);
   const props = { txns, month, today, onOpen };
   return (
@@ -424,7 +380,7 @@ export default function Detail({ page, txns, allTxns, today, month, setMonth, fi
         <Back onBack={onBack} label={page.from ? TITLES[page.from.name] : rootLabel} />
         <div className="header">
           <div className="title">{TITLES[page.name]}</div>
-          {page.name !== 'account' && (
+          {!['account', 'invested', 'tuition'].includes(page.name) && (
             <MonthSwitch month={month} setMonth={setMonth} current={current} first={firstMonth} />
           )}
         </div>
@@ -432,7 +388,8 @@ export default function Detail({ page, txns, allTxns, today, month, setMonth, fi
       {page.name === 'spending' && <SpendingPage key={page.category ?? 'all'} {...props} onDetail={onDetail} initialCategory={page.category} />}
       {page.name === 'income' && <IncomePage {...props} />}
       {page.name === 'saved' && <SavedPage {...props} />}
-      {page.name === 'invested' && <InvestedPage {...props} />}
+      {page.name === 'invested' && <InvestmentsPage txns={txns} today={today} onOpen={onOpen} etfs={etfs} />}
+      {page.name === 'tuition' && <TuitionPage txns={txns} today={today} onOpen={onOpen} />}
       {page.name === 'cashflow' && <CashFlowPage {...props} onDetail={onDetail} />}
       {page.name === 'where' && <WherePage {...props} onDetail={onDetail} />}
       {page.name === 'account' && (
