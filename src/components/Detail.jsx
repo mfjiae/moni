@@ -99,19 +99,31 @@ export function spendFilter(monthList, sel) {
   return { chips, list, count: list.length, out: list.reduce((a, t) => a - t.amountCents, 0) };
 }
 
+// Desktop shows "Top 6 + more" (Ken, 26 Oct 2026): All, the six biggest, then "+N more" which opens the rest in place.
+// A picked category always stays visible. On a phone nothing changes: one scrolling row with every chip (the hiding is desktop-only CSS).
+const TOP_CHIPS = 6;
 function SpendChips({ chips, total, sel, setSel }) {
+  const [open, setOpen] = useState(false);
   const toggle = (id) => setSel(sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]);
+  const isExtra = (c, i) => i >= TOP_CHIPS && !sel.includes(c.id);
+  const hidden = chips.filter(isExtra).length;
+  const canExpand = chips.length > TOP_CHIPS && (open || hidden > 0);
   return (
     <div className="cat-chips-wrap">
-      <div className="cat-chips" role="group" aria-label="Filter by category">
+      <div className={`cat-chips${open ? ' show-all' : ''}`} role="group" aria-label="Filter by category">
         <button type="button" className={`cat-chip${sel.length ? '' : ' on'}`} aria-pressed={!sel.length} onClick={() => setSel([])}>
           All <span className="n">{total}</span>
         </button>
-        {chips.map((c) => (
-          <button type="button" key={c.id} className={`cat-chip${sel.includes(c.id) ? ' on' : ''}`} aria-pressed={sel.includes(c.id)} onClick={() => toggle(c.id)}>
+        {chips.map((c, i) => (
+          <button type="button" key={c.id} className={`cat-chip${sel.includes(c.id) ? ' on' : ''}${isExtra(c, i) ? ' extra' : ''}`} aria-pressed={sel.includes(c.id)} onClick={() => toggle(c.id)}>
             {c.name} <span className="n">{c.count}</span>{sel.includes(c.id) && <span aria-hidden="true"> ✓</span>}
           </button>
         ))}
+        {canExpand && (
+          <button type="button" className="cat-chip cat-more" aria-expanded={open} onClick={() => setOpen((x) => !x)}>
+            {open ? 'Show less' : `+${hidden} more`}
+          </button>
+        )}
       </div>
     </div>
   );

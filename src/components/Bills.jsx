@@ -7,7 +7,8 @@ import { longDay, daysBetween, monthShort, monthKey } from '../lib/dates.js';
 import { billsView, detectBills, EVERY, stepDate } from '../lib/bills.js';
 import { saveBill, deleteBill, confirmBill, dismissBill } from '../lib/store.js';
 
-const FILTERS = [['all', 'All'], ['monthly', 'Monthly'], ['fortnightly', 'Fortnightly'], ['halfyearly', 'Half-yearly']];
+// Shortest rhythm first (Ken, 26 Oct 2026): All, (Weekly when there is one), Fortnightly, Monthly, Half-yearly.
+const FILTERS = [['all', 'All'], ['fortnightly', 'Fortnightly'], ['monthly', 'Monthly'], ['halfyearly', 'Half-yearly']];
 const monthYear = (iso) => `${monthShort(monthKey(iso))} ${iso.slice(0, 4)}`;
 // $1.9k / $45, like the prototype's per-month bars.
 const kDollars = (c) => (c >= 100000 ? `$${(c / 100000).toFixed(1)}k` : `$${Math.round(c / 100)}`);
@@ -20,6 +21,13 @@ function whenText(item, today) {
   return `${longDay(item.due)} · ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`}`;
 }
 
+// "Later" rows show the exact date and distance like the rows above them (Ken, 26 Oct 2026).
+// Tuition stays month-only: its date follows the semester start, so a day would be a guess.
+const isTuitionBill = (bill) => bill.key === 'cat:tuition' || bill.categoryId === 'tuition';
+function laterText(item, today) {
+  return isTuitionBill(item.bill) ? `${monthYear(item.due)} · later` : whenText(item, today);
+}
+
 function TimelineRow({ item, today, onEdit, onDetail, last }) {
   const { bill, status } = item;
   const dot = status === 'paid' ? 'paid' : status === 'late' ? 'late' : status === 'later' ? 'later' : 'due';
@@ -28,9 +36,9 @@ function TimelineRow({ item, today, onEdit, onDetail, last }) {
     <div className="tl">
       <span className="tl-rail" aria-hidden="true"><i className={`tl-dot ${dot}${soon ? ' soon' : ''}`} />{!last && <b />}</span>
       <div className="tl-body">
-        <button type="button" className="tl-main" onClick={() => onEdit(bill)} aria-label={`${bill.name}, ${formatCents(item.cents)}, ${status === 'later' ? `${monthYear(item.due)}, later` : whenText(item, today)}. Edit bill`}>
+        <button type="button" className="tl-main" onClick={() => onEdit(bill)} aria-label={`${bill.name}, ${formatCents(item.cents)}, ${status === 'later' ? laterText(item, today) : whenText(item, today)}. Edit bill`}>
           <span className={`small tl-when${soon ? ' soon' : ''}${status === 'late' ? ' text-review' : ''}`}>
-            {status === 'later' ? `${monthYear(item.due)} · later` : whenText(item, today)}
+            {status === 'later' ? laterText(item, today) : whenText(item, today)}
           </span>
           <span className="tl-line">
             <span className="tl-name">{bill.name}</span>
@@ -88,6 +96,8 @@ export default function Bills({ txns, bills, today, usage, onDetail, onToast }) 
   const v = useMemo(() => billsView(bills, txns, today, filter), [bills, txns, today, filter]);
   const found = useMemo(() => detectBills(txns, bills, today), [txns, bills, today]);
   const hasWeekly = bills.some((b) => b.every === 'weekly' && !b.dismissed);
+  // Same test as the Tuition card on Spending: show the way in only when there is tuition.
+  const hasTuition = useMemo(() => txns.some((t) => t.categoryId === 'tuition' && t.kind === 'spend'), [txns]);
   const filters = hasWeekly ? [...FILTERS.slice(0, 1), ['weekly', 'Weekly'], ...FILTERS.slice(1)] : FILTERS;
 
   const past = v.timeline.filter((x) => x.due < today || (x.status === 'paid' && x.due <= today));
@@ -98,7 +108,10 @@ export default function Bills({ txns, bills, today, usage, onDetail, onToast }) 
     <main className="screen bills">
       <header className="header">
         <div className="title">Bills</div>
-        <button type="button" className="btn small-btn add-bill" onClick={() => setEditing({})}>+ Add bill</button>
+        <div className="bills-actions">
+          {hasTuition && <button type="button" className="btn small-btn add-bill tuition-pill" onClick={() => onDetail('tuition')}>Tuition ›</button>}
+          <button type="button" className="btn small-btn add-bill" onClick={() => setEditing({})}>+ Add bill</button>
+        </div>
       </header>
       <div className="fchips bill-filters" role="group" aria-label="How often">
         {filters.map(([id, label]) => (

@@ -795,9 +795,13 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 .cat-chip .n { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .cat-chip.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); color: var(--accent); }
 .cat-chip.on .n { color: var(--accent); }
+.cat-chip.cat-more { display: none; color: var(--accent); }
 @media (min-width: 900px) {
   .cat-chips { flex-wrap: wrap; overflow: visible; }
   .cat-chips-wrap::after { display: none; }
+  /* Top 6 + more: the chips past the sixth hide until "+N more" is tapped; a picked one stays (no .extra). */
+  .cat-chips:not(.show-all) .cat-chip.extra { display: none; }
+  .cat-chip.cat-more { display: inline-flex; }
 }
 .spend-totals { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13.5px; color: var(--muted); padding-bottom: 4px; }
 .spend-totals .link { font-size: 13.5px; }
@@ -853,6 +857,7 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 button.rent-pill { font: inherit; font-size: 13px; cursor: pointer; }
 .bills .header { display: flex; justify-content: space-between; align-items: center; }
 .bills .add-bill { color: var(--accent); font-weight: 600; }
+.bills-actions { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
 .bill-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 14px; gap: 8px; }
 .bill-fc { flex: none; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .bill-fc.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
