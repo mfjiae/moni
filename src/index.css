@@ -121,7 +121,7 @@ a { color: var(--accent); text-decoration: none; }
   background: var(--surface); border-top: 1px solid var(--border);
   padding: 0 8px env(safe-area-inset-bottom);
 }
-.nav-inner { max-width: 480px; margin: 0 auto; height: 74px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; }
+.nav-inner { max-width: 480px; margin: 0 auto; height: 74px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: center; }
 .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); background: none; border: 0; padding: 8px 0; min-height: 44px; }
 .nav-item.active { color: var(--accent); }
 .nav-icon { position: relative; display: inline-flex; }
@@ -848,3 +848,55 @@ button.bud-row:hover { background: rgba(255, 255, 255, 0.03); }
 .etf-mrow .btn.danger { color: #FF5468; }
 .etf-mname strong { font-size: 16px; font-weight: 600; }
 .etf-mname .small { color: var(--muted); }
+
+/* M5 Bills (page C timeline; Ken, 26 Oct 2026) */
+button.rent-pill { font: inherit; font-size: 13px; cursor: pointer; }
+.bills .header { display: flex; justify-content: space-between; align-items: center; }
+.bills .add-bill { color: var(--accent); font-weight: 600; }
+.bill-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 14px; gap: 8px; }
+.bill-fc { flex: none; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.bill-fc.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.bills-grid { display: flex; flex-direction: column; gap: 16px; }
+.bills-grid > .card, .bills-grid .col > .card { display: flex; flex-direction: column; gap: 12px; }
+.bills-grid .col { display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 900px) {
+  .bills-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; gap: 18px; }
+}
+.timeline { display: flex; flex-direction: column; }
+.tl { display: flex; gap: 14px; }
+.tl-rail { display: flex; flex-direction: column; align-items: center; width: 14px; flex: none; }
+.tl-rail b { flex: 1; width: 2px; background: var(--border); display: block; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; display: block; margin-top: 16px; flex: none; }
+.tl-dot.paid { background: var(--in); }
+.tl-dot.due { background: var(--out); }
+.tl-dot.due.soon { box-shadow: 0 0 0 4px #3A2A1E; }
+.tl-dot.late { background: var(--review); }
+.tl-dot.later { background: var(--border); }
+.tl-body { flex: 1; min-width: 0; padding-bottom: 8px; display: flex; flex-direction: column; }
+.tl-main { display: flex; flex-direction: column; gap: 4px; text-align: left; background: none; border: 0; color: inherit; padding: 10px 0 6px; min-height: 44px; width: 100%; font: inherit; }
+.tl-when.soon { color: #FFCB9A; }
+.tl-line { display: flex; align-items: center; gap: 10px; }
+.tl-name { flex: 1; min-width: 0; font-weight: 600; font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tl-amt.muted { color: var(--muted); }
+.tl-link { align-self: flex-start; padding: 2px 0 6px; font-size: 14px; }
+.tl-today { margin-top: -4px; }
+.bill-chip { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 10px; background: var(--surface-raised); color: var(--muted); white-space: nowrap; }
+.bill-months { display: flex; flex-direction: column; gap: 12px; }
+.bill-month { display: flex; align-items: center; gap: 12px; }
+.bm-label { width: 34px; flex: none; }
+.bm-label.cur { color: var(--text); font-weight: 600; }
+.bm-track { flex: 1; height: 12px; border-radius: 6px; background: var(--surface-raised); display: flex; overflow: hidden; }
+.bm-paid { height: 100%; background: var(--save); }
+.bm-due { height: 100%; background: var(--out); }
+.bm-amt { width: 60px; text-align: right; font-size: 13.5px; font-variant-numeric: tabular-nums; flex: none; }
+.found-card { background: #3A1F2E; border-color: var(--review); }
+.found-chip { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 10px; background: var(--surface); color: var(--review); }
+.found-text { font-size: 15px; }
+.every-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.every-chip { min-height: 44px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-raised); color: var(--muted); font-size: 14px; font-weight: 600; }
+.every-chip.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.sheet-actions .btn { flex: 1; }
+.confirm-lead { font-size: 15px; line-height: 1.5; color: var(--muted); }
+.confirm-box { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.confirm-box .row { display: flex; justify-content: space-between; font-size: 16px; }

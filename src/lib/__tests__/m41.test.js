@@ -92,13 +92,13 @@ describe('estimateBalances', () => {
     expect(e.savers.xx2066.cents).toBe(294849);
   });
 
-  it('rows on or before the balance date are already in it', () => {
+  it('bank rows on or before the balance date are already in it; a typed one ON that day counts (M5 fix)', () => {
     const all = [
       manualTransfer({ date: '2026-10-24', amountCents: 20000, description: 'Transfer from xx2066' }),
       csv({ uid: 'c1', date: '2026-10-20', amountCents: -10000, description: 'Transfer to xx2066 NetBank' }),
     ];
     const e = estimateBalances(all, main, savers);
-    expect(e.main.cents).toBe(245);
+    expect(e.main.cents).toBe(245 + 20000);   // Ken, 25 Oct 2026: same-day typed entries move the balance
     expect(e.savers.xx2066.cents).toBe(324849 - 20000); // the typed one is after the saver's 21 Oct balance
   });
 

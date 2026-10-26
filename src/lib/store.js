@@ -10,6 +10,7 @@ import { requestSync } from './sync.js';
 import { MAIN, balanceKey, guessAccount, looksLike, transferRow } from './accounts.js';
 import { planChange, planChanges } from './budgets.js';
 import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.js';
+import { manualUid, skipUid, billFromSuggestion } from './bills.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -268,4 +269,35 @@ export async function removeEtf(ticker) {
   });
   requestSync();
   return plan;
+}
+
+// ---------- Bills (M5; synced) ----------
+
+// Add or change a bill. rec = { uid?, name, cents, every, anchor, categoryId, key?, since? }.
+export async function saveBill(rec) {
+  const now = Date.now();
+  const uid = rec.uid ?? manualUid(newUid());
+  await db.bills.put({ since: rec.anchor, ...rec, uid, updatedAt: now });
+  requestSync();
+  return uid;
+}
+
+export async function deleteBill(uid) {
+  await db.transaction('rw', db.bills, db.tombstones, async () => {
+    await db.bills.delete(uid);
+    await db.tombstones.put({ key: uid, deletedAt: Date.now() });
+  });
+  requestSync();
+}
+
+// "Looks like a bill" -> Add (with the rhythm picked in the sheet).
+export async function confirmBill(suggestion, every) {
+  await db.bills.put(billFromSuggestion(suggestion, every));
+  requestSync();
+}
+
+// "Not a bill": remembered (synced) so moni never suggests it again.
+export async function dismissBill(key) {
+  await db.bills.put({ uid: skipUid(key), key, dismissed: true, updatedAt: Date.now() });
+  requestSync();
 }

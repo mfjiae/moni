@@ -13,6 +13,7 @@ import AddTxn from './components/AddTxn.jsx';
 import TxnSheet from './components/TxnSheet.jsx';
 import Settings from './components/Settings.jsx';
 import Budgets from './components/Budgets.jsx';
+import Bills from './components/Bills.jsx';
 import { syncNow } from './lib/sync.js';
 import { countedView, estimateBalances, SAVERS, balanceKey } from './lib/accounts.js';
 import { etfList, lastPick } from './lib/investing.js';
@@ -21,6 +22,7 @@ const Icon = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
   budgets: <path d="M4 7h16M4 12h10M4 17h6" />,
   cashflow: <path d="M6 20V10M12 20V4M18 20v-7" />,
+  bills: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4M8 15h3" /></>,
   activity: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" /></>,
 };
@@ -68,6 +70,7 @@ export default function App() {
   const cats = useLiveQuery(() => db.categories.toArray(), []);
   const plans = useLiveQuery(() => db.budgetPlans.toArray(), []);
   const etfRecords = useLiveQuery(() => db.etfs.toArray(), []);
+  const bills = useLiveQuery(() => db.bills.toArray(), []);
   const etfs = useMemo(() => (txns && etfRecords ? etfList(etfRecords, txns) : []), [etfRecords, txns]);
   const lastEtf = useMemo(() => (txns ? lastPick(txns) : null), [txns]);
 
@@ -131,7 +134,7 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  if (txns === undefined || !catsReady || plans === undefined || etfRecords === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
+  if (txns === undefined || !catsReady || plans === undefined || etfRecords === undefined || bills === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
 
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
   const open = openId != null ? (txns.find((t) => t.uid === openId) ?? allTxns.find((t) => t.uid === openId)) : null;
@@ -139,17 +142,20 @@ export default function App() {
   return (
     <div className="app">
       {tab === 'home' && !page && (
-        <Home txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} est={est} sync={sync}
+        <Home txns={txns} bills={bills} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} est={est} sync={sync}
           onNavigate={go} onDetail={openDetail} onOpen={setOpenId} onToast={setToast} />
       )}
-      {(tab === 'home' || tab === 'cashflow') && page && (
+      {(tab === 'home' || tab === 'cashflow' || tab === 'bills') && page && (
         <Detail page={page} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
           balance={balance} saverBalances={saverBalances} est={est} allTxns={allTxns} onBack={closeDetail} onOpen={setOpenId} onDetail={openDetail} etfs={etfs}
-          rootLabel={tab === 'cashflow' ? 'Cash flow' : 'Home'} />
+          rootLabel={tab === 'cashflow' ? 'Cash flow' : tab === 'bills' ? 'Bills' : 'Home'} />
       )}
       {tab === 'cashflow' && !page && (
         <Detail page={{ name: 'cashflow' }} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
           balance={balance} onBack={() => go('home')} onOpen={setOpenId} onDetail={openDetail} etfs={etfs} rootLabel="Home" />
+      )}
+      {tab === 'bills' && !page && (
+        <Bills txns={txns} bills={bills} today={today} usage={usage} onDetail={openDetail} onToast={setToast} />
       )}
       {tab === 'activity' && (
         <Activity txns={txns} today={today} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
@@ -174,6 +180,7 @@ export default function App() {
             <span className="add-label">Add transaction</span>
           </button>
           <NavItem id="cashflow" label="Cash flow" tab={tab} go={go} />
+          <NavItem id="bills" label="Bills" tab={tab} go={go} />
           <NavItem id="activity" label="Activity" tab={tab} go={go} badge={reviewCount} />
           <NavItem id="settings" label="Settings" tab={tab} go={go} className="desktop-only" />
         </div>

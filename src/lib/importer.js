@@ -89,7 +89,7 @@ export function nextBalance(rows, current, account = MAIN) {
 export function currentBalance(balance, txns) {
   if (!balance) return null;
   const extra = txns
-    .filter((t) => t.source === 'manual' && t.date > balance.asOf && t.kind !== 'internal')
+    .filter((t) => t.source === 'manual' && t.date >= balance.asOf && t.kind !== 'internal')   // same day counts (M5 fix)
     .reduce((s, t) => s + t.amountCents, 0);
   return balance.cents + extra;
 }

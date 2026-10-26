@@ -178,7 +178,10 @@ export function transferRow({ from, to, cents }) {
 export function estimateBalances(allTxns, balance, savers = {}) {
   const pairs = pairTransfers(allTxns);
   const pairedMain = new Set(pairs.values());
-  const after = (t, b) => posted(t) > b.asOf;
+  // A typed entry dated ON the bank balance's day counts too (Ken, 25 Oct 2026): a CSV has a date, not a
+  // time, so a pending purchase typed after importing that day's CSV isn't in the bank number yet. When the
+  // bank row arrives, the import replaces the typed one, so it is never counted twice.
+  const after = (t, b) => (t.source === 'manual' ? posted(t) >= b.asOf : posted(t) > b.asOf);
   const est = (b) => (b ? { cents: b.cents, bank: b.cents, asOf: b.asOf, extra: 0, typed: 0, other: 0 } : null);
   const main = est(balance);
   const out = Object.fromEntries(SAVERS.map((a) => [a.id, est(savers?.[a.id])]));

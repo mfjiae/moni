@@ -3,6 +3,7 @@ import { formatCents } from '../lib/money.js';
 import { monthKey, monthName, longDay, ordinal, daysInMonth } from '../lib/dates.js';
 import { kindForCategory } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, monthCompare, upcomingRent } from '../lib/summary.js';
+import { rentFromBills } from '../lib/bills.js';
 import { currentBalance } from '../lib/importer.js';
 import { SAVERS, estimateChip } from '../lib/accounts.js';
 import { Bar, ImportButton, MonthDropdown } from './ui.jsx';
@@ -118,12 +119,14 @@ function WhereCard({ rows, total, onOpen, onCategory }) {
 }
 
 // Small alarm pill in the top right for a bill coming up. Just a warning: it doesn't open anything.
-function RentPill({ rent }) {
+// M5 (H1): the pill now opens the Bills page.
+function RentPill({ rent, onOpen }) {
   const when = rent.days === 0 ? 'today' : rent.days === 1 ? 'tomorrow' : `in ${rent.days} days`;
   return (
-    <span className="rent-pill" role="status" title={`${longDay(rent.date)} \u00b7 about ${formatCents(rent.cents)}`}>
-      <Icon name="alarm" size={16} />Rent due {when}
-    </span>
+    <button type="button" className="rent-pill" onClick={onOpen} title={`${longDay(rent.date)} \u00b7 about ${formatCents(rent.cents)}`}
+      aria-label={`Rent due ${when}. Open Bills`}>
+      <Icon name="alarm" size={16} />Rent due {when} <span aria-hidden="true">›</span>
+    </button>
   );
 }
 
@@ -165,13 +168,18 @@ function BalanceCard({ bal, balance, saverBalances, est, onDetail }) {
   );
 }
 
-export default function Home({ txns, today, month, setMonth, firstMonth, balance, saverBalances, est, sync, onNavigate, onDetail, onToast }) {
+export default function Home({ txns, bills = [], today, month, setMonth, firstMonth, balance, saverBalances, est, sync, onNavigate, onDetail, onToast }) {
   const current = monthKey(today);
   const summary = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const reviewCount = useMemo(() => txns.filter((t) => t.kind === 'review').length, [txns]);
   const bal = useMemo(() => currentBalance(balance, txns), [balance, txns]);
   const compare = useMemo(() => monthCompare(txns, month, today), [txns, month, today]);
-  const rent = useMemo(() => (month === current ? upcomingRent(txns, today) : null), [txns, today, month, current]);
+  // Rent pill: from your Rent bill when there is one (same date as the Bills page), else guessed from past rent.
+  const rent = useMemo(() => {
+    if (month !== current) return null;
+    const fromBill = rentFromBills(bills, txns, today);
+    return fromBill === undefined ? upcomingRent(txns, today) : fromBill;
+  }, [txns, bills, today, month, current]);
 
   // Spending categories only (investing has its own page)
   const where = useMemo(() => {
@@ -200,7 +208,7 @@ export default function Home({ txns, today, month, setMonth, firstMonth, balance
     <main className="screen home">
       <header className="header home-head">
         <MonthDropdown month={month} setMonth={setMonth} current={current} first={firstMonth} />
-        {rent && <RentPill rent={rent} />}
+        {rent && <RentPill rent={rent} onOpen={() => onNavigate('bills')} />}
         {reviewCount > 0 && (
           <button type="button" className="sort-pill" onClick={() => onNavigate('activity', 'review')}
             aria-label={`${reviewCount} transactions to sort`}>
