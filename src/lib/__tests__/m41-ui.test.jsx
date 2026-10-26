@@ -63,7 +63,8 @@ describe('Add transaction: Transfer tab', () => {
 });
 
 describe('Home balance after a typed transfer', () => {
-  it('moves both halves and shows "+1 typed"', () => {
+  // UI bundle 2 (Ken, 26 Oct 2026): the "+1 typed" chip is gone; each half gets a breakdown button with a rose dot.
+  it('moves both halves and shows the breakdown button with a dot on each', () => {
     const balance = { cents: 245, asOf: '2026-10-24' };
     const saverBalances = { xx2066: { cents: 324849, asOf: '2026-10-21' }, xx2103: null };
     const typed = { uid: 'm1', source: 'manual', transfer: true, kind: 'saving', categoryId: 'saving', date: '2026-10-25', postedDate: '2026-10-25',
@@ -73,6 +74,8 @@ describe('Home balance after a typed transfer', () => {
       balance={balance} saverBalances={saverBalances} est={est} sync={{ token: 'x' }} onNavigate={noop} onDetail={noop} onToast={noop} />);
     expect(out).toContain('$202.45');
     expect(out).toContain('$3,048.49');
-    expect((out.match(/\+1 typed/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(out).not.toContain('+1 typed');
+    expect((out.match(/class="bal-more"/g) || []).length).toBe(2);
+    expect((out.match(/class="bal-dot"/g) || []).length).toBe(2);
   });
 });

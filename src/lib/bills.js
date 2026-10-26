@@ -13,6 +13,7 @@
 import { addDays, daysBetween, daysInMonth, monthKey, shiftMonth } from './dates.js';
 import { merchantKey } from './rules.js';
 import { semesterOf, semesterKey } from './tuition.js';
+import { UTS_DUE, UTS_COVER } from './uts.js';
 
 export const EVERY = {
   weekly: { label: 'Weekly', days: 7, tol: 3, min: 5, max: 9 },
@@ -43,7 +44,18 @@ export function stepDate(anchor, every, n) {
 }
 
 // Every due date from `from` to `to` (inclusive).
+// Tuition (Ken, 26 Oct 2026): UTS fees are due on the Thursday of Week 3 of each session (uts.js), not every
+// 6 months, so the known UTS dates are used; plain half-yearly steps only fill in outside that list.
 export function dueDates(bill, from, to) {
+  if (bill.key === 'cat:tuition' && bill.every === 'halfyearly') {
+    const known = UTS_DUE.filter((d) => d >= from && d <= to);
+    const guessed = plainDueDates(bill, from, to).filter((d) => d < UTS_COVER.from || d > UTS_COVER.to);
+    return [...guessed, ...known].sort();
+  }
+  return plainDueDates(bill, from, to);
+}
+
+function plainDueDates(bill, from, to) {
   const e = EVERY[bill.every];
   if (!e || !bill.anchor) return [];
   const span = e.days ?? e.months * 30.44;

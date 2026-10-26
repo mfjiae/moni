@@ -7,7 +7,7 @@ import { categoryName, allCategories } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, balanceHistory, compareMonths, monthCompare, spentByDay, pctChange } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
 import { accountOf, isMain, transferOther, getAccount, accountTxns, accountsWithData, pairTransfers, MAIN } from '../lib/accounts.js';
-import { Bar, MonthSwitch, Chevron, Segmented, Sheet } from './ui.jsx';
+import { Bar, MonthSwitch, Chevron, Segmented, Sheet, TypedSwitch } from './ui.jsx';
 import { CategoryIcon } from './icons.jsx';
 import TxnList from './TxnList.jsx';
 import { InvestmentsPage, TuitionPage } from './InvestPages.jsx';
@@ -86,8 +86,9 @@ const Dot = ({ color }) => <span className="dot" style={{ background: `var(--${c
 
 // Spending's category filter (S-B, Ken 25 Oct 2026): pure, tested. monthList = the month's spending and
 // investing rows. Returns chips (categories in the month, biggest first, with counts), the shown list and
-// its totals (count, net out: refunds reduce it).
-export function spendFilter(monthList, sel) {
+// its totals (count, net out: refunds reduce it). typedOnly (UI bundle 2, Ken 26 Oct 2026): only entries you
+// typed in by hand (pending or settled manual); the chips keep counting the whole month.
+export function spendFilter(monthList, sel, typedOnly = false) {
   const by = new Map();
   for (const t of monthList) {
     const c = by.get(t.categoryId) ?? { id: t.categoryId, count: 0, cents: 0 };
@@ -95,7 +96,8 @@ export function spendFilter(monthList, sel) {
     by.set(t.categoryId, c);
   }
   const chips = [...by.values()].sort((a, b) => b.cents - a.cents || b.count - a.count).map((c) => ({ ...c, name: categoryName(c.id) }));
-  const list = sel.length ? monthList.filter((t) => sel.includes(t.categoryId)) : monthList;
+  const picked = sel.length ? monthList.filter((t) => sel.includes(t.categoryId)) : monthList;
+  const list = typedOnly ? picked.filter((t) => t.source === 'manual') : picked;
   return { chips, list, count: list.length, out: list.reduce((a, t) => a - t.amountCents, 0) };
 }
 
@@ -160,6 +162,7 @@ function SpendFilterSheet({ chips, sel, setSel, count, onClose }) {
 function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory }) {
   const [noTuition, setNoTuition] = useState('all');
   const [sel, setSel] = useState(initialCategory ? [initialCategory] : []);
+  const [typedOnly, setTypedOnly] = useState(false);
   const [sheet, setSheet] = useState(false);
   const s = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const exclude = useMemo(() => (noTuition === 'without' ? ['tuition'] : []), [noTuition]);
@@ -171,7 +174,7 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
     .filter((t) => monthKey(t.date) === month && (t.kind === 'spend' || t.kind === 'investing'))
     .filter((t) => !exclude.includes(t.categoryId))
     .sort(byNewest), [txns, month, exclude]);
-  const f = useMemo(() => spendFilter(monthList, sel), [monthList, sel]);
+  const f = useMemo(() => spendFilter(monthList, sel, typedOnly), [monthList, sel, typedOnly]);
   const prevName = compare ? monthName(compare.prev) : '';
   const hasTuition = useMemo(() => txns.some((t) => t.categoryId === 'tuition' && t.kind === 'spend'), [txns]);
   const title = sel.length === 1 ? categoryName(sel[0]) : 'Transactions';
@@ -214,7 +217,8 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
           </button>
         )}
       </div>
-      <TxnList title={title} list={f.list} today={today} onOpen={onOpen} empty={sel.length ? 'Nothing in these categories this month.' : 'No spending this month.'}
+      <TxnList title={title} list={f.list} today={today} onOpen={onOpen}
+        empty={typedOnly ? 'No typed entries. Everything is matched to the bank.' : sel.length ? 'Nothing in these categories this month.' : 'No spending this month.'}
         headSide={monthList.length > 0 && <button type="button" className="link" onClick={() => setSheet(true)}>More filters</button>}
         toolbar={monthList.length > 0 && (
           <>
@@ -222,7 +226,10 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
             <div className="spend-totals">
               <span>{f.count} {f.count === 1 ? 'payment' : 'payments'}
                 {sel.length > 0 && <> · <button type="button" className="link" onClick={() => setSel([])}>Clear</button></>}</span>
-              <span>{formatCents(Math.abs(f.out))} {f.out >= 0 ? 'out' : 'back'}</span>
+              <span className="spend-totals-right">
+                <span>{formatCents(Math.abs(f.out))} {f.out >= 0 ? 'out' : 'back'}</span>
+                <TypedSwitch on={typedOnly} onChange={setTypedOnly} />
+              </span>
             </div>
           </>
         )} />

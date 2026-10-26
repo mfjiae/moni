@@ -16,6 +16,7 @@ import Budgets from './components/Budgets.jsx';
 import Bills from './components/Bills.jsx';
 import { syncNow } from './lib/sync.js';
 import { countedView, estimateBalances, SAVERS, balanceKey } from './lib/accounts.js';
+import { markTyped } from './lib/typed.js';
 import { etfList, lastPick } from './lib/investing.js';
 
 const Icon = {
@@ -59,8 +60,9 @@ export default function App() {
   // allTxns = every account's rows as stored; txns = what moni counts (Smart Access + saver-only rows,
   // each transfer once; see accounts.js). Every total uses txns; the account pages use allTxns.
   const allTxns = useLiveQuery(() => db.txns.toArray(), []);
-  const txns = useMemo(() => (allTxns ? countedView(allTxns) : undefined), [allTxns]);
   const balance = useLiveQuery(() => db.meta.get('balance'), []);
+  // Typed entries get `typed: 'pending' | 'manual'` for the list tags (UI bundle 2, typed.js).
+  const txns = useMemo(() => (allTxns ? markTyped(countedView(allTxns), balance?.asOf) : undefined), [allTxns, balance]);
   const saverBalances = useLiveQuery(async () => {
     const list = await Promise.all(SAVERS.map((a) => db.meta.get(balanceKey(a.id))));
     return Object.fromEntries(SAVERS.map((a, i) => [a.id, list[i] ?? null]));

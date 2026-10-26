@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { formatCents } from '../lib/money.js';
 import { monthKey, monthName, longDay, ordinal, daysInMonth } from '../lib/dates.js';
 import { kindForCategory } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, monthCompare, upcomingRent } from '../lib/summary.js';
 import { rentFromBills } from '../lib/bills.js';
 import { currentBalance } from '../lib/importer.js';
-import { SAVERS, estimateChip } from '../lib/accounts.js';
+import { SAVERS } from '../lib/accounts.js';
+import { shortName } from '../lib/activity.js';
+import { resolveMatch } from '../lib/store.js';
 import { Bar, ImportButton, MonthDropdown } from './ui.jsx';
 import { cashFlowCaption } from '../lib/budgets.js';
 import { Icon } from './icons.jsx';
@@ -133,37 +135,133 @@ function RentPill({ rent, onOpen }) {
 // Balance card (M2.6, option B): Smart Access and Savings side by side once a saver has money in it.
 // Savings = every saver with a balance above $0 (an emptied one, like xx2103, drops out). Each half opens
 // its account page.
-function BalanceCard({ bal, balance, saverBalances, est, onDetail }) {
+// UI bundle 2 (Ken, 26 Oct 2026, UI locked option A, prototype "Moni Balance Card Taps"): no more "+N typed" /
+// "estimate" chip. When a balance includes typed entries (or transfers seen only in the other account's CSV),
+// a small button beside it (with a rose dot while typed entries are pending) opens a breakdown under the card;
+// the rest of the half still opens the account page. A bank row waiting for "which typed entry is this?"
+// shows a "N match to confirm" chip, and the question is answered inside the breakdown.
+const dayShort = (iso) => longDay(iso);
+const plural = (n, one, many) => (n === 1 ? one : many);
+
+function BalanceHalf({ id, cls = '', label, cents, note, info, open, setOpen, onOpenAccount }) {
+  const items = info?.items ?? [];
+  const confirms = info?.confirms ?? [];
+  const has = items.length > 0 || confirms.length > 0;
+  const pending = items.some((x) => x.from === 'typed');
+  const isOpen = open === id;
+  return (
+    <div className={`bal-half${cls}`}>
+      <button type="button" className="bal-hit" onClick={onOpenAccount} aria-label={`${label} balance ${formatCents(cents)}. Open account`} />
+      <span className="balance-label">{label}</span>
+      <span className="bal-row">
+        <span className="balance-value">{formatCents(cents)}</span>
+        {has && (
+          <button type="button" className="bal-more" aria-expanded={isOpen} aria-controls={`bal-${id}`}
+            aria-label={isOpen ? `Hide what is in the ${label} balance` : `Show what is in the ${label} balance`}
+            onClick={() => setOpen(isOpen ? null : id)}>
+            {pending && <i className="bal-dot" aria-hidden="true" />}
+            <span aria-hidden="true">{isOpen ? '\u25B4' : '\u25BE'}</span>
+          </button>
+        )}
+      </span>
+      <span className="balance-note">{note}</span>
+      {confirms.length > 0 && <span className="match-chip">{confirms.length} {plural(confirms.length, 'match', 'matches')} to confirm</span>}
+    </div>
+  );
+}
+
+function Breakdown({ id, title, banks, info, total, onToast }) {
+  const pick = async (bankUid, typedUid, msg) => {
+    try { await resolveMatch(bankUid, typedUid); onToast?.(msg); } catch (err) { onToast?.(`Couldn't save that: ${err.message}`); }
+  };
+  return (
+    <div className="bal-panel" id={`bal-${id}`}>
+      <span className="bal-panel-head">{title}</span>
+      {banks.map((b) => (
+        <div className="bp-row" key={b.label}>
+          <span>From the bank <span className="bp-sub">({b.label}, as of {dayShort(b.asOf)})</span></span>
+          <span className="bp-amt">{formatCents(b.cents)}</span>
+        </div>
+      ))}
+      {info.items.map((x) => (
+        <div className="bp-row" key={x.uid}>
+          <span className="bp-name">{shortName(x.description)} <span className="bp-sub">{dayShort(x.date)}</span>
+            <span className={`bp-tag${x.from === 'typed' ? '' : ' other'}`}>{x.from === 'typed' ? 'typed' : 'other account\u2019s CSV'}</span></span>
+          <span className="bp-amt">{formatCents(x.cents, { sign: true })}</span>
+        </div>
+      ))}
+      {(info.confirms ?? []).map((q) => {
+        const bankName = shortName(q.row.description);
+        return (
+          <div className="bp-ask" key={q.row.uid}>
+            <div className="bp-row">
+              <span className="bp-name">{bankName} <span className="bp-sub">{dayShort(q.row.date)}</span><span className="bp-tag wait">waiting for you</span></span>
+              <span className="bp-amt">{formatCents(-q.row.amountCents, { sign: true })}</span>
+            </div>
+            {q.near ? (
+              <>
+                <p>The bank took <b>{formatCents(-q.row.amountCents)}</b> at {bankName} on {dayShort(q.row.date)}. Is it your <b>{q.candidates[0].description} {formatCents(-q.candidates[0].amountCents)}</b>?</p>
+                <div className="bp-opts">
+                  <button type="button" className="bp-opt" onClick={() => pick(q.row.uid, q.candidates[0].uid, 'Matched. The bank\u2019s amount replaced your typed one.')}>Yes, same purchase</button>
+                  <button type="button" className="bp-opt quiet" onClick={() => pick(q.row.uid, null, 'Kept both')}>No, keep both</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p>The bank took <b>{formatCents(-q.row.amountCents)}</b> at {bankName} on {dayShort(q.row.date)}. Which typed entry is it?</p>
+                <div className="bp-opts">
+                  {q.candidates.map((c) => (
+                    <button type="button" key={c.uid} className="bp-opt" onClick={() => pick(q.row.uid, c.uid, `Matched your ${c.description} from ${dayShort(c.date)}`)}>{c.description} · {dayShort(c.date)}</button>
+                  ))}
+                  <button type="button" className="bp-opt quiet" onClick={() => pick(q.row.uid, null, 'Kept them all')}>Neither</button>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+      {info.settled?.count > 0 && (
+        <p className="bp-note">{info.settled.count} older typed {plural(info.settled.count, 'entry', 'entries')} never matched the bank, so {plural(info.settled.count, 'it isn\u2019t', 'they aren\u2019t')} counted here. {plural(info.settled.count, 'It\u2019s', 'They\u2019re')} in Activity as manual.</p>
+      )}
+      <div className="bp-row bp-total"><span>Shown on the card</span><span className="bp-amt">{formatCents(total)}</span></div>
+    </div>
+  );
+}
+
+function BalanceCard({ bal, balance, saverBalances, est, onDetail, onToast }) {
+  const [open, setOpen] = useState(null);
   // est (M4.1): bank balance + what moni knows happened since (typed entries, the other account's CSV).
   const mainCents = est?.main?.cents ?? bal;
-  const mainChip = est?.main ? estimateChip(est.main) : (bal !== balance.cents ? 'estimate' : null);
+  const mainInfo = est?.main ?? null;
   const savers = SAVERS.map((a) => ({ ...a, b: est?.savers?.[a.id] ?? saverBalances?.[a.id] })).filter((a) => a.b && a.b.cents > 0);
   const main = (
-    <button type="button" className="bal-half" onClick={() => onDetail('account', { account: 'xx6193' })}
-      aria-label={`Smart Access balance ${formatCents(mainCents)}${mainChip ? `, ${mainChip}` : ''}. Open account`}>
-      <span className="balance-label">Smart Access</span>
-      <span className="balance-value">{formatCents(mainCents)}</span>
-      <span className="balance-note">{savers.length ? 'as of ' : 'Bank as of '}{longDay(balance.asOf)}</span>
-      {mainChip && <span className="est-chip">{mainChip}</span>}
-    </button>
+    <BalanceHalf id="main" label="Smart Access" cents={mainCents} info={mainInfo} open={open} setOpen={setOpen}
+      note={`${savers.length ? 'as of ' : 'Bank as of '}${longDay(balance.asOf)}`}
+      onOpenAccount={() => onDetail('account', { account: 'xx6193' })} />
   );
-  if (!savers.length) return <div className="balance-card">{main}</div>;
+  const mainPanel = open === 'main' && mainInfo && (
+    <Breakdown id="main" title="Smart Access balance" info={mainInfo} total={mainCents} onToast={onToast}
+      banks={[{ label: 'CSV', asOf: mainInfo.asOf, cents: mainInfo.bank }]} />
+  );
+  if (!savers.length) return <div className="balance-card">{main}{mainPanel}</div>;
   const total = savers.reduce((a, s) => a + s.b.cents, 0);
   const newest = savers.reduce((a, s) => (s.b.asOf > a ? s.b.asOf : a), savers[0].b.asOf);
-  const typed = savers.reduce((a, s) => a + (s.b.typed ?? 0), 0);
-  const other = savers.reduce((a, s) => a + (s.b.other ?? 0), 0);
-  const saveChip = estimateChip({ typed, other });
+  const saveInfo = {
+    items: savers.flatMap((s) => s.b.items ?? []).sort((a, b) => a.date.localeCompare(b.date)),
+    confirms: [],
+  };
   return (
     <div className="balance-card split">
       {main}
       <i className="bal-rule" aria-hidden="true" />
-      <button type="button" className="bal-half save" onClick={() => onDetail('account', { account: savers[0].id })}
-        aria-label={`Savings balance ${formatCents(total)}${saveChip ? `, ${saveChip}` : ''}. Open savings account`}>
-        <span className="balance-label">Savings</span>
-        <span className="balance-value">{formatCents(total)}</span>
-        <span className="balance-note">{savers.map((s) => s.id).join(' + ')} · {longDay(newest)}</span>
-        {saveChip && <span className="est-chip">{saveChip}</span>}
-      </button>
+      <BalanceHalf id="save" cls=" save" label="Savings" cents={total} info={saveInfo} open={open} setOpen={setOpen}
+        note={`${savers.map((s) => s.id).join(' + ')} · ${longDay(newest)}`}
+        onOpenAccount={() => onDetail('account', { account: savers[0].id })} />
+      {mainPanel}
+      {open === 'save' && (
+        <Breakdown id="save" title="Savings balance" info={saveInfo} total={total} onToast={onToast}
+          banks={savers.map((s) => ({ label: s.id, asOf: s.b.asOf, cents: s.b.bank ?? s.b.cents }))} />
+      )}
     </div>
   );
 }
@@ -233,7 +331,7 @@ export default function Home({ txns, bills = [], today, month, setMonth, firstMo
 
       <div className="home-grid">
         <div className="col">
-          {bal != null && <BalanceCard bal={bal} balance={balance} saverBalances={saverBalances} est={est} onDetail={onDetail} />}
+          {bal != null && <BalanceCard bal={bal} balance={balance} saverBalances={saverBalances} est={est} onDetail={onDetail} onToast={onToast} />}
           <Shortcuts onNavigate={onNavigate} onDetail={onDetail} />
           <SpentSoFar month={month} current={current} today={today} spent={summary.spent} income={summary.income} compare={compare}
             onClick={() => onDetail('spending')} />

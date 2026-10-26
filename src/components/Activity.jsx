@@ -9,7 +9,7 @@ import { groupByDay } from '../lib/daygroups.js';
 import {
   EMPTY_FILTER, RANGES, TYPES, filterTxns, totals, categoryCounts, activeChips, removeChip, dollarsToCents,
 } from '../lib/activity.js';
-import { ImportButton } from './ui.jsx';
+import { ImportButton, TypedSwitch } from './ui.jsx';
 import { CategoryIcon } from './icons.jsx';
 import TxnRow from './TxnRow.jsx';
 
@@ -88,6 +88,10 @@ function FilterPanel({ f, set, minText, maxText, setMinText, setMaxText, cats, r
           <span>To sort only</span>
           {reviewCount > 0 && <span className="fbadge">{reviewCount}</span>}
         </label>
+        <div className="fswitch-row">
+          <span>Typed entries only</span>
+          <TypedSwitch on={!!f.typed} onChange={(v) => set({ ...f, typed: v })} label="" />
+        </div>
       </div>
 
       <div className="fgroup">
@@ -211,6 +215,7 @@ export default function Activity({ txns, today, preset, presetKey, onOpen, onToa
             <div className="empty">
               {!txns.length ? 'No transactions yet. Import a NetBank CSV to start.'
                 : f.toSort && !chips.some((c) => c.key !== 'toSort') ? 'Nothing to sort. Everything has a category.'
+                  : f.typed && !chips.some((c) => c.key !== 'typed') ? 'No typed entries. Everything is matched to the bank.'
                   : (
                     <>No transactions match these filters.<br />
                       <button type="button" className="flink" onClick={clearAll}>Clear all filters</button></>

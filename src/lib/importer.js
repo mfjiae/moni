@@ -1,7 +1,9 @@
 // Pure import logic (no database), so it can be tested.
 import { categorize } from './rules.js';
 import { csvUid } from './ids.js';
+import { addDays } from './dates.js';
 import { MAIN, isMain, accountImportKey, balanceKey, transferOther } from './accounts.js';
+import { MATCH_DAYS, isNear, mergeFrom } from './typed.js';
 
 const dayNumber = (iso) => {
   const [y, m, d] = iso.split('-').map(Number);
@@ -10,8 +12,11 @@ const dayNumber = (iso) => {
 
 // rows: from parseNetBankCsv. existingKeys: importKeys already saved.
 // manualTxns: unmatched manual entries; a bank row with the same amount within
-// 4 days replaces the manual entry (keeping its category and note), so a purchase
+// MATCH_DAYS (4) days replaces the manual entry (keeping its category and note), so a purchase
 // you typed in by hand isn't counted twice once the bank CSV arrives.
+// UI bundle 2 (Ken, 26 Oct 2026; see typed.js): when two or more typed entries fit the same bank row, or
+// only a near-miss amount fits (a typed purchase within 10% / $2), the row is added with
+// `confirm: { ids, near }` and moni asks which one (or whether it's the same) instead of guessing.
 // account: which account the CSV is from (M2.6). Saver rows get the account in their import key;
 // manual entries are Smart Access only, so only Smart Access rows can replace them.
 export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [], rules, now = Date.now(), account = MAIN } = {}) {
@@ -19,6 +24,8 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
   const usedManual = new Set();
   const toAdd = [];
   const mergedManualIds = [];
+  const asked = new Map();
+  let confirms = 0;
   let duplicates = 0;
 
   for (const row of rows) {
@@ -50,17 +57,26 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
     // entries only match rows that aren't own-account transfers.
     const other = transferOther(r.description);
     if (isMain(account) && (c.kind !== 'saving' || other)) {
-      const near = (t) => !usedManual.has(t.uid) && t.amountCents === r.amountCents &&
-        Math.abs(dayNumber(t.date) - dayNumber(r.date)) <= 4;
-      const m = c.kind === 'saving'
-        ? manualTxns.find((t) => t.transfer && near(t) && transferOther(t.description) === other)
-        : manualTxns.find((t) => !t.transfer && near(t));
-      if (m) {
+      const free = (t) => !usedManual.has(t.uid) && Math.abs(dayNumber(t.date) - dayNumber(r.date)) <= MATCH_DAYS;
+      const fits = c.kind === 'saving'
+        ? (t) => t.transfer && transferOther(t.description) === other
+        : (t) => !t.transfer;
+      const exact = manualTxns.filter((t) => free(t) && fits(t) && t.amountCents === r.amountCents);
+      const near = c.kind === 'saving' || exact.length ? [] : manualTxns.filter((t) => free(t) && fits(t) && isNear(t.amountCents, r.amountCents));
+      if (exact.length === 1) {
+        const m = exact[0];
         usedManual.add(m.uid);
         mergedManualIds.push(m.uid);
-        txn = m.transfer
-          ? { ...txn, note: m.note }
-          : { ...txn, kind: m.kind, categoryId: m.categoryId, note: m.note || m.description };
+        txn = { ...txn, ...mergeFrom(m) };
+      } else if (exact.length > 1 || near.length) {
+        // Ask, but never more questions over the same typed entries than there are entries to answer with.
+        const ids = (exact.length ? exact : near).map((t) => t.uid);
+        const key = [...ids].sort().join(',');
+        if ((asked.get(key) ?? 0) < ids.length) {
+          asked.set(key, (asked.get(key) ?? 0) + 1);
+          txn = { ...txn, confirm: { ids, near: !exact.length } };
+          confirms++;
+        }
       }
     }
     toAdd.push(txn);
@@ -70,6 +86,7 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
     toAdd,
     duplicates,
     mergedManualIds,
+    confirms,
     reviewCount: toAdd.filter((t) => t.kind === 'review').length,
   };
 }
@@ -85,11 +102,13 @@ export function nextBalance(rows, current, account = MAIN) {
   return { key: balanceKey(account), cents: newest.balanceCents, asOf: newest.postedDate };
 }
 
-// Bank balance plus any manual entries dated after it.
+// Bank balance plus typed entries still pending (the CSV is not yet MATCH_DAYS past them; see typed.js).
+// Only a fallback: App's estimateBalances (accounts.js) is the full version.
 export function currentBalance(balance, txns) {
   if (!balance) return null;
+  const from = addDays(balance.asOf, -MATCH_DAYS);
   const extra = txns
-    .filter((t) => t.source === 'manual' && t.date >= balance.asOf && t.kind !== 'internal')   // same day counts (M5 fix)
+    .filter((t) => t.source === 'manual' && (t.postedDate ?? t.date) >= from && t.kind !== 'internal')
     .reduce((s, t) => s + t.amountCents, 0);
   return balance.cents + extra;
 }

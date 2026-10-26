@@ -13,6 +13,9 @@
 // - Savings "Credit Interest" is Interest income (an ordinary rule), counted once.
 // Matching: same saver, opposite amount, posted within 2 days; the closest date wins, one to one.
 
+import { addDays } from './dates.js';
+import { MATCH_DAYS, typedMap, openConfirm } from './typed.js';
+
 export const MAIN = 'xx6193';
 
 export const ACCOUNTS = [
@@ -115,12 +118,15 @@ export function pairTransfers(txns, maxDays = 2) {
 // The transactions every total in moni counts (Home, Spending, Income, Saved, Cash flow, Activity):
 // all Smart Access rows, plus saver rows that only exist in a saver CSV (interest, unmatched transfers).
 // Unmatched transfers are turned round to read like the Smart Access row (`mirrored: true`).
+// A Smart Access bank row waiting for "which typed entry is this?" (typed.js) is left out until you answer,
+// so the typed entries it may replace are not counted twice.
 export function countedView(txns) {
   const pairs = pairTransfers(txns);
+  const typed = typedMap(txns);
   const out = [];
   for (const t of txns) {
     const acct = accountOf(t);
-    if (isMain(acct)) { out.push(t); continue; }
+    if (isMain(acct)) { if (!(t.confirm && openConfirm(t, typed))) out.push(t); continue; }
     if (pairs.has(t.uid)) continue;
     const other = transferOther(t.description);
     if (other && isMain(other)) {
@@ -169,38 +175,59 @@ export function transferRow({ from, to, cents }) {
 // Balances moni shows: each account's bank balance (from its newest CSV) plus what has happened since
 // that moni already knows about. allTxns = every stored row; balance = Smart Access meta; savers =
 // { id: meta | null }. Returns { main, savers: { id: ... } }, each null (no bank balance yet) or
-// { cents, bank, asOf, extra, typed, other }: typed = typed-in entries counted, other = transfers seen
-// only in the other account's CSV so far.
-// - Smart Access: + typed-in entries dated after its balance (not 'internal'), + saver-side transfers
-//   to/from Smart Access with no Smart Access twin yet, dated after it.
+// { cents, bank, asOf, extra, typed, other, items, settled, confirms }:
+//   typed = typed-in entries counted, other = transfers seen only in the other account's CSV so far,
+//   items = those entries [{ uid, description, date, cents, from: 'typed' | 'other' }] for the breakdown,
+//   settled = { count, cents } typed entries the bank never matched in the 30 days before its balance
+//             (no longer counted, see typed.js), confirms = open "which typed entry is this?" questions.
+// - Smart Access: + typed-in entries still pending (the CSV is not yet MATCH_DAYS past them; not 'internal'),
+//   + saver-side transfers to/from Smart Access with no Smart Access twin yet, dated after its balance,
+//   - each bank row whose question is still open (its typed entries stand in for it until you answer).
 // - A saver: + Smart Access-side transfers to/from that saver (typed or from the CSV) with no saver twin
 //   yet, dated after its balance.
 export function estimateBalances(allTxns, balance, savers = {}) {
   const pairs = pairTransfers(allTxns);
   const pairedMain = new Set(pairs.values());
+  const typed = typedMap(allTxns);
   // A typed entry dated ON the bank balance's day counts too (Ken, 25 Oct 2026): a CSV has a date, not a
   // time, so a pending purchase typed after importing that day's CSV isn't in the bank number yet. When the
   // bank row arrives, the import replaces the typed one, so it is never counted twice.
   const after = (t, b) => (t.source === 'manual' ? posted(t) >= b.asOf : posted(t) > b.asOf);
-  const est = (b) => (b ? { cents: b.cents, bank: b.cents, asOf: b.asOf, extra: 0, typed: 0, other: 0 } : null);
+  const est = (b) => (b ? { cents: b.cents, bank: b.cents, asOf: b.asOf, extra: 0, typed: 0, other: 0, items: [], settled: { count: 0, cents: 0 }, confirms: [] } : null);
   const main = est(balance);
   const out = Object.fromEntries(SAVERS.map((a) => [a.id, est(savers?.[a.id])]));
+  const item = (t, cents, from) => ({ uid: t.uid, description: t.description, date: posted(t), cents, from });
+  const pendingFrom = main ? addDays(main.asOf, -MATCH_DAYS) : null;
+  const settledFrom = main ? addDays(main.asOf, -30) : null;
   for (const t of allTxns) {
     const acct = accountOf(t);
     const other = transferOther(t.description);
     if (isMain(acct)) {
-      if (main && t.source === 'manual' && t.kind !== 'internal' && after(t, main)) {
-        main.cents += t.amountCents; main.extra += t.amountCents; main.typed++;
+      if (main && t.source === 'manual' && t.kind !== 'internal') {
+        if (posted(t) >= pendingFrom) {
+          main.cents += t.amountCents; main.extra += t.amountCents; main.typed++;
+          main.items.push(item(t, t.amountCents, 'typed'));
+        } else if (posted(t) >= settledFrom) {
+          main.settled.count++; main.settled.cents += t.amountCents;
+        }
+      }
+      if (main && t.source === 'csv' && t.confirm) {
+        const q = openConfirm(t, typed);
+        if (q) { main.cents -= t.amountCents; main.extra -= t.amountCents; main.confirms.push({ row: t, ...q }); }
       }
       const s = other && !isMain(other) ? out[other] : null;
       if (s && !pairedMain.has(t.uid) && after(t, s)) {
         s.cents -= t.amountCents; s.extra -= t.amountCents;
         if (t.source === 'manual') s.typed++; else s.other++;
+        s.items.push(item(t, -t.amountCents, t.source === 'manual' ? 'typed' : 'other'));
       }
     } else if (main && other && isMain(other) && !pairs.has(t.uid) && after(t, main)) {
       main.cents -= t.amountCents; main.extra -= t.amountCents; main.other++;
+      main.items.push(item(t, -t.amountCents, 'other'));
     }
   }
+  const byDate = (a, b) => a.date.localeCompare(b.date) || a.uid.localeCompare(b.uid);
+  for (const e of [main, ...Object.values(out)]) if (e) e.items.sort(byDate);
   return { main, savers: out };
 }
 

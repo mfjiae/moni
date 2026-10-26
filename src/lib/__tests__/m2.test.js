@@ -123,13 +123,14 @@ describe('balance', () => {
     const newer = { key: 'balance', cents: 999, asOf: '2026-10-05' };
     expect(nextBalance(rows, newer)).toBe(newer);
   });
-  it('adds manual entries after the bank date', () => {
+  it('adds manual entries still pending (up to 4 days before the bank date, UI bundle 2)', () => {
     const b = { cents: 6315, asOf: '2026-10-01' };
     const txns = [
       { source: 'manual', date: '2026-10-03', amountCents: -500, kind: 'spend' },
-      { source: 'manual', date: '2026-09-30', amountCents: -900, kind: 'spend' },
+      { source: 'manual', date: '2026-09-30', amountCents: -900, kind: 'spend' },   // 1 day before: may still be pending
+      { source: 'manual', date: '2026-09-20', amountCents: -700, kind: 'spend' },   // long past: the bank's number wins
       { source: 'csv', date: '2026-10-03', amountCents: -100, kind: 'spend' },
     ];
-    expect(currentBalance(b, txns)).toBe(5815);
+    expect(currentBalance(b, txns)).toBe(4915);
   });
 });

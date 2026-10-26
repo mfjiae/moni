@@ -236,6 +236,7 @@ export function ImportButton({ onDone, className = 'btn' }) {
       const parts = [`Added ${r.added}`];
       if (r.duplicates) parts.push(`${r.duplicates} already here`);
       if (r.merged) parts.push(`${r.merged} matched your manual entries`);
+      if (r.confirms) parts.push(`${r.confirms} to confirm on Home`);
       if (r.review) parts.push(`${r.review} to sort`);
       if (r.errors.length) parts.push(`${r.errors.length} lines couldn't be read`);
       onDone(parts.join(' · '));
@@ -305,5 +306,14 @@ export function Segmented({ value, onChange, options, label }) {
         <button key={v} type="button" role="tab" aria-selected={value === v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>{text}</button>
       ))}
     </div>
+  );
+}
+
+// "Typed only" on/off switch (UI bundle 2, Ken 26 Oct 2026, UI locked): also used by Activity.
+export function TypedSwitch({ on, onChange, label = 'Typed only' }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} className="tswitch" onClick={() => onChange(!on)}>
+      <span className="tswitch-track" aria-hidden="true" />{label}
+    </button>
   );
 }

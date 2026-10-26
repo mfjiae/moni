@@ -109,7 +109,7 @@ export default function Bills({ txns, bills, today, usage, onDetail, onToast }) 
       <header className="header">
         <div className="title">Bills</div>
         <div className="bills-actions">
-          {hasTuition && <button type="button" className="btn small-btn add-bill tuition-pill" onClick={() => onDetail('tuition')}>Tuition ›</button>}
+          {hasTuition && <button type="button" className="btn small-btn add-bill tuition-pill" onClick={() => onDetail('tuition')}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9l10-5 10 5-10 5-10-5z" /><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5" /><path d="M22 9v6" /></svg>Tuition ›</button>}
           <button type="button" className="btn small-btn add-bill" onClick={() => setEditing({})}>+ Add bill</button>
         </div>
       </header>

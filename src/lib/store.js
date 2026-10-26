@@ -11,6 +11,7 @@ import { MAIN, balanceKey, guessAccount, looksLike, transferRow } from './accoun
 import { planChange, planChanges } from './budgets.js';
 import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.js';
 import { manualUid, skipUid, billFromSuggestion } from './bills.js';
+import { planResolve } from './typed.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -64,9 +65,26 @@ export async function importCsvText(text, account = MAIN) {
     added: plan.toAdd.length,
     duplicates: plan.duplicates,
     merged: plan.mergedManualIds.length,
+    confirms: plan.confirms,
     review: plan.reviewCount,
     errors,
   };
+}
+
+// Your answer to "which typed entry is this bank row?" (UI bundle 2, typed.js). typedUid = the typed entry it
+// replaces, or null for "Neither" (both stay and both count).
+export async function resolveMatch(bankUid, typedUid) {
+  const now = Date.now();
+  await db.transaction('rw', db.txns, db.tombstones, async () => {
+    const all = await db.txns.toArray();
+    const { updates, deletes } = planResolve(all, bankUid, typedUid);
+    for (const u of updates) await db.txns.update(u.uid, { ...u.changes, updatedAt: now });
+    if (deletes.length) {
+      await db.txns.bulkDelete(deletes);
+      await db.tombstones.bulkPut(deletes.map((key) => ({ key, deletedAt: now })));
+    }
+  });
+  requestSync();
 }
 
 export async function addManual({ date, time, amountCents, description, categoryId, note }) {

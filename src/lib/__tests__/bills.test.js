@@ -71,7 +71,7 @@ describe('Bills page numbers', () => {
     expect(v.dueCents).toBe(192200);
   });
   it('a bill with nothing due soon shows under later with its next date', () => {
-    expect(v.later.map((x) => `${x.due} ${x.bill.name}`)).toEqual(['2027-01-14 Tuition']);
+    expect(v.later.map((x) => `${x.due} ${x.bill.name}`)).toEqual(['2027-03-04 Tuition']);   // UTS Autumn 2027: Thursday of Week 3 (was +6 months)
   });
   it('months: paid per month, and what is still to pay this month', () => {
     const oct = v.months.find((m) => m.key === '2026-10');
@@ -119,9 +119,16 @@ describe('same-day balance fix', () => {
     expect(est.main.typed).toBe(1);
     expect(currentBalance({ cents: 100000, asOf: '2026-10-25' }, [typed])).toBe(99550);
   });
-  it('one dated before the bank balance day does not', () => {
+  // UI bundle 2 (Ken, 26 Oct 2026): a typed entry keeps counting while it may still be pending at the bank,
+  // i.e. until the CSV is 4 days past it; after that the bank's number wins.
+  it('one dated a day before the bank balance day still counts (may be pending at the bank)', () => {
     const est = estimateBalances([{ ...typed, date: '2026-10-24' }], { cents: 100000, asOf: '2026-10-25' }, {});
+    expect(est.main.cents).toBe(99550);
+  });
+  it('one dated more than 4 days before the bank balance day does not', () => {
+    const est = estimateBalances([{ ...typed, date: '2026-10-20' }], { cents: 100000, asOf: '2026-10-25' }, {});
     expect(est.main.cents).toBe(100000);
+    expect(est.main.settled).toEqual({ count: 1, cents: -450 });
   });
   it('a CSV row from the other account on the same day is still left out (already in that bank number)', () => {
     const saverRow = { uid: 's1', date: '2026-10-25', amountCents: 5000, kind: 'saving', account: 'xx2066', source: 'csv', description: 'Transfer from xx6193' };

@@ -7,6 +7,8 @@
 //   toSort   true = only transactions still waiting for a category ("To sort")
 //   savings  true = show transfers to and from savings when no type is picked
 //   min, max amount range in cents on the SIZE of the amount (sign ignored), null = no limit
+//   typed    true = only entries you typed in by hand (pending or settled manual; UI bundle 2, Ken 26 Oct 2026).
+//            Typed transfers to savings show too, without the savings switch.
 //
 // Rules (Ken, 24 Oct 2026):
 // - Savings transfers stay hidden unless "Show transfers to and from savings" is on, or the Saved type is picked.
@@ -17,7 +19,7 @@ import { monthKey, shiftMonth } from './dates.js';
 import { categoryName } from './categories.js';
 
 export const EMPTY_FILTER = Object.freeze({
-  q: '', range: 'all', from: '', to: '', types: [], cats: [], toSort: false, savings: false, min: null, max: null,
+  q: '', range: 'all', from: '', to: '', types: [], cats: [], toSort: false, savings: false, typed: false, min: null, max: null,
 });
 
 export const RANGES = [
@@ -65,10 +67,11 @@ export function passes(t, f, bounds, { skipCats = false } = {}) {
   if (f.min != null && size < f.min) return false;
   if (f.max != null && size > f.max) return false;
   if (!matchesSearch(t, f.q)) return false;
+  if (f.typed && t.source !== 'manual') return false;
   if (f.toSort) return t.kind === 'review';
   if (f.types.length) {
     if (!f.types.includes(t.kind)) return false;
-  } else if (t.kind === 'saving' && !f.savings) {
+  } else if (t.kind === 'saving' && !f.savings && !f.typed) {
     return false;
   }
   if (!skipCats && f.cats.length && !f.cats.includes(t.categoryId)) return false;
@@ -122,6 +125,7 @@ export function activeChips(f) {
   for (const k of f.types) chips.push({ key: `type:${k}`, label: TYPES.find(([id]) => id === k)[1] });
   for (const id of f.cats) chips.push({ key: `cat:${id}`, label: categoryName(id) });
   if (f.toSort) chips.push({ key: 'toSort', label: 'To sort only' });
+  if (f.typed) chips.push({ key: 'typed', label: 'Typed only' });
   if (f.savings && !f.types.length && !f.toSort) chips.push({ key: 'savings', label: 'Savings transfers shown' });
   if (f.min != null || f.max != null) {
     const d = (c) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
@@ -135,6 +139,7 @@ export function removeChip(f, key) {
   if (key === 'q') return { ...f, q: '' };
   if (key === 'range') return { ...f, range: 'all', from: '', to: '' };
   if (key === 'toSort') return { ...f, toSort: false };
+  if (key === 'typed') return { ...f, typed: false };
   if (key === 'savings') return { ...f, savings: false };
   if (key === 'amount') return { ...f, min: null, max: null };
   if (key.startsWith('type:')) return { ...f, types: f.types.filter((k) => k !== key.slice(5)) };

@@ -40,11 +40,10 @@ describe('Bills page', () => {
   it('"later" rows show the exact date and distance, except Tuition (month only)', () => {
     const out = bills({ txns: [tuitionTxn], bills: [insurance, tuitionBill] });
     expect(out).toContain('in 107 days');            // Wed 10 Feb 2027 from Mon 26 Oct 2026
-    expect(out).not.toContain('Feb 2027 · later · later');
-    expect(out).toContain('Feb 2027 · later');       // Tuition keeps the month only
+    expect(out).toContain('Mar 2027 · later');       // Tuition keeps the month only (UTS rule, bundle 2)
     // the insurance row must not fall back to month-only
     const row = out.slice(out.indexOf('Fake insurance') - 400, out.indexOf('Fake insurance'));
-    expect(row).not.toContain('Feb 2027 · later');
+    expect(row).not.toContain('2027 · later');
   });
 });
 

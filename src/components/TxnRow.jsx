@@ -32,7 +32,8 @@ export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
         <span className="small">
           {t.kind === 'review' ? <span className="text-review">{cat}</span> : cat}
           {meta ? ` · ${meta}` : ''}
-          {t.source === 'manual' ? ' · manual' : ''}
+          {t.source === 'manual' && t.typed !== 'pending' ? ' · manual' : ''}
+          {t.typed === 'pending' && <span className="typed-tag">typed</span>}
           {tags?.map((g) => <span key={g.text} className={`etf-tag${g.cls ? ` ${g.cls}` : ''}`}>{g.text}</span>)}
         </span>
       </div>
