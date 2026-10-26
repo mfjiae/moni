@@ -31,8 +31,10 @@ export function isNear(typedCents, bankCents) {
   return Math.abs(typedCents - bankCents) <= Math.max(200, Math.round(Math.abs(typedCents) * 0.1));
 }
 
-// What the bank row takes over from the typed entry it replaces (category and note; a transfer keeps the bank's).
-export const mergeFrom = (m) => (m.transfer ? { note: m.note ?? '' } : { kind: m.kind, categoryId: m.categoryId, note: m.note || m.description });
+// What the bank row takes over from the typed entry it replaces: category, note and the date you typed
+// (Ken, 26 Oct 2026: the date you made the purchase can differ from the bank's while it is pending). The bank row
+// keeps its own `postedDate`, which balances and the import use. A transfer keeps the bank's date and category.
+export const mergeFrom = (m) => (m.transfer ? { note: m.note ?? '' } : { kind: m.kind, categoryId: m.categoryId, note: m.note || m.description, date: m.date });
 
 // The question still open on a bank row: its candidates that still exist, or null (answered, or they were deleted).
 export function openConfirm(row, typedByUid) {

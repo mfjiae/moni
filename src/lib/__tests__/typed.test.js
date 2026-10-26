@@ -69,6 +69,24 @@ describe('one matching typed entry: merged automatically (as since M2)', () => {
     expect(shown(all, balance)).toBe(balBefore);   // 4520 either way
     expect(balBefore).toBe(4520);
   });
+  it('keeps the date you typed; the bank row keeps its own posted date (Ken, 26 Oct 2026)', () => {
+    const { all, balance } = importInto([typed('c1', '2026-10-24', -480)], [bankRow('2026-10-25', -480, 4520)], start);
+    expect(all[0].date).toBe('2026-10-24');         // shown in lists, days and months
+    expect(all[0].postedDate).toBe('2026-10-25');   // what the balance and the import use
+    expect(balance.asOf).toBe('2026-10-25');
+    expect(shown(all, balance)).toBe(4520);
+  });
+  it('a purchase typed on 31 Oct that the bank posts on 1 Nov stays in October', () => {
+    const { all } = importInto([typed('c1', '2026-10-31', -480)], [bankRow('2026-11-01', -480, 4520)], start);
+    expect(all[0]).toMatchObject({ date: '2026-10-31', postedDate: '2026-11-01' });
+  });
+  it('answering a question keeps the typed date too', () => {
+    const before = [typed('c1', '2026-10-24', -480), typed('c2', '2026-10-25', -480)];
+    const { all } = importInto(before, [bankRow('2026-10-26', -480, 4520)], start);
+    const bank = all.find((t) => t.source === 'csv');
+    const after = answer(all, bank.uid, 'c1');
+    expect(after.find((t) => t.source === 'csv')).toMatchObject({ date: '2026-10-24', postedDate: '2026-10-26' });
+  });
   it('a typed entry more than 4 days away is not matched', () => {
     const { plan } = importInto([typed('c1', '2026-10-18', -480)], [bankRow('2026-10-25', -480, 4520)], start);
     expect(plan.mergedManualIds).toEqual([]);
