@@ -43,8 +43,11 @@ db.version(4).stores({ budgets: null, budgetPlans: 'uid, categoryId' });
 // v5 (M4): your ETF list (tickers you tag investing transactions with; synced). See investing.js.
 db.version(5).stores({ etfs: 'uid' });
 
-// v6 (M5): your bills (and the suggestions you said "Not a bill" to; synced). See bills.js.
-db.version(6).stores({ bills: 'uid' });
+// v6/v7 (M5): your bills (and the suggestions you said "Not a bill" to; synced). See bills.js.
+// v1 already made an unused `bills` table with a different key (++id), and a table's key can't be
+// changed in place (the upgrade fails and the app stays on "Loading…"), so v6 drops it and v7 makes the new one.
+db.version(6).stores({ bills: null });
+db.version(7).stores({ bills: 'uid' });
 
 // Ask the browser not to evict our data under storage pressure.
 // Some browsers (Firefox, Zen) show a prompt, so only ask once per device.

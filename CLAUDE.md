@@ -17,6 +17,7 @@ Full spec: "Finance Tracker — v1 Spec" doc in Ken's Claude artifacts.
 - `.gitignore` is an allowlist. Never commit real CSVs, backups or personal data to this public repo. Test fixtures use fake names.
 - Every record has a stable `uid` (bank rows: `csv|<importKey>`) and `updatedAt`. Any write must stamp `updatedAt` and call `requestSync()` (store.js does this).
 - Claude has no access to moni-data and shouldn't need it.
+- Database changes (`src/lib/db.js`): a table's key can never change in place (the upgrade fails and the app stays on "Loading…"). Drop the table in one version (`name: null`), re-create it in the next. v1 left an unused `bills` table (`++id`), so M5 needed v6 drop + v7 create. Fresh-database tests can't catch this; `dbschema.test.js` checks the version history, and before pushing a schema change, test an UPGRADE from the previous version with seeded data.
 - Dark theme only, no toggle. Color tokens live in `src/index.css`.
 - Budget period: calendar month.
 
