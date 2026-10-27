@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db.js';
 import { connect, disconnect, syncNow, DEFAULT_REPO } from '../lib/sync.js';
-import { clearDevice, updateCategory, addCategory, deleteRule, deleteName, clearName } from '../lib/store.js';
-import { nameList } from '../lib/names.js';
+import { clearDevice, updateCategory, addCategory, deleteRule, deleteName, clearName, renameSimilar, renameRow } from '../lib/store.js';
+import { nameList, MAX_NAME } from '../lib/names.js';
 import { longDay } from '../lib/dates.js';
 import { allCategories, categoryName, LOCKED, TYPE_LABEL } from '../lib/categories.js';
 import { isBroadKeyword } from '../lib/rules.js';
@@ -116,8 +116,33 @@ function CategoriesCard({ txns, onToast }) {
   );
 }
 
-function RulesCard({ rules, onToast }) {
+// Rename in place (Ken, 27 Oct 2026): a small box with Save / Cancel. An empty box changes nothing.
+function RenameInline({ label, start, onSave, onCancel }) {
+  const [text, setText] = useState(start ?? '');
+  const [err, setErr] = useState('');
+  async function save(e) {
+    e.preventDefault();
+    if (!text.trim() || text.trim() === (start ?? '')) { onCancel(); return; }
+    try { await onSave(text); } catch (x) { setErr(x.message); }
+  }
+  return (
+    <form className="rename-inline" onSubmit={save}>
+      <label className="small">{label}
+        <input className="input" value={text} maxLength={MAX_NAME + 10} autoFocus aria-label={label}
+          onChange={(e) => { setText(e.target.value); setErr(''); }} />
+      </label>
+      {err && <span className="small rename-err">{err}</span>}
+      <span className="actions">
+        <button type="submit" className="btn small-btn">Save</button>
+        <button type="button" className="btn ghost small-btn" onClick={onCancel}>Cancel</button>
+      </span>
+    </form>
+  );
+}
+
+function RulesCard({ rules, names, onToast }) {
   const [confirm, setConfirm] = useState(null);
+  const [editing, setEditing] = useState(null);
   if (!rules?.length) {
     return (
       <section className="card" aria-label="Learned rules">
@@ -134,13 +159,29 @@ function RulesCard({ rules, onToast }) {
         {rules.map((r) => {
           const kw = Array.isArray(r.match?.contains) ? r.match.contains.join(', ') : r.match?.contains;
           const broad = isBroadKeyword(kw);
+          // Only plain category rules can be renamed: one keyword, not too broad, not an ATM / "not ATM" rule.
+          const canRename = typeof r.match?.contains === 'string' && !broad && !r.notAtm && !r.atm;
+          const nameRec = canRename ? (names ?? []).find((n) => n.key === kw.toUpperCase().trim()) : null;
           return (
             <div className="set-row" key={r.uid}>
               <span className="name">
                 <span className="strong">{kw}</span> → {r.notAtm ? 'not a cash withdrawal (never asked)' : r.atm ? `${categoryName(r.categoryId)}, ATM cash` : categoryName(r.categoryId)}
                 {broad && <span className="tag warn">too broad, ignored</span>}
+                {nameRec && editing !== r.uid && <span className="small name-key">shown as {nameRec.name}</span>}
+                {editing === r.uid && (
+                  <RenameInline label="Shown as" start={nameRec?.name}
+                    onCancel={() => setEditing(null)}
+                    onSave={async (text) => {
+                      const n = await renameSimilar(null, kw, text);
+                      setEditing(null);
+                      onToast(`${kw} now shows as ${n}`);
+                    }} />
+                )}
               </span>
               <div className="actions">
+                {canRename && editing !== r.uid && (
+                  <button type="button" className="btn ghost small-btn" onClick={() => setEditing(r.uid)}>Rename</button>
+                )}
                 <button type="button" className="btn ghost danger small-btn" onBlur={() => setConfirm(null)}
                   onClick={async () => {
                     if (confirm !== r.uid) { setConfirm(r.uid); return; }
@@ -163,6 +204,7 @@ function RulesCard({ rules, onToast }) {
 // Delete brings the bank's own name back on those rows. Names for a single row live on that row's sheet.
 function NamesCard({ names, txns, onToast }) {
   const [confirm, setConfirm] = useState(null);
+  const [editing, setEditing] = useState(null);
   const list = nameList(names, txns);
   if (!list.length) {
     return (
@@ -184,10 +226,22 @@ function NamesCard({ names, txns, onToast }) {
           return (
             <div className="set-row" key={r.id}>
               <span className="name">
-                <span className="strong">{r.from}</span> → {r.name}
+                <span className="strong">{r.from}</span> → {editing === r.id ? '' : r.name}
                 <span className="small name-key">{scope}</span>
+                {editing === r.id && (
+                  <RenameInline label="Shown as" start={r.name}
+                    onCancel={() => setEditing(null)}
+                    onSave={async (text) => {
+                      const n = r.kind === 'similar' ? await renameSimilar(null, r.from, text) : (await renameRow(r.rowUid, text), text.trim());
+                      setEditing(null);
+                      onToast(`Now shows as ${n}`);
+                    }} />
+                )}
               </span>
               <div className="actions">
+                {editing !== r.id && (
+                  <button type="button" className="btn ghost small-btn" onClick={() => setEditing(r.id)}>Rename</button>
+                )}
                 <button type="button" className="btn ghost danger small-btn" onBlur={() => setConfirm(null)}
                   onClick={async () => {
                     if (confirm !== r.id) { setConfirm(r.id); return; }
@@ -331,7 +385,7 @@ export default function Settings({ sync, txns, onToast }) {
       </section>
     ),
     categories: <CategoriesCard txns={txns} onToast={onToast} />,
-    rules: <RulesCard rules={rules} onToast={onToast} />,
+    rules: <RulesCard rules={rules} names={names} onToast={onToast} />,
     names: <NamesCard names={names} txns={txns} onToast={onToast} />,
   };
 
