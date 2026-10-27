@@ -317,3 +317,18 @@ export function TypedSwitch({ on, onChange, label = 'Typed only' }) {
     </button>
   );
 }
+
+// "Paid with cash" switch row (prototype "Moni Paid With Cash" v4, option B): under Amount on Add transaction
+// (Money out only) and on a typed purchase's sheet. Warm when on. The "cash left $X after this" line comes
+// with the Cash balance (Push 2).
+export function CashRow({ on, onChange }) {
+  return (
+    <div className="cash-row">
+      <span className="cash-row-text">
+        <span>Paid with cash</span>
+        <span className="small">{on ? 'On' : 'Off · comes out of Smart Access'}</span>
+      </span>
+      <button type="button" role="switch" aria-checked={on} aria-label="Paid with cash" className="cash-sw" onClick={() => onChange(!on)} />
+    </div>
+  );
+}

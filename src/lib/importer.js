@@ -25,6 +25,8 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
   const toAdd = [];
   const mergedManualIds = [];
   const asked = new Map();
+  // Cash purchases (cash.js) never touch the bank, so they are never offered as a match.
+  const candidates = manualTxns.filter((t) => !t.cash);
   let confirms = 0;
   let duplicates = 0;
 
@@ -61,8 +63,8 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
       const fits = c.kind === 'saving'
         ? (t) => t.transfer && transferOther(t.description) === other
         : (t) => !t.transfer;
-      const exact = manualTxns.filter((t) => free(t) && fits(t) && t.amountCents === r.amountCents);
-      const near = c.kind === 'saving' || exact.length ? [] : manualTxns.filter((t) => free(t) && fits(t) && isNear(t.amountCents, r.amountCents));
+      const exact = candidates.filter((t) => free(t) && fits(t) && t.amountCents === r.amountCents);
+      const near = c.kind === 'saving' || exact.length ? [] : candidates.filter((t) => free(t) && fits(t) && isNear(t.amountCents, r.amountCents));
       if (exact.length === 1) {
         const m = exact[0];
         usedManual.add(m.uid);
@@ -108,7 +110,7 @@ export function currentBalance(balance, txns) {
   if (!balance) return null;
   const from = addDays(balance.asOf, -MATCH_DAYS);
   const extra = txns
-    .filter((t) => t.source === 'manual' && (t.postedDate ?? t.date) >= from && t.kind !== 'internal')
+    .filter((t) => t.source === 'manual' && !t.cash && (t.postedDate ?? t.date) >= from && t.kind !== 'internal')
     .reduce((s, t) => s + t.amountCents, 0);
   return balance.cents + extra;
 }

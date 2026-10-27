@@ -2,6 +2,7 @@ import { formatCents } from '../lib/money.js';
 import { categoryName } from '../lib/categories.js';
 import { shortName } from '../lib/activity.js';
 import { accountOf, isMain } from '../lib/accounts.js';
+import { cashTag, isCash } from '../lib/cash.js';
 
 // Friendlier names for transfers with your own savings accounts
 export function displayName(t) {
@@ -25,6 +26,10 @@ export const amountClass = (t) => {
 export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
   const cat = t.kind === 'review' ? 'To sort' : categoryName(t.categoryId);
   const muted = t.kind === 'saving' || t.kind === 'internal';
+  // Paid with cash: a cash purchase shows only its warm "cash" tag (no "typed" / "manual"); ATM withdrawals,
+  // cash deposits and online family deposits get their own tag (prototype "Moni Paid With Cash" v4).
+  const cash = isCash(t);
+  const ctag = cashTag(t);
   return (
     <button type="button" className={`txn${muted ? ' muted-row' : ''}`} onClick={() => onOpen(t.uid)}>
       <div>
@@ -32,8 +37,9 @@ export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
         <span className="small">
           {t.kind === 'review' ? <span className="text-review">{cat}</span> : cat}
           {meta ? ` · ${meta}` : ''}
-          {t.source === 'manual' && t.typed !== 'pending' ? ' · manual' : ''}
-          {t.typed === 'pending' && <span className="typed-tag">typed</span>}
+          {!cash && t.source === 'manual' && t.typed !== 'pending' ? ' · manual' : ''}
+          {!cash && t.typed === 'pending' && <span className="typed-tag">typed</span>}
+          {ctag && <span className={`cash-tag${ctag.cls === 'cash' ? '' : ` ${ctag.cls}`}`}>{ctag.text}</span>}
           {tags?.map((g) => <span key={g.text} className={`etf-tag${g.cls ? ` ${g.cls}` : ''}`}>{g.text}</span>)}
         </span>
       </div>

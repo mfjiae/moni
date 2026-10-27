@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Sheet, CategorySelect } from './ui.jsx';
+import { Sheet, CategorySelect, CashRow, Segmented } from './ui.jsx';
 import { formatCents, parseCents } from '../lib/money.js';
 import { kindForCategory } from '../lib/categories.js';
 import { splitOf, buildSplit } from '../lib/investing.js';
 import { longDay } from '../lib/dates.js';
 import { isPersonTransfer, merchantKey, isBroadKeyword } from '../lib/rules.js';
+import { isCashDeposit, isCash, depositChoice, DEPOSIT_CHOICES } from '../lib/cash.js';
 import { setCategory, saveRule, deleteTxn, setEtfSplit, addEtf } from '../lib/store.js';
 
 const toCents = (text) => { try { const c = parseCents(text); return c > 0 ? c : NaN; } catch { return NaN; } };
@@ -74,6 +75,10 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
   const [keyword, setKeyword] = useState(() => merchantKey(txn.description));
   const [always, setAlways] = useState(canLearn && txn.kind === 'review' && !!keyword);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Paid with cash: a typed purchase can be switched to cash (or back) here; a bank cash deposit asks whose cash it was.
+  const canCash = txn.source === 'manual' && !txn.transfer && txn.amountCents < 0;
+  const [cash, setCash] = useState(isCash(txn));
+  const deposit = isCashDeposit(txn);
   const [rows, setRows] = useState(() => {
     const s = splitOf(txn);
     if (s) return s.length === 1 ? [{ ticker: s[0].ticker, text: '' }] : s.map((p) => ({ ticker: p.ticker, text: (p.cents / 100).toFixed(2) }));
@@ -87,7 +92,7 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
 
   async function save() {
     if (!categoryId || broad || (investing && !split.ok)) return;
-    await setCategory(txn.uid, categoryId, note);
+    await setCategory(txn.uid, categoryId, note, canCash && cash !== isCash(txn) ? { cash } : {});
     if (investing) await setEtfSplit(txn.uid, split.split);
     else if (txn.etfSplit?.length) await setEtfSplit(txn.uid, []);
     let msg = 'Saved';
@@ -119,12 +124,28 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
           </span>
         </div>
 
-        {txn.amountCents > 0 && (
+        {deposit && (
+          <div className="cash-deposit">
+            <span className="cash-q">Whose cash was this?</span>
+            <Segmented label="Whose cash" value={depositChoice(categoryId)} onChange={(v) => setCategoryId(DEPOSIT_CHOICES[v])}
+              options={[['gift', 'Cash someone gave me'], ['own', 'My own cash']]} />
+            <div className="cash-eff">
+              <div><span>Smart Access</span><span className="text-in">{formatCents(txn.amountCents, { sign: true })}</span></div>
+              <div><span>Category</span><span>{depositChoice(categoryId) === 'own' ? 'Transfers & payments' : 'Family support'}</span></div>
+              <div><span>Counts as money in</span><span>{depositChoice(categoryId) === 'own' ? 'no, own cash' : 'yes'}</span></div>
+            </div>
+            <p className="hint">“My own cash” covers cash you withdrew earlier and cash you already had. Online deposits from other people never ask this question.</p>
+          </div>
+        )}
+
+        {txn.amountCents > 0 && !deposit && (
           <p className="hint">Money in: choose Income, or the category it pays you back for (it reduces that category's spending).</p>
         )}
 
         <CategorySelect value={categoryId} onChange={setCategoryId} amountCents={txn.amountCents} usage={usage}
           onToast={onToast} startOpen={txn.kind === 'review'} />
+
+        {canCash && <CashRow on={cash} onChange={setCash} />}
 
         {investing && <EtfSplit rows={rows} setRows={setRows} etfs={etfs} amountCents={txn.amountCents} onToast={onToast} />}
 

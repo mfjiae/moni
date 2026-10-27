@@ -203,7 +203,8 @@ export function estimateBalances(allTxns, balance, savers = {}) {
     const acct = accountOf(t);
     const other = transferOther(t.description);
     if (isMain(acct)) {
-      if (main && t.source === 'manual' && t.kind !== 'internal') {
+      // Cash purchases (cash.js) never change Smart Access, not even while new.
+      if (main && t.source === 'manual' && !t.cash && t.kind !== 'internal') {
         if (posted(t) >= pendingFrom) {
           main.cents += t.amountCents; main.extra += t.amountCents; main.typed++;
           main.items.push(item(t, t.amountCents, 'typed'));

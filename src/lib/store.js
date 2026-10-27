@@ -87,7 +87,8 @@ export async function resolveMatch(bankUid, typedUid) {
   requestSync();
 }
 
-export async function addManual({ date, time, amountCents, description, categoryId, note }) {
+// cash: true = Paid with cash (cash.js): counts in Spending, never in the Smart Access balance or the importer.
+export async function addManual({ date, time, amountCents, description, categoryId, note, cash = false }) {
   const now = Date.now();
   await db.txns.add({
     uid: newUid(), updatedAt: now, createdAt: now,
@@ -98,6 +99,7 @@ export async function addManual({ date, time, amountCents, description, category
     categoryId,
     refund: false,
     note: note ?? '',
+    ...(cash && amountCents < 0 ? { cash: true } : {}),
   });
   requestSync();
 }
@@ -119,8 +121,9 @@ export async function addTransfer({ date, time, from, to, cents, note }) {
   requestSync();
 }
 
-export async function setCategory(uid, categoryId, note) {
-  const changes = { categoryId, kind: kindForCategory(categoryId), updatedAt: Date.now() };
+// extra: other fields to save in the same write, e.g. { cash: true } from the transaction sheet.
+export async function setCategory(uid, categoryId, note, extra = {}) {
+  const changes = { ...extra, categoryId, kind: kindForCategory(categoryId), updatedAt: Date.now() };
   if (note !== undefined) changes.note = note;
   await db.txns.update(uid, changes);
   requestSync();

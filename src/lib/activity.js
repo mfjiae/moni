@@ -8,6 +8,7 @@
 //   savings  true = show transfers to and from savings when no type is picked
 //   min, max amount range in cents on the SIZE of the amount (sign ignored), null = no limit
 //   typed    true = only entries you typed in by hand (pending or settled manual; UI bundle 2, Ken 26 Oct 2026).
+//   cash     true = only rows that move cash in hand: cash purchases, ATM withdrawals, own cash deposited (cash.js).
 //            Typed transfers to savings show too, without the savings switch.
 //
 // Rules (Ken, 24 Oct 2026):
@@ -17,9 +18,10 @@
 // - Min / max compare the size only: $20 to $50 matches both -$30 and +$30.
 import { monthKey, shiftMonth } from './dates.js';
 import { categoryName } from './categories.js';
+import { movesCash } from './cash.js';
 
 export const EMPTY_FILTER = Object.freeze({
-  q: '', range: 'all', from: '', to: '', types: [], cats: [], toSort: false, savings: false, typed: false, min: null, max: null,
+  q: '', range: 'all', from: '', to: '', types: [], cats: [], toSort: false, savings: false, typed: false, cash: false, min: null, max: null,
 });
 
 export const RANGES = [
@@ -68,6 +70,7 @@ export function passes(t, f, bounds, { skipCats = false } = {}) {
   if (f.max != null && size > f.max) return false;
   if (!matchesSearch(t, f.q)) return false;
   if (f.typed && t.source !== 'manual') return false;
+  if (f.cash && !movesCash(t)) return false;
   if (f.toSort) return t.kind === 'review';
   if (f.types.length) {
     if (!f.types.includes(t.kind)) return false;
@@ -126,6 +129,7 @@ export function activeChips(f) {
   for (const id of f.cats) chips.push({ key: `cat:${id}`, label: categoryName(id) });
   if (f.toSort) chips.push({ key: 'toSort', label: 'To sort only' });
   if (f.typed) chips.push({ key: 'typed', label: 'Typed only' });
+  if (f.cash) chips.push({ key: 'cash', label: 'Cash only' });
   if (f.savings && !f.types.length && !f.toSort) chips.push({ key: 'savings', label: 'Savings transfers shown' });
   if (f.min != null || f.max != null) {
     const d = (c) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
@@ -140,6 +144,7 @@ export function removeChip(f, key) {
   if (key === 'range') return { ...f, range: 'all', from: '', to: '' };
   if (key === 'toSort') return { ...f, toSort: false };
   if (key === 'typed') return { ...f, typed: false };
+  if (key === 'cash') return { ...f, cash: false };
   if (key === 'savings') return { ...f, savings: false };
   if (key === 'amount') return { ...f, min: null, max: null };
   if (key.startsWith('type:')) return { ...f, types: f.types.filter((k) => k !== key.slice(5)) };

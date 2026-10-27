@@ -14,6 +14,7 @@ import { InvestmentsPage, TuitionPage } from './InvestPages.jsx';
 import { CashFlowPage, WherePage } from './FlowPages.jsx';
 import { MiniBars } from './charts.jsx';
 import { PaceChart, DayByDay } from './SpendCharts.jsx';
+import { isCash } from '../lib/cash.js';
 
 const byNewest = (a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0);
 
@@ -87,8 +88,9 @@ const Dot = ({ color }) => <span className="dot" style={{ background: `var(--${c
 // Spending's category filter (S-B, Ken 25 Oct 2026): pure, tested. monthList = the month's spending and
 // investing rows. Returns chips (categories in the month, biggest first, with counts), the shown list and
 // its totals (count, net out: refunds reduce it). typedOnly (UI bundle 2, Ken 26 Oct 2026): only entries you
-// typed in by hand (pending or settled manual); the chips keep counting the whole month.
-export function spendFilter(monthList, sel, typedOnly = false) {
+// typed in by hand (pending or settled manual); the chips keep counting the whole month. cashOnly (Paid with cash,
+// Ken 26 Oct 2026): only cash purchases (cash.js); cash entries are typed too, so Typed only still includes them.
+export function spendFilter(monthList, sel, typedOnly = false, cashOnly = false) {
   const by = new Map();
   for (const t of monthList) {
     const c = by.get(t.categoryId) ?? { id: t.categoryId, count: 0, cents: 0 };
@@ -97,7 +99,7 @@ export function spendFilter(monthList, sel, typedOnly = false) {
   }
   const chips = [...by.values()].sort((a, b) => b.cents - a.cents || b.count - a.count).map((c) => ({ ...c, name: categoryName(c.id) }));
   const picked = sel.length ? monthList.filter((t) => sel.includes(t.categoryId)) : monthList;
-  const list = typedOnly ? picked.filter((t) => t.source === 'manual') : picked;
+  const list = picked.filter((t) => (!typedOnly || t.source === 'manual') && (!cashOnly || isCash(t)));
   return { chips, list, count: list.length, out: list.reduce((a, t) => a - t.amountCents, 0) };
 }
 
@@ -163,6 +165,7 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
   const [noTuition, setNoTuition] = useState('all');
   const [sel, setSel] = useState(initialCategory ? [initialCategory] : []);
   const [typedOnly, setTypedOnly] = useState(false);
+  const [cashOnly, setCashOnly] = useState(false);
   const [sheet, setSheet] = useState(false);
   const s = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const exclude = useMemo(() => (noTuition === 'without' ? ['tuition'] : []), [noTuition]);
@@ -174,7 +177,7 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
     .filter((t) => monthKey(t.date) === month && (t.kind === 'spend' || t.kind === 'investing'))
     .filter((t) => !exclude.includes(t.categoryId))
     .sort(byNewest), [txns, month, exclude]);
-  const f = useMemo(() => spendFilter(monthList, sel, typedOnly), [monthList, sel, typedOnly]);
+  const f = useMemo(() => spendFilter(monthList, sel, typedOnly, cashOnly), [monthList, sel, typedOnly, cashOnly]);
   const prevName = compare ? monthName(compare.prev) : '';
   const hasTuition = useMemo(() => txns.some((t) => t.categoryId === 'tuition' && t.kind === 'spend'), [txns]);
   const title = sel.length === 1 ? categoryName(sel[0]) : 'Transactions';
@@ -218,7 +221,7 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
         )}
       </div>
       <TxnList title={title} list={f.list} today={today} onOpen={onOpen}
-        empty={typedOnly ? 'No typed entries. Everything is matched to the bank.' : sel.length ? 'Nothing in these categories this month.' : 'No spending this month.'}
+        empty={cashOnly ? 'No cash entries this month.' : typedOnly ? 'No typed entries. Everything is matched to the bank.' : sel.length ? 'Nothing in these categories this month.' : 'No spending this month.'}
         headSide={monthList.length > 0 && <button type="button" className="link" onClick={() => setSheet(true)}>More filters</button>}
         toolbar={monthList.length > 0 && (
           <>
@@ -229,6 +232,7 @@ function SpendingPage({ txns, month, today, onOpen, onDetail, initialCategory })
               <span className="spend-totals-right">
                 <span>{formatCents(Math.abs(f.out))} {f.out >= 0 ? 'out' : 'back'}</span>
                 <TypedSwitch on={typedOnly} onChange={setTypedOnly} />
+                <TypedSwitch on={cashOnly} onChange={setCashOnly} label="Cash only" />
               </span>
             </div>
           </>

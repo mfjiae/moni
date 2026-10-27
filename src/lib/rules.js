@@ -16,6 +16,14 @@ export const DEFAULT_RULES = [
   // ...and the same transfers seen from a saver's own CSV (M2.6)
   { match: { contains: ['TRANSFER TO XX6193', 'TRANSFER FROM XX6193'] }, kind: 'saving', categoryId: 'saving' },
 
+  // ATM cash withdrawals (Paid with cash, Ken 26 Oct 2026): the money moves to cash in hand, so it is not
+  // spending; the cash counts when you spend it. The bank's wording is NOT verified (no withdrawal in Ken's
+  // CSVs); a miss lands in To sort. Same pattern as isAtmWithdrawal in cash.js.
+  { match: { startsWith: 'ATM ', sign: 'out' }, kind: 'internal', categoryId: 'internal' },
+  { match: { startsWith: 'WDL ', sign: 'out' }, kind: 'internal', categoryId: 'internal' },
+  { match: { startsWith: 'CASH WITHDRAWAL', sign: 'out' }, kind: 'internal', categoryId: 'internal' },
+  { match: { contains: 'ATM WITHDRAWAL', sign: 'out' }, kind: 'internal', categoryId: 'internal' },
+
   // Income
   { match: { startsWith: 'SALARY' }, kind: 'income', categoryId: 'job-income' },
   // Family money: transfers marked "living fee/expenses" and the ATM cash deposits (Ken, Oct 2026)

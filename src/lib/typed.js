@@ -42,7 +42,8 @@ export function openConfirm(row, typedByUid) {
   return ids.length ? { near: !!row.confirm.near, ids, candidates: ids.map((id) => typedByUid.get(id)) } : null;
 }
 
-export const typedMap = (txns) => new Map(txns.filter(isTyped).map((t) => [t.uid, t]));
+// Cash purchases (cash.js) are never a match candidate: the bank never sees them.
+export const typedMap = (txns) => new Map(txns.filter((t) => isTyped(t) && !t.cash).map((t) => [t.uid, t]));
 
 // Every open question, oldest bank row first: [{ row, near, ids, candidates }].
 export function openConfirms(txns) {

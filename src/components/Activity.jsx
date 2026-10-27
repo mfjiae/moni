@@ -92,6 +92,10 @@ function FilterPanel({ f, set, minText, maxText, setMinText, setMaxText, cats, r
           <span>Typed entries only</span>
           <TypedSwitch on={!!f.typed} onChange={(v) => set({ ...f, typed: v })} label="" />
         </div>
+        <div className="fswitch-row">
+          <span>Cash entries only</span>
+          <TypedSwitch on={!!f.cash} onChange={(v) => set({ ...f, cash: v })} label="" />
+        </div>
       </div>
 
       <div className="fgroup">
@@ -215,6 +219,7 @@ export default function Activity({ txns, today, preset, presetKey, onOpen, onToa
             <div className="empty">
               {!txns.length ? 'No transactions yet. Import a NetBank CSV to start.'
                 : f.toSort && !chips.some((c) => c.key !== 'toSort') ? 'Nothing to sort. Everything has a category.'
+                  : f.cash && !chips.some((c) => c.key !== 'cash') ? 'No cash entries.'
                   : f.typed && !chips.some((c) => c.key !== 'typed') ? 'No typed entries. Everything is matched to the bank.'
                   : (
                     <>No transactions match these filters.<br />

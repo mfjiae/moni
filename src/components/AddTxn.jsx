@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CategorySelect } from './ui.jsx';
+import { CategorySelect, CashRow } from './ui.jsx';
 import { parseCents } from '../lib/money.js';
 import { nowSydneyTime } from '../lib/dates.js';
 import { addManual, addTransfer } from '../lib/store.js';
@@ -36,6 +36,7 @@ export default function AddTxn({ today, usage, est, onDone, onToast }) {
   const [date, setDate] = useState(today);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [cash, setCash] = useState(false);
   const [from, setFrom] = useState('xx2066');
   const [to, setTo] = useState(MAIN);
   const transfer = direction === 'transfer';
@@ -59,6 +60,7 @@ export default function AddTxn({ today, usage, est, onDone, onToast }) {
     await addManual({
       date, time: date === today ? nowSydneyTime() : undefined,
       amountCents: sign * cents, description: description.trim(), categoryId, note: note.trim(),
+      cash: direction === 'out' && cash,
     });
     onToast('Added');
     onDone();
@@ -72,9 +74,9 @@ export default function AddTxn({ today, usage, est, onDone, onToast }) {
           <button type="button" role="tab" aria-selected={direction === 'out'} className={direction === 'out' ? 'on' : ''}
             onClick={() => { setDirection('out'); setCategoryId(null); }}>Money out</button>
           <button type="button" role="tab" aria-selected={direction === 'in'} className={direction === 'in' ? 'on' : ''}
-            onClick={() => { setDirection('in'); setCategoryId(null); }}>Money in</button>
+            onClick={() => { setDirection('in'); setCategoryId(null); setCash(false); }}>Money in</button>
           <button type="button" role="tab" aria-selected={transfer} className={transfer ? 'on' : ''}
-            onClick={() => { setDirection('transfer'); setError(''); }}>Transfer</button>
+            onClick={() => { setDirection('transfer'); setError(''); setCash(false); }}>Transfer</button>
         </div>
 
         {transfer && (
@@ -93,6 +95,8 @@ export default function AddTxn({ today, usage, est, onDone, onToast }) {
           <input className="input amount-input" inputMode="decimal" placeholder="0.00" value={amount}
             onChange={(e) => { setAmount(e.target.value); setError(''); }} />
         </label>
+
+        {direction === 'out' && <CashRow on={cash} onChange={setCash} />}
 
         {!transfer && <label className="field">
           <span className="small">Description</span>
@@ -120,7 +124,9 @@ export default function AddTxn({ today, usage, est, onDone, onToast }) {
         <button type="submit" className="btn primary">Add</button>
         <p className="hint">{transfer
           ? 'Counted once, as Saved. When either bank CSV arrives, moni matches it to this entry so nothing is counted twice.'
-          : 'If this purchase later shows up in a CSV import, moni swaps it for the bank\'s version so it isn\'t counted twice.'}</p>
+          : direction === 'out' && cash
+            ? 'Counts in Spending. Never changes your Smart Access balance and is never matched to a bank row.'
+            : 'If this purchase later shows up in a CSV import, moni swaps it for the bank\'s version so it isn\'t counted twice.'}</p>
       </form>
     </main>
   );
