@@ -1,7 +1,7 @@
 // Clean names / nicknames (27 Oct 2026). Fake data only.
 import { describe, it, expect, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { renameKey, setNicknames, nicknameFor, nameRecordFor, suggestNames, countSimilar, titleCase, cleanName, nameChange, nameUid } from '../names.js';
+import { renameKey, setNicknames, nicknameFor, nameRecordFor, suggestNames, countSimilar, titleCase, cleanName, nameChange, nameUid, nameList } from '../names.js';
 import { matchesSearch } from '../activity.js';
 import { mergeSnapshots, normalize } from '../merge.js';
 import { categorize } from '../rules.js';
@@ -176,5 +176,23 @@ describe('database', () => {
     const list = [rec('FAKEMART', 'Fakemart')];
     expect(nameRecordFor(mart, list).uid).toBe('name|FAKEMART');
     expect(nameRecordFor(cafe, list)).toBe(null);
+  });
+});
+
+describe('Settings → Names list', () => {
+  it('lists similar-rows names and single-row names together, skipping empty nicknames', () => {
+    const rows = [
+      { ...mart, uid: 'a', date: '2026-10-02' },
+      { ...mart, uid: 'b', date: '2026-10-05' },
+      { ...cafe, uid: 'c', date: '2026-10-06', nickname: 'Uni cafe' },
+      { ...cafe, uid: 'd', date: '2026-10-07', nickname: '' },
+    ];
+    const out = nameList([rec('FAKEMART', 'Fakemart')], rows);
+    expect(out.map((x) => x.kind)).toEqual(['similar', 'single']);
+    expect(out[0]).toMatchObject({ from: 'FAKEMART', name: 'Fakemart', rows: 2 });
+    expect(out[1]).toMatchObject({ name: 'Uni cafe', rowUid: 'c' });
+  });
+  it('is empty when nothing is renamed', () => {
+    expect(nameList([], [mart])).toEqual([]);
   });
 });

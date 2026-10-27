@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db.js';
 import { connect, disconnect, syncNow, DEFAULT_REPO } from '../lib/sync.js';
-import { clearDevice, updateCategory, addCategory, deleteRule, deleteName } from '../lib/store.js';
-import { countSimilar } from '../lib/names.js';
+import { clearDevice, updateCategory, addCategory, deleteRule, deleteName, clearName } from '../lib/store.js';
+import { nameList } from '../lib/names.js';
+import { longDay } from '../lib/dates.js';
 import { allCategories, categoryName, LOCKED, TYPE_LABEL } from '../lib/categories.js';
 import { isBroadKeyword } from '../lib/rules.js';
 import { Chevron, useWide } from './ui.jsx';
@@ -162,37 +163,40 @@ function RulesCard({ rules, onToast }) {
 // Delete brings the bank's own name back on those rows. Names for a single row live on that row's sheet.
 function NamesCard({ names, txns, onToast }) {
   const [confirm, setConfirm] = useState(null);
-  if (!names?.length) {
+  const list = nameList(names, txns);
+  if (!list.length) {
     return (
       <section className="card" aria-label="Names">
         <span className="card-title">Names</span>
-        <p className="hint">None yet. Open a transaction, pick a name under “Shown as” and keep “Rename similar rows” on: it shows up here.</p>
+        <p className="hint">None yet. Open a transaction and pick a name under “Shown as”: every rename shows up here.</p>
       </section>
     );
   }
-  const list = [...names].sort((a, b) => a.name.localeCompare(b.name));
   return (
     <section className="card" aria-label="Names">
       <span className="card-title">Names</span>
       <p className="hint">Your names for bank text. Only the name you see changes: moni still matches, imports and sorts on the bank’s own text.</p>
       <div className="set-group">
         {list.map((r) => {
-          const n = countSimilar(txns ?? [], r.key);
+          const scope = r.kind === 'similar'
+            ? `all similar · ${r.rows} row${r.rows === 1 ? '' : 's'}`
+            : `this row only · ${r.date ? longDay(r.date) : ''}`;
           return (
-            <div className="set-row" key={r.uid}>
+            <div className="set-row" key={r.id}>
               <span className="name">
-                <span className="strong">{r.name}</span>
-                <span className="small name-key">{r.key} · {n} row{n === 1 ? '' : 's'}</span>
+                <span className="strong">{r.from}</span> → {r.name}
+                <span className="small name-key">{scope}</span>
               </span>
               <div className="actions">
                 <button type="button" className="btn ghost danger small-btn" onBlur={() => setConfirm(null)}
                   onClick={async () => {
-                    if (confirm !== r.uid) { setConfirm(r.uid); return; }
-                    await deleteName(r.uid);
+                    if (confirm !== r.id) { setConfirm(r.id); return; }
+                    if (r.kind === 'similar') await deleteName(r.id);
+                    else await clearName(r.rowUid);
                     setConfirm(null);
                     onToast(`Deleted ${r.name}. Showing the bank name again`);
                   }}>
-                  {confirm === r.uid ? 'Tap again' : 'Delete'}
+                  {confirm === r.id ? 'Tap again' : 'Delete'}
                 </button>
               </div>
             </div>
@@ -214,6 +218,7 @@ export default function Settings({ sync, txns, onToast }) {
   const [picked, setPicked] = useState(null);       // phone: null = the list; desktop: always one open
   const rules = useLiveQuery(() => db.userRules.orderBy('order').reverse().toArray(), []);
   const names = useLiveQuery(() => db.names.toArray(), []);
+  const nameCount = names ? nameList(names, txns ?? []).length : 0;
 
   async function onConnect(e) {
     e.preventDefault();
@@ -253,7 +258,7 @@ export default function Settings({ sync, txns, onToast }) {
     ['device', 'This device', 'Remove data from here'],
     ['categories', 'Categories', `${catCount} shown`],
     ['rules', 'Learned rules', rules ? (rules.length ? `${rules.length} saved` : 'None yet') : ''],
-    ['names', 'Names', names ? (names.length ? `${names.length} saved` : 'None yet') : ''],
+    ['names', 'Names', names ? (nameCount ? `${nameCount} saved` : 'None yet') : ''],
   ];
   const active = picked ?? (wide ? 'sync' : null);
   const content = {

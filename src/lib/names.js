@@ -53,6 +53,20 @@ export function countSimilar(txns, key) {
   return txns.filter((t) => t.kind !== 'saving' && t.description?.toUpperCase().includes(k)).length;
 }
 
+// Settings → Names list (Ken, 27 Oct 2026, option A): every rename in one list, "bank text → name".
+// Similar-rows names first (A-Z by bank text), then single-row names, newest first. A row nickname of ''
+// ("show the bank name here") is not a rename, so it is left out.
+export function nameList(records, txns) {
+  const similar = (records ?? []).map((r) => ({
+    id: r.uid, kind: 'similar', from: r.key, name: r.name, rows: countSimilar(txns, r.key),
+  })).sort((a, b) => a.from.localeCompare(b.from));
+  const single = (txns ?? [])
+    .filter((t) => typeof t.nickname === 'string' && t.nickname.trim())
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .map((t) => ({ id: t.uid, kind: 'single', from: shortName(t.description), name: t.nickname.trim(), date: t.date, rowUid: t.uid }));
+  return [...similar, ...single];
+}
+
 const SMALL = new Set(['and', 'of', 'the', 'at', 'on', 'for', 'to', 'in']);
 export function titleCase(s) {
   return String(s ?? '').toLowerCase().split(/\s+/).filter(Boolean)
