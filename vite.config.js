@@ -10,6 +10,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
+      // The screenshot reader (public/ocr, ~7 MB) downloads only when you first read a screenshot.
+      workbox: { globIgnores: ['**/ocr/**'] },
       manifest: {
         name: 'moni',
         short_name: 'moni',

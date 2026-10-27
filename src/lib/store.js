@@ -14,6 +14,7 @@ import { manualUid, skipUid, billFromSuggestion } from './bills.js';
 import { planResolve } from './typed.js';
 import { atmRule } from './cash.js';
 import { cleanName, nameUid } from './names.js';
+import { shotRecord } from './screenshot.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -87,6 +88,16 @@ export async function resolveMatch(bankUid, typedUid) {
     }
   });
   requestSync();
+}
+
+// Screenshot import (screenshot.js): save the rows you confirmed. items = review rows; toSort = ids you chose
+// "Leave in To sort" for (saved without a category). Returns how many were saved.
+export async function addShotRows(items, toSort = new Set()) {
+  const now = Date.now();
+  const recs = items.map((it, i) => ({ uid: newUid(), updatedAt: now, createdAt: now + i, ...shotRecord(it, { toSort: toSort.has(it.id) }) }));
+  if (recs.length) await db.txns.bulkAdd(recs);
+  requestSync();
+  return recs.length;
 }
 
 // cash: true = Paid with cash (cash.js): counts in Spending, never in the Smart Access balance or the importer.

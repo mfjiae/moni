@@ -66,12 +66,13 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
         : (t) => !t.transfer;
       const exact = candidates.filter((t) => free(t) && fits(t) && t.amountCents === r.amountCents);
       const near = c.kind === 'saving' || exact.length ? [] : candidates.filter((t) => free(t) && fits(t) && isNear(t.amountCents, r.amountCents));
-      if (exact.length === 1) {
+      // A screenshot row (screenshot.js) is never merged without asking (Ken, 27 Oct 2026: "Ask me each time").
+      if (exact.length === 1 && !exact[0].shot) {
         const m = exact[0];
         usedManual.add(m.uid);
         mergedManualIds.push(m.uid);
         txn = { ...txn, ...mergeFrom(m) };
-      } else if (exact.length > 1 || near.length) {
+      } else if (exact.length || near.length) {
         // Ask, but never more questions over the same typed entries than there are entries to answer with.
         const ids = (exact.length ? exact : near).map((t) => t.uid);
         const key = [...ids].sort().join(',');

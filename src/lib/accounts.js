@@ -176,7 +176,7 @@ export function transferRow({ from, to, cents }) {
 // that moni already knows about. allTxns = every stored row; balance = Smart Access meta; savers =
 // { id: meta | null }. Returns { main, savers: { id: ... } }, each null (no bank balance yet) or
 // { cents, bank, asOf, extra, typed, other, items, settled, confirms }:
-//   typed = typed-in entries counted, other = transfers seen only in the other account's CSV so far,
+//   typed = typed-in entries counted, shots = screenshot rows counted (screenshot.js), other = transfers seen only in the other account's CSV so far,
 //   items = those entries [{ uid, description, date, cents, from: 'typed' | 'other' }] for the breakdown,
 //   settled = { count, cents } typed entries the bank never matched in the 30 days before its balance
 //             (no longer counted, see typed.js), confirms = open "which typed entry is this?" questions.
@@ -193,10 +193,10 @@ export function estimateBalances(allTxns, balance, savers = {}) {
   // time, so a pending purchase typed after importing that day's CSV isn't in the bank number yet. When the
   // bank row arrives, the import replaces the typed one, so it is never counted twice.
   const after = (t, b) => (t.source === 'manual' ? posted(t) >= b.asOf : posted(t) > b.asOf);
-  const est = (b) => (b ? { cents: b.cents, bank: b.cents, asOf: b.asOf, extra: 0, typed: 0, other: 0, items: [], settled: { count: 0, cents: 0 }, confirms: [] } : null);
+  const est = (b) => (b ? { cents: b.cents, bank: b.cents, asOf: b.asOf, extra: 0, typed: 0, shots: 0, other: 0, items: [], settled: { count: 0, cents: 0 }, confirms: [] } : null);
   const main = est(balance);
   const out = Object.fromEntries(SAVERS.map((a) => [a.id, est(savers?.[a.id])]));
-  const item = (t, cents, from) => ({ uid: t.uid, description: t.description, nickname: t.nickname, kind: t.kind, date: posted(t), cents, from });
+  const item = (t, cents, from) => ({ uid: t.uid, description: t.description, nickname: t.nickname, kind: t.kind, date: posted(t), cents, from, ...(t.pending ? { pending: true } : {}) });
   const pendingFrom = main ? addDays(main.asOf, -MATCH_DAYS) : null;
   const settledFrom = main ? addDays(main.asOf, -30) : null;
   for (const t of allTxns) {
@@ -206,8 +206,8 @@ export function estimateBalances(allTxns, balance, savers = {}) {
       // Cash purchases (cash.js) never change Smart Access, not even while new.
       if (main && t.source === 'manual' && !t.cash && t.kind !== 'internal') {
         if (posted(t) >= pendingFrom) {
-          main.cents += t.amountCents; main.extra += t.amountCents; main.typed++;
-          main.items.push(item(t, t.amountCents, 'typed'));
+          main.cents += t.amountCents; main.extra += t.amountCents; if (t.shot) main.shots++; else main.typed++;
+          main.items.push(item(t, t.amountCents, t.shot ? 'shot' : 'typed'));
         } else if (posted(t) >= settledFrom) {
           main.settled.count++; main.settled.cents += t.amountCents;
         }
@@ -219,8 +219,8 @@ export function estimateBalances(allTxns, balance, savers = {}) {
       const s = other && !isMain(other) ? out[other] : null;
       if (s && !pairedMain.has(t.uid) && after(t, s)) {
         s.cents -= t.amountCents; s.extra -= t.amountCents;
-        if (t.source === 'manual') s.typed++; else s.other++;
-        s.items.push(item(t, -t.amountCents, t.source === 'manual' ? 'typed' : 'other'));
+        if (t.source === 'manual') { if (t.shot) s.shots++; else s.typed++; } else s.other++;
+        s.items.push(item(t, -t.amountCents, t.source === 'manual' ? (t.shot ? 'shot' : 'typed') : 'other'));
       }
     } else if (main && other && isMain(other) && !pairs.has(t.uid) && after(t, main)) {
       main.cents -= t.amountCents; main.extra -= t.amountCents; main.other++;

@@ -18,6 +18,8 @@ import { addDays } from './dates.js';
 
 export const MATCH_DAYS = 4;
 export const isTyped = (t) => t.source === 'manual';
+// Typed by hand, not read from a screenshot (screenshot.js): the "typed" tag and the Typed only filters.
+export const isHandTyped = (t) => t.source === 'manual' && !t.shot;
 
 export function typedStatus(t, asOf) {
   if (!isTyped(t)) return null;
@@ -34,7 +36,14 @@ export function isNear(typedCents, bankCents) {
 // What the bank row takes over from the typed entry it replaces: category, note and the date you typed
 // (Ken, 26 Oct 2026: the date you made the purchase can differ from the bank's while it is pending). The bank row
 // keeps its own `postedDate`, which balances and the import use. A transfer keeps the bank's date and category.
-export const mergeFrom = (m) => (m.transfer ? { note: m.note ?? '' } : { kind: m.kind, categoryId: m.categoryId, note: m.note || m.description, date: m.date });
+// A screenshot row (screenshot.js) gives the bank row its category and note but not its date or name: the bank's
+// dates are better than a screen's, and the bank text stays the name (your nicknames still apply). A screenshot
+// row left in To sort gives nothing but its note, so the bank row keeps its own rules' category.
+export const mergeFrom = (m) => {
+  if (m.transfer) return { note: m.note ?? '' };
+  if (m.shot) return m.kind === 'review' || !m.categoryId ? { note: m.note ?? '' } : { kind: m.kind, categoryId: m.categoryId, note: m.note ?? '' };
+  return { kind: m.kind, categoryId: m.categoryId, note: m.note || m.description, date: m.date };
+};
 
 // The question still open on a bank row: its candidates that still exist, or null (answered, or they were deleted).
 export function openConfirm(row, typedByUid) {
@@ -85,7 +94,7 @@ export function planResolve(txns, bankUid, typedUid) {
       if (!r.confirm?.ids?.includes(mUid)) continue;
       const ids = r.confirm.ids.filter((id) => byUid.has(id));
       if (!ids.length) { set(r.uid, { confirm: null }); rows.delete(r.uid); }
-      else if (!r.confirm.near && ids.length === 1) { rows.delete(r.uid); queue.push([r.uid, ids[0]]); }
+      else if (!r.confirm.near && ids.length === 1 && !byUid.get(ids[0]).shot) { rows.delete(r.uid); queue.push([r.uid, ids[0]]); }
       else { r.confirm = { ...r.confirm, ids }; set(r.uid, { confirm: r.confirm }); }
     }
   }

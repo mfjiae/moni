@@ -15,6 +15,7 @@ import { CashFlowPage, WherePage } from './FlowPages.jsx';
 import { MiniBars } from './charts.jsx';
 import { PaceChart, DayByDay } from './SpendCharts.jsx';
 import { isCash } from '../lib/cash.js';
+import { isHandTyped } from '../lib/typed.js';
 import GoalCard from './GoalCard.jsx';
 
 const byNewest = (a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0);
@@ -100,7 +101,7 @@ export function spendFilter(monthList, sel, typedOnly = false, cashOnly = false)
   }
   const chips = [...by.values()].sort((a, b) => b.cents - a.cents || b.count - a.count).map((c) => ({ ...c, name: categoryName(c.id) }));
   const picked = sel.length ? monthList.filter((t) => sel.includes(t.categoryId)) : monthList;
-  const list = picked.filter((t) => (!typedOnly || t.source === 'manual') && (!cashOnly || isCash(t)));
+  const list = picked.filter((t) => (!typedOnly || isHandTyped(t)) && (!cashOnly || isCash(t)));
   return { chips, list, count: list.length, out: list.reduce((a, t) => a - t.amountCents, 0) };
 }
 
@@ -423,7 +424,7 @@ function AccountBody({ txns, bankBal: balance, est, main, info, today, onOpen, m
   const [range, setRange] = useState('1y');
   const bal = est ? est.cents : main ? currentBalance(balance, txns) : balance?.cents ?? null;
   const since = est
-    ? [est.typed && `${est.typed} typed`, est.other && `${est.other} from the other account's CSV`].filter(Boolean).join(', ')
+    ? [est.typed && `${est.typed} typed`, est.shots && `${est.shots} from screenshots`, est.other && `${est.other} from the other account's CSV`].filter(Boolean).join(', ')
     : 'manual entries';
   const history = useMemo(() => balanceHistory(txns), [txns]);
   const cutoff = useMemo(() => {

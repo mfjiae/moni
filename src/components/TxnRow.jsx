@@ -42,9 +42,10 @@ export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
           <span className="cat-text">
             {t.kind === 'review' ? <span className="text-review">{cat}</span> : cat}
             {meta ? ` · ${meta}` : ''}
-            {!cash && t.source === 'manual' && t.typed !== 'pending' ? ' · manual' : ''}
+            {!cash && t.source === 'manual' && t.typed !== 'pending' ? (t.shot ? ' · screenshot' : ' · manual') : ''}
           </span>
-          {!cash && t.typed === 'pending' && <span className="typed-tag">typed</span>}
+          {!cash && !t.shot && t.typed === 'pending' && <span className="typed-tag">typed</span>}
+          {t.shot && t.typed === 'pending' && <span className={`shot-tag${t.pending ? ' pend' : ''}`}>{t.pending ? 'pending' : 'screenshot'}</span>}
           {t.atmAsk && <span className="cash-tag ask">Cash withdrawal?</span>}
           {ctag && <span className={`cash-tag${ctag.cls === 'cash' ? '' : ` ${ctag.cls}`}`}>{ctag.text}</span>}
           {tags?.map((g) => <span key={g.text} className={`etf-tag${g.cls ? ` ${g.cls}` : ''}`}>{g.text}</span>)}

@@ -144,7 +144,7 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
   const [always, setAlways] = useState(canLearn && txn.kind === 'review' && !!keyword);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Paid with cash: a typed purchase can be switched to cash (or back) here; a bank cash deposit asks whose cash it was.
-  const canCash = txn.source === 'manual' && !txn.transfer && txn.amountCents < 0;
+  const canCash = txn.source === 'manual' && !txn.shot && !txn.transfer && txn.amountCents < 0;
   const [cash, setCash] = useState(isCash(txn));
   const deposit = isCashDeposit(txn);
   // Push 2 (Ken, 27 Oct 2026): a round, unsorted money-out row may be a missed ATM withdrawal (App marks it `atmAsk`).

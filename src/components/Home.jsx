@@ -186,7 +186,7 @@ function Breakdown({ id, title, banks, info, total, onToast }) {
       {info.items.map((x) => (
         <div className="bp-row" key={x.uid}>
           <span className="bp-name">{displayName(x)} <span className="bp-sub">{dayShort(x.date)}</span>
-            <span className={`bp-tag${x.from === 'typed' ? '' : ' other'}`}>{x.from === 'typed' ? 'typed' : 'other account\u2019s CSV'}</span></span>
+            <span className={`bp-tag${x.from === 'typed' ? '' : x.from === 'shot' ? ' shot' : ' other'}`}>{x.from === 'typed' ? 'typed' : x.from === 'shot' ? (x.pending ? 'pending' : 'screenshot') : 'other account\u2019s CSV'}</span></span>
           <span className="bp-amt">{formatCents(x.cents, { sign: true })}</span>
         </div>
       ))}
@@ -198,9 +198,19 @@ function Breakdown({ id, title, banks, info, total, onToast }) {
               <span className="bp-name">{bankName} <span className="bp-sub">{dayShort(q.row.date)}</span><span className="bp-tag wait">waiting for you</span></span>
               <span className="bp-amt">{formatCents(-q.row.amountCents, { sign: true })}</span>
             </div>
-            {q.near ? (
+            {q.candidates.length === 1 && q.candidates[0].shot ? (
+              // Screenshot rows (screenshot.js) are always asked about, even with the exact amount (Ken: "Ask me each time").
               <>
-                <p>The bank took <b>{formatCents(-q.row.amountCents)}</b> at {bankName} on {dayShort(q.row.date)}. Is it your <b>{q.candidates[0].description} {formatCents(-q.candidates[0].amountCents)}</b>?</p>
+                <p>The bank file has <b>{bankName} {formatCents(-q.row.amountCents)}</b> on {dayShort(q.row.date)}. Is it the same one as <b>{displayName(q.candidates[0])} {formatCents(-q.candidates[0].amountCents)}</b> from your screenshot on {dayShort(q.candidates[0].date)}?</p>
+                <div className="bp-opts">
+                  <button type="button" className="bp-opt" onClick={() => pick(q.row.uid, q.candidates[0].uid, 'Matched. The bank row took over, nothing counts twice.')}>Yes, same one</button>
+                  <button type="button" className="bp-opt quiet" onClick={() => pick(q.row.uid, null, 'Kept both')}>No, keep both</button>
+                </div>
+                <p className="bp-note">Yes: the bank row takes over and keeps your category. Until you answer, the bank row stays out of your totals.</p>
+              </>
+            ) : q.near ? (
+              <>
+                <p>The bank took <b>{formatCents(-q.row.amountCents)}</b> at {bankName} on {dayShort(q.row.date)}. Is it your <b>{q.candidates[0].description} {formatCents(-q.candidates[0].amountCents)}</b>{q.candidates[0].shot ? ' from your screenshot' : ''}?</p>
                 <div className="bp-opts">
                   <button type="button" className="bp-opt" onClick={() => pick(q.row.uid, q.candidates[0].uid, 'Matched. The bank\u2019s amount replaced your typed one.')}>Yes, same purchase</button>
                   <button type="button" className="bp-opt quiet" onClick={() => pick(q.row.uid, null, 'Kept both')}>No, keep both</button>
@@ -211,7 +221,7 @@ function Breakdown({ id, title, banks, info, total, onToast }) {
                 <p>The bank took <b>{formatCents(-q.row.amountCents)}</b> at {bankName} on {dayShort(q.row.date)}. Which typed entry is it?</p>
                 <div className="bp-opts">
                   {q.candidates.map((c) => (
-                    <button type="button" key={c.uid} className="bp-opt" onClick={() => pick(q.row.uid, c.uid, `Matched your ${c.description} from ${dayShort(c.date)}`)}>{c.description} · {dayShort(c.date)}</button>
+                    <button type="button" key={c.uid} className="bp-opt" onClick={() => pick(q.row.uid, c.uid, `Matched your ${c.description} from ${dayShort(c.date)}`)}>{c.description} · {dayShort(c.date)}{c.shot ? ' · screenshot' : ''}</button>
                   ))}
                   <button type="button" className="bp-opt quiet" onClick={() => pick(q.row.uid, null, 'Kept them all')}>Neither</button>
                 </div>

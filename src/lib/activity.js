@@ -20,6 +20,7 @@ import { monthKey, shiftMonth } from './dates.js';
 import { categoryName } from './categories.js';
 import { nicknameFor } from './names.js';
 import { movesCash } from './cash.js';
+import { isHandTyped } from './typed.js';
 
 export const EMPTY_FILTER = Object.freeze({
   q: '', range: 'all', from: '', to: '', types: [], cats: [], toSort: false, savings: false, typed: false, cash: false, min: null, max: null,
@@ -71,7 +72,7 @@ export function passes(t, f, bounds, { skipCats = false } = {}) {
   if (f.min != null && size < f.min) return false;
   if (f.max != null && size > f.max) return false;
   if (!matchesSearch(t, f.q)) return false;
-  if (f.typed && t.source !== 'manual') return false;
+  if (f.typed && !isHandTyped(t)) return false;
   if (f.cash && !movesCash(t)) return false;
   if (f.toSort) return t.kind === 'review';
   if (f.types.length) {

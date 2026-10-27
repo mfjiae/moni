@@ -1,5 +1,5 @@
 // Small shared pieces.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { pickerGroups, getCategory, categoryName } from '../lib/categories.js';
 import { importCsvText, previewCsv, addCategory } from '../lib/store.js';
 import { ACCOUNTS, pickWarning } from '../lib/accounts.js';
@@ -202,12 +202,17 @@ export function useCategoryUsage(txns) {
 
 const dayYear = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
+const ShotImport = lazy(() => import('./ShotImport.jsx'));
+
 // Import (M2.6, Ken 24 Oct 2026, option A + warning): pick the file, then say which account it is from.
 // moni pre-picks its guess; a warning shows under the list (so the choices never move) when the pick
 // doesn't fit the file.
+// Screenshot import (Ken, 27 Oct 2026): the button opens a small menu, Bank CSV or Screenshot (ShotImport.jsx).
 export function ImportButton({ onDone, className = 'btn' }) {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [shot, setShot] = useState(false);
   const [pending, setPending] = useState(null); // { text, preview, account }
 
   async function handle(e) {
@@ -251,10 +256,29 @@ export function ImportButton({ onDone, className = 'btn' }) {
   const warning = pending ? pickWarning(p.rows, pending.account) : null;
   return (
     <>
-      <button type="button" className={className} disabled={busy} onClick={() => input.current?.click()}>
-        {busy ? 'Importing…' : 'Import NetBank CSV'}
+      <button type="button" className={className} disabled={busy} aria-haspopup="dialog" onClick={() => setMenu(true)}>
+        {busy ? 'Importing…' : 'Import'}
       </button>
       <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={handle} />
+      {menu && (
+        <Sheet title="Import" onClose={() => setMenu(false)}>
+          <div className="import-menu">
+            <button type="button" className="import-opt" onClick={() => { setMenu(false); input.current?.click(); }}>
+              <span className="import-opt-name">Bank CSV</span>
+              <span className="small">A NetBank CSV export. Any account.</span>
+            </button>
+            <button type="button" className="import-opt" onClick={() => { setMenu(false); setShot(true); }}>
+              <span className="import-opt-name">Screenshot</span>
+              <span className="small">CommBank&rsquo;s Smart Access transactions page, or rows pasted from chat. You confirm each row.</span>
+            </button>
+          </div>
+        </Sheet>
+      )}
+      {shot && (
+        <Suspense fallback={null}>
+          <ShotImport onClose={() => setShot(false)} onDone={onDone} />
+        </Suspense>
+      )}
       {pending && (
         <Sheet title="Which account is this CSV from?" onClose={() => setPending(null)}>
           <p className="small import-facts">

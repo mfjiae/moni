@@ -16,6 +16,8 @@
 !public/**
 !src/
 !src/**
+!scripts/
+!scripts/**
 
 # Even inside src/public, never real data files
 *.csv
@@ -30,3 +32,6 @@
 # Skill data tables are CSVs; allow them under the skills folder only
 !.claude/skills/ui-ux-pro-max/data/**/*.csv
 !.claude/skills/ui-ux-pro-max/data/*.csv
+
+# The screenshot reader is copied from node_modules at build time (scripts/copy-ocr.mjs), never committed
+public/ocr/
