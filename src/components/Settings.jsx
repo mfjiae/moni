@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db.js';
 import { connect, disconnect, syncNow, DEFAULT_REPO } from '../lib/sync.js';
-import { clearDevice, updateCategory, addCategory, deleteRule } from '../lib/store.js';
+import { clearDevice, updateCategory, addCategory, deleteRule, deleteName } from '../lib/store.js';
+import { countSimilar } from '../lib/names.js';
 import { allCategories, categoryName, LOCKED, TYPE_LABEL } from '../lib/categories.js';
 import { isBroadKeyword } from '../lib/rules.js';
 import { Chevron, useWide } from './ui.jsx';
@@ -157,6 +158,51 @@ function RulesCard({ rules, onToast }) {
   );
 }
 
+// Settings → Names (clean names, 27 Oct 2026): every "Rename similar rows" name, with the bank text it covers.
+// Delete brings the bank's own name back on those rows. Names for a single row live on that row's sheet.
+function NamesCard({ names, txns, onToast }) {
+  const [confirm, setConfirm] = useState(null);
+  if (!names?.length) {
+    return (
+      <section className="card" aria-label="Names">
+        <span className="card-title">Names</span>
+        <p className="hint">None yet. Open a transaction, pick a name under “Shown as” and keep “Rename similar rows” on: it shows up here.</p>
+      </section>
+    );
+  }
+  const list = [...names].sort((a, b) => a.name.localeCompare(b.name));
+  return (
+    <section className="card" aria-label="Names">
+      <span className="card-title">Names</span>
+      <p className="hint">Your names for bank text. Only the name you see changes: moni still matches, imports and sorts on the bank’s own text.</p>
+      <div className="set-group">
+        {list.map((r) => {
+          const n = countSimilar(txns ?? [], r.key);
+          return (
+            <div className="set-row" key={r.uid}>
+              <span className="name">
+                <span className="strong">{r.name}</span>
+                <span className="small name-key">{r.key} · {n} row{n === 1 ? '' : 's'}</span>
+              </span>
+              <div className="actions">
+                <button type="button" className="btn ghost danger small-btn" onBlur={() => setConfirm(null)}
+                  onClick={async () => {
+                    if (confirm !== r.uid) { setConfirm(r.uid); return; }
+                    await deleteName(r.uid);
+                    setConfirm(null);
+                    onToast(`Deleted ${r.name}. Showing the bank name again`);
+                  }}>
+                  {confirm === r.uid ? 'Tap again' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function Settings({ sync, txns, onToast }) {
   const [repo, setRepo] = useState(DEFAULT_REPO);
   const [token, setToken] = useState('');
@@ -167,6 +213,7 @@ export default function Settings({ sync, txns, onToast }) {
   const wide = useWide();
   const [picked, setPicked] = useState(null);       // phone: null = the list; desktop: always one open
   const rules = useLiveQuery(() => db.userRules.orderBy('order').reverse().toArray(), []);
+  const names = useLiveQuery(() => db.names.toArray(), []);
 
   async function onConnect(e) {
     e.preventDefault();
@@ -206,6 +253,7 @@ export default function Settings({ sync, txns, onToast }) {
     ['device', 'This device', 'Remove data from here'],
     ['categories', 'Categories', `${catCount} shown`],
     ['rules', 'Learned rules', rules ? (rules.length ? `${rules.length} saved` : 'None yet') : ''],
+    ['names', 'Names', names ? (names.length ? `${names.length} saved` : 'None yet') : ''],
   ];
   const active = picked ?? (wide ? 'sync' : null);
   const content = {
@@ -279,6 +327,7 @@ export default function Settings({ sync, txns, onToast }) {
     ),
     categories: <CategoriesCard txns={txns} onToast={onToast} />,
     rules: <RulesCard rules={rules} onToast={onToast} />,
+    names: <NamesCard names={names} txns={txns} onToast={onToast} />,
   };
 
   const list = (

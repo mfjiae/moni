@@ -19,6 +19,7 @@ import { countedView, estimateBalances, SAVERS, balanceKey } from './lib/account
 import { markTyped } from './lib/typed.js';
 import { cashBalance, cashDot, atmQuestion, atmSkipRules } from './lib/cash.js';
 import { etfList, lastPick } from './lib/investing.js';
+import { setNicknames } from './lib/names.js';
 
 const Icon = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
@@ -74,11 +75,15 @@ export default function App() {
     return { ...c, dot: cashDot(baseTxns, cashSetting ?? null, balance?.asOf) };
   }, [baseTxns, cashSetting, balance]);
   const skipAtm = useMemo(() => atmSkipRules(userRules ?? []), [userRules]);
+  // Your nicknames for bank text (names.js, synced). Set before the rows render; `txns` is rebuilt when they
+  // change so searches and lists pick up a new name straight away.
+  const nameRecs = useLiveQuery(() => db.names.toArray(), []);
+  const namesReady = useMemo(() => { setNicknames(nameRecs ?? []); return nameRecs !== undefined; }, [nameRecs]);
   const txns = useMemo(() => (baseTxns && cash ? baseTxns.map((t) => {
     const fx = cash.effects.get(t.uid);
     const ask = atmQuestion(t, skipAtm);
     return fx || ask ? { ...t, ...(fx ? { cashFx: fx } : {}), ...(ask ? { atmAsk: true } : {}) } : t;
-  }) : undefined), [baseTxns, cash, skipAtm]);
+  }) : undefined), [baseTxns, cash, skipAtm, nameRecs]);
   const saverBalances = useLiveQuery(async () => {
     const list = await Promise.all(SAVERS.map((a) => db.meta.get(balanceKey(a.id))));
     return Object.fromEntries(SAVERS.map((a, i) => [a.id, list[i] ?? null]));
@@ -152,7 +157,7 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  if (txns === undefined || !catsReady || plans === undefined || etfRecords === undefined || bills === undefined) return <div className="app"><div className="empty">Loading…</div></div>;
+  if (txns === undefined || !catsReady || plans === undefined || etfRecords === undefined || bills === undefined || !namesReady) return <div className="app"><div className="empty">Loading…</div></div>;
 
   const reviewCount = txns.filter((t) => t.kind === 'review').length;
   const open = openId != null ? (txns.find((t) => t.uid === openId) ?? allTxns.find((t) => t.uid === openId)) : null;
@@ -184,7 +189,7 @@ export default function App() {
       )}
       {tab === 'settings' && <Settings sync={sync} txns={txns} onToast={setToast} />}
 
-      {open && <TxnSheet key={open.uid} txn={open} usage={usage} etfs={etfs} lastEtf={lastEtf} onClose={() => setOpenId(null)} onToast={setToast} />}
+      {open && <TxnSheet key={open.uid} txn={open} txns={txns} usage={usage} etfs={etfs} lastEtf={lastEtf} onClose={() => setOpenId(null)} onToast={setToast} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
 

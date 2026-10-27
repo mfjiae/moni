@@ -1,6 +1,6 @@
 // Activity search and filters (M2.5b step 4). Pure functions, all money in integer cents.
 // A filter object `f`:
-//   q        search text: matches the bank description, note, category name, or the amount ("34" / "34.00" / "$34")
+//   q        search text: matches the bank description, your nickname for it, note, category name, or the amount ("34" / "34.00" / "$34")
 //   range    'all' | 'this-month' | 'last-month' | 'this-year' | 'custom' (custom uses from / to, 'YYYY-MM-DD', both optional)
 //   types    ['spend' | 'income' | 'saving' | 'investing']  (empty = every type)
 //   cats     category ids (empty = every category)
@@ -18,6 +18,7 @@
 // - Min / max compare the size only: $20 to $50 matches both -$30 and +$30.
 import { monthKey, shiftMonth } from './dates.js';
 import { categoryName } from './categories.js';
+import { nicknameFor } from './names.js';
 import { movesCash } from './cash.js';
 
 export const EMPTY_FILTER = Object.freeze({
@@ -55,6 +56,7 @@ export function matchesSearch(t, q) {
   const s = q.trim().toLowerCase();
   if (!s) return true;
   if (t.description.toLowerCase().includes(s)) return true;
+  if ((nicknameFor(t) ?? '').toLowerCase().includes(s)) return true;
   if ((t.note ?? '').toLowerCase().includes(s)) return true;
   if (t.kind === 'review' ? 'to sort'.includes(s) : t.categoryId && categoryName(t.categoryId).toLowerCase().includes(s)) return true;
   const a = amountQuery(s);

@@ -49,6 +49,10 @@ db.version(5).stores({ etfs: 'uid' });
 db.version(6).stores({ bills: null });
 db.version(7).stores({ bills: 'uid' });
 
+// v8 (clean names, 27 Oct 2026): your nicknames for bank text ("Rename similar rows"; synced). See names.js.
+// A brand-new table, so nothing is dropped.
+db.version(8).stores({ names: 'uid' });
+
 // Ask the browser not to evict our data under storage pressure.
 // Some browsers (Firefox, Zen) show a prompt, so only ask once per device.
 export async function requestPersistentStorage() {

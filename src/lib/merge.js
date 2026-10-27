@@ -11,6 +11,7 @@
 // (bills = your bills and dismissed bill suggestions, added in M5; same rule as budgets.)
 // (cash = the cash balance you set: { cents, asOf, setAt, updatedAt }, added with Paid with cash Push 2;
 // the newest one you saved wins. An older app version drops it; the next new-version sync puts it back.)
+// (names = your nicknames for bank text, added with clean names; same rule as budgets.)
 // (goal = your savings goal { name, targetCents, byDate, startDate, updatedAt }, added in batch 3; newest wins;
 // an older app version drops it; the next new-version sync puts it back.)
 // - Every record has a stable `uid` and an `updatedAt` (ms).
@@ -39,6 +40,7 @@ export function normalize(s) {
     budgets: [...(s?.budgets ?? [])].sort(byUid),
     etfs: [...(s?.etfs ?? [])].sort(byUid),
     bills: [...(s?.bills ?? [])].sort(byUid),
+    names: [...(s?.names ?? [])].sort(byUid),
     tombstones: { ...(s?.tombstones ?? {}) },
     balance: s?.balance ?? null,
     balances: { ...(s?.balances ?? {}) },
@@ -89,6 +91,7 @@ export function mergeSnapshots(local, remote) {
     budgets: mergeRecords(l.budgets, r.budgets, tombstones),
     etfs: mergeRecords(l.etfs, r.etfs, tombstones),
     bills: mergeRecords(l.bills, r.bills, tombstones),
+    names: mergeRecords(l.names, r.names, tombstones),
     tombstones,
     balance: newerBalance(l.balance, r.balance),
     balances: Object.fromEntries([...new Set([...Object.keys(l.balances), ...Object.keys(r.balances)])]

@@ -6,7 +6,68 @@ import { splitOf, buildSplit } from '../lib/investing.js';
 import { longDay } from '../lib/dates.js';
 import { isPersonTransfer, merchantKey, isBroadKeyword } from '../lib/rules.js';
 import { isCashDeposit, isCash, depositChoice, DEPOSIT_CHOICES } from '../lib/cash.js';
-import { answerAtm, setCategory, saveRule, deleteTxn, setEtfSplit, addEtf } from '../lib/store.js';
+import { answerAtm, setCategory, saveRule, deleteTxn, setEtfSplit, addEtf, renameSimilar, renameRow, clearName } from '../lib/store.js';
+import { renameKey, nameRecordFor, nicknameFor, suggestNames, countSimilar, cleanName, nameChange, MAX_NAME } from '../lib/names.js';
+import { shortName } from '../lib/activity.js';
+
+// "Shown as" (clean names, Ken 27 Oct 2026, option B): suggestion chips, "Type your own…", the bank text that never
+// changes, and "Rename similar rows" (on by default). Display only: moni keeps matching and sorting on the bank text.
+function NameEditor({ txn, txns, state, setState }) {
+  const { pick, typing, text, similar } = state;
+  const key = renameKey(txn);
+  const current = nicknameFor(txn);
+  const chips = useMemo(() => {
+    const s = suggestNames(txn);
+    return current && !s.some((x) => x.toLowerCase() === current.toLowerCase()) ? [current, ...s].slice(0, 3) : s;
+  }, [txn, current]);
+  const n = useMemo(() => (key ? countSimilar(txns ?? [], key) : 0), [txns, key]);
+  const choose = (v) => setState({ ...state, pick: v, typing: false });
+  return (
+    <div className="name-edit" role="group" aria-label="Shown as">
+      <span className="small">Shown as</span>
+      <div className="name-chips">
+        {chips.map((c) => (
+          <button type="button" key={c} className={`name-chip${!typing && pick === c ? ' on' : ''}`} aria-pressed={!typing && pick === c} onClick={() => choose(c)}>{c}</button>
+        ))}
+        {current && (
+          <button type="button" className={`name-chip${!typing && pick === null ? ' on' : ''}`} aria-pressed={!typing && pick === null} onClick={() => choose(null)}>Bank name</button>
+        )}
+        <button type="button" className={`name-chip${typing ? ' on' : ''}`} aria-pressed={typing} onClick={() => setState({ ...state, typing: true, text: text || pick || '' })}>Type your own…</button>
+      </div>
+      {typing && (
+        <input className="input" aria-label="Your name for this" value={text} maxLength={MAX_NAME} autoFocus placeholder="e.g. Corner shop"
+          onChange={(e) => setState({ ...state, text: e.target.value })} />
+      )}
+      <span className="small">Bank text (never changes)</span>
+      <span className="bank-raw">{txn.description}</span>
+      <div className="cash-row name-similar">
+        <span className="cash-row-text">
+          <span>Rename similar rows</span>
+          <span className="small">{key ? `${n} row${n === 1 ? '' : 's'} with “${key}”` : 'Only this row: the bank text is too general, or it is a payment to a person or a typed entry.'}</span>
+        </span>
+        <button type="button" role="switch" aria-checked={similar && !!key} aria-label="Rename similar rows" className="cash-sw"
+          disabled={!key} onClick={() => setState({ ...state, similar: !similar })} />
+      </div>
+    </div>
+  );
+}
+
+async function applyName(txn, state) {
+  const ch = nameChange(txn, state);
+  if (!ch) return null;
+  const key = state.similar ? renameKey(txn) : '';
+  const rec = nameRecordFor(txn);
+  if (ch.name === null) {
+    if (key) await clearName(txn.uid, rec?.uid ?? null);
+    else if (rec) await renameRow(txn.uid, '');
+    else await clearName(txn.uid);
+    return 'bank';
+  }
+  const name = cleanName(ch.name);
+  if (key) await renameSimilar(txn.uid, key, name);
+  else await renameRow(txn.uid, name);
+  return name;
+}
 
 const toCents = (text) => { try { const c = parseCents(text); return c > 0 ? c : NaN; } catch { return NaN; } };
 
@@ -67,7 +128,14 @@ function EtfSplit({ rows, setRows, etfs, amountCents, onToast }) {
   );
 }
 
-export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClose, onToast }) {
+export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = null, onClose, onToast }) {
+  const canName = txn.kind !== 'saving' && !txn.mirrored;
+  const [nameState, setNameState] = useState(() => ({
+    pick: nicknameFor(txn), typing: false, text: '',
+    similar: !!renameKey(txn) && typeof txn.nickname !== 'string',
+  }));
+  const nameDirty = canName && !!nameChange(txn, nameState);
+  const [nameError, setNameError] = useState('');
   const [categoryId, setCategoryId] = useState(txn.categoryId ?? null);
   const [note, setNote] = useState(txn.note ?? '');
   const person = isPersonTransfer(txn.description);
@@ -101,11 +169,18 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
   const broad = canLearn && always && isBroadKeyword(keyword);
 
   async function save() {
-    if (!categoryId || broad || (investing && !split.ok)) return;
+    if (broad || (categoryId && investing && !split.ok)) return;
+    if (!categoryId && !nameDirty) return;
+    let named = null;
+    if (nameDirty) {
+      try { named = await applyName(txn, nameState); } catch (e) { setNameError(e.message); return; }
+    }
+    const nameMsg = named === 'bank' ? 'Showing the bank name' : named ? `Shown as ${named}` : '';
+    if (!categoryId) { onToast(nameMsg); onClose(); return; }
     await setCategory(txn.uid, categoryId, note, canCash && cash !== isCash(txn) ? { cash } : {});
     if (investing) await setEtfSplit(txn.uid, split.split);
     else if (txn.etfSplit?.length) await setEtfSplit(txn.uid, []);
-    let msg = 'Saved';
+    let msg = nameMsg ? `Saved. ${nameMsg}` : 'Saved';
     if (canLearn && always && keyword.trim()) {
       const n = await saveRule(keyword, categoryId, txn.uid);
       msg = n ? `Saved. Also sorted ${n} more from ${keyword.trim().toUpperCase()}` : `Saved. ${keyword.trim().toUpperCase()} will be sorted automatically`;
@@ -126,13 +201,16 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
       <div className="sheet-body">
         <div className="detail">
           <span className={`detail-amount${txn.amountCents > 0 ? ' text-in' : ''}`}>{formatCents(txn.amountCents, { sign: true })}</span>
-          <span className="merchant-full">{txn.description}</span>
+          <span className="merchant-full">{canName ? ((nameState.typing ? nameState.text.trim() : nameState.pick) || shortName(txn.description)) : txn.description}</span>
           <span className="small">
             {longDay(txn.date)}
             {txn.postedDate && txn.postedDate !== txn.date ? ` · bank posted ${longDay(txn.postedDate)}` : ''}
             {txn.time ? ` · ${txn.time}` : ''}
           </span>
         </div>
+
+        {canName && <NameEditor txn={txn} txns={txns} state={nameState} setState={(s) => { setNameState(s); setNameError(''); }} />}
+        {nameError && <p className="error" role="alert">{nameError}</p>}
 
         {deposit && (
           <div className="cash-deposit">
@@ -195,7 +273,7 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
           <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </label>
 
-        <button type="button" className="btn primary" disabled={!categoryId || broad || (investing && !split.ok)} onClick={save}>Save</button>
+        <button type="button" className="btn primary" disabled={(!categoryId && !nameDirty) || broad || (!!categoryId && investing && !split.ok)} onClick={save}>Save</button>
         <button type="button" className="btn ghost danger" onClick={remove}>
           {confirmDelete ? 'Tap again to delete' : 'Delete transaction'}
         </button>

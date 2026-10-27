@@ -3,6 +3,7 @@ import { categoryName } from '../lib/categories.js';
 import { shortName } from '../lib/activity.js';
 import { accountOf, isMain } from '../lib/accounts.js';
 import { cashTag, isCash } from '../lib/cash.js';
+import { nicknameFor } from '../lib/names.js';
 
 // Friendlier names for transfers with your own savings accounts
 export function displayName(t) {
@@ -11,7 +12,8 @@ export function displayName(t) {
     if (/XX2103/i.test(t.description)) return t.amountCents < 0 ? 'To 2nd savings' : 'From 2nd savings';
     if (/XX6193/i.test(t.description)) return t.amountCents < 0 ? 'To Smart Access' : 'From Smart Access';
   }
-  return shortName(t.description);
+  // Your nickname for it (names.js), else the bank text without the card tail.
+  return nicknameFor(t) ?? shortName(t.description);
 }
 
 export const amountClass = (t) => {

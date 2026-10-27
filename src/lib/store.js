@@ -13,6 +13,7 @@ import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.j
 import { manualUid, skipUid, billFromSuggestion } from './bills.js';
 import { planResolve } from './typed.js';
 import { atmRule } from './cash.js';
+import { cleanName, nameUid } from './names.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -411,5 +412,53 @@ export async function undoQuickSort(undo) {
     if (cur && cur.updatedAt !== before.updatedAt) await db.txns.put({ ...before, updatedAt: now });
   }
   for (const uid of undo.rules) await deleteRule(uid);
+  requestSync();
+}
+
+// ---------- Clean names / nicknames (27 Oct 2026; display only, the bank text never changes) ----------
+
+// "Rename similar rows": every row whose bank text contains `key` shows `name`. The row's own nickname, if it had one,
+// is cleared so the shared name shows.
+export async function renameSimilar(rowUid, key, text) {
+  const name = cleanName(text);
+  const k = String(key ?? '').toUpperCase().trim();
+  if (!k || isBroadKeyword(k)) throw new Error('That bank text is too general to rename similar rows.');
+  const now = Date.now();
+  await db.transaction('rw', db.names, db.txns, async () => {
+    await db.names.put({ uid: nameUid(k), key: k, name, updatedAt: now });
+    const row = rowUid ? await db.txns.get(rowUid) : null;
+    if (row && typeof row.nickname === 'string') await db.txns.update(rowUid, { nickname: undefined, updatedAt: now });
+  });
+  requestSync();
+  return name;
+}
+
+// This row only. text '' = show the bank name on this row even when a similar-rows name matches.
+export async function renameRow(uid, text) {
+  const name = text === '' ? '' : cleanName(text);
+  await db.txns.update(uid, { nickname: name, updatedAt: Date.now() });
+  requestSync();
+}
+
+// Back to the bank name: removes the row's own nickname and, when `nameRecordUid` is given, the similar-rows name too.
+export async function clearName(rowUid, nameRecordUid = null) {
+  const now = Date.now();
+  await db.transaction('rw', db.names, db.txns, db.tombstones, async () => {
+    if (nameRecordUid) {
+      await db.names.delete(nameRecordUid);
+      await db.tombstones.put({ key: nameRecordUid, deletedAt: now });
+    }
+    const row = rowUid ? await db.txns.get(rowUid) : null;
+    if (row && typeof row.nickname === 'string') await db.txns.update(rowUid, { nickname: undefined, updatedAt: now });
+  });
+  requestSync();
+}
+
+// Settings → Names: delete a similar-rows name (the bank name comes back on every row it covered).
+export async function deleteName(uid) {
+  await db.transaction('rw', db.names, db.tombstones, async () => {
+    await db.names.delete(uid);
+    await db.tombstones.put({ key: uid, deletedAt: Date.now() });
+  });
   requestSync();
 }

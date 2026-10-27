@@ -1073,3 +1073,13 @@ h3.cash-q { margin: 0; }
 .goal-chip.warn { background: #3A2A1E; color: #FFCB9A; }
 .goal-note { color: var(--muted); }
 .goal-set { align-self: flex-start; }
+
+/* Clean names (27 Oct 2026, rename sheet option B): "Shown as" chips, the bank text, "Rename similar rows". */
+.name-edit { display: flex; flex-direction: column; gap: 6px; }
+.name-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.name-chip { min-height: 40px; padding: 8px 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface-raised); color: var(--text); font: inherit; font-size: 14.5px; cursor: pointer; }
+.name-chip:hover { border-color: var(--muted); }
+.name-chip.on { border-color: var(--balance); color: var(--balance); background: color-mix(in srgb, var(--balance) 10%, var(--surface)); }
+.bank-raw { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--other); word-break: break-word; margin-bottom: 4px; }
+.name-similar { margin-top: 2px; }
+.set-row .name-key { display: block; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
