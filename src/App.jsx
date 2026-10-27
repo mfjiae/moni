@@ -176,7 +176,7 @@ export default function App() {
         <Bills txns={txns} bills={bills} today={today} usage={usage} onDetail={openDetail} onToast={setToast} />
       )}
       {tab === 'activity' && (
-        <Activity txns={txns} today={today} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
+        <Activity txns={txns} today={today} usage={usage} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
       )}
       {tab === 'add' && <AddTxn today={today} usage={usage} est={est} cash={cash} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && (

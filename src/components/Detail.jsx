@@ -6,7 +6,7 @@ import { monthKey, monthLabel, monthName, longDay, ordinal, addDays, shiftMonth 
 import { categoryName, allCategories } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, balanceHistory, compareMonths, monthCompare, spentByDay, pctChange } from '../lib/summary.js';
 import { currentBalance } from '../lib/importer.js';
-import { accountOf, isMain, transferOther, getAccount, accountTxns, accountsWithData, pairTransfers, MAIN } from '../lib/accounts.js';
+import { accountOf, isMain, transferOther, getAccount, accountTxns, accountsWithData, pairTransfers, MAIN, SAVERS } from '../lib/accounts.js';
 import { Bar, MonthSwitch, Chevron, Segmented, Sheet, TypedSwitch } from './ui.jsx';
 import { CategoryIcon } from './icons.jsx';
 import TxnList from './TxnList.jsx';
@@ -15,6 +15,7 @@ import { CashFlowPage, WherePage } from './FlowPages.jsx';
 import { MiniBars } from './charts.jsx';
 import { PaceChart, DayByDay } from './SpendCharts.jsx';
 import { isCash } from '../lib/cash.js';
+import GoalCard from './GoalCard.jsx';
 
 const byNewest = (a, b) => b.date.localeCompare(a.date) || (b.createdAt ?? 0) - (a.createdAt ?? 0);
 
@@ -305,7 +306,12 @@ function IncomePage({ txns, month, today, onOpen }) {
   );
 }
 
-function SavedPage({ txns, month, today, onOpen }) {
+function SavedPage({ txns, month, today, onOpen, est, saverBalances }) {
+  // Savings balance now (all savers), from the estimate when there is one.
+  const savingsCents = useMemo(() => {
+    const sum = SAVERS.map((a) => est?.savers?.[a.id]?.cents ?? saverBalances?.[a.id]?.cents).filter((c) => c != null);
+    return sum.length ? sum.reduce((a, c) => a + c, 0) : null;
+  }, [est, saverBalances]);
   const list = txns.filter((t) => monthKey(t.date) === month && t.kind === 'saving').sort(byNewest);
   const put = list.filter((t) => t.amountCents < 0).reduce((a, t) => a - t.amountCents, 0);
   const took = list.filter((t) => t.amountCents > 0).reduce((a, t) => a + t.amountCents, 0);
@@ -326,6 +332,7 @@ function SavedPage({ txns, month, today, onOpen }) {
         <Hero label={net >= 0 ? `Saved in ${monthLabel(month)}` : `Taken from savings in ${monthLabel(month)}`} cents={Math.abs(net)} cls="text-save">
           <VsLine txns={txns} month={month} today={today} better="up" pick={(x) => x.savedNet} />
         </Hero>
+        <GoalCard txns={txns} today={today} savingsCents={savingsCents} />
         <MiniCard txns={txns} month={month} color="save" head="head-save" pick={(x) => x.savedNet} />
         <RowsCard title="Breakdown" head="head-save" rows={[['Put in', formatCents(put)], ['Took out', formatCents(took)], ['Net', formatCents(net, { sign: true })]]} />
         {byAccount.length > 0 && (
@@ -485,7 +492,7 @@ export default function Detail({ page, txns, allTxns, today, month, setMonth, fi
       </header>
       {page.name === 'spending' && <SpendingPage key={page.category ?? 'all'} {...props} onDetail={onDetail} initialCategory={page.category} />}
       {page.name === 'income' && <IncomePage {...props} />}
-      {page.name === 'saved' && <SavedPage {...props} />}
+      {page.name === 'saved' && <SavedPage {...props} est={est} saverBalances={saverBalances} />}
       {page.name === 'invested' && <InvestmentsPage txns={txns} today={today} onOpen={onOpen} etfs={etfs} />}
       {page.name === 'tuition' && <TuitionPage txns={txns} today={today} onOpen={onOpen} />}
       {page.name === 'cashflow' && <CashFlowPage {...props} onDetail={onDetail} />}

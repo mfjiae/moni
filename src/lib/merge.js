@@ -11,6 +11,8 @@
 // (bills = your bills and dismissed bill suggestions, added in M5; same rule as budgets.)
 // (cash = the cash balance you set: { cents, asOf, setAt, updatedAt }, added with Paid with cash Push 2;
 // the newest one you saved wins. An older app version drops it; the next new-version sync puts it back.)
+// (goal = your savings goal { name, targetCents, byDate, startDate, updatedAt }, added in batch 3; newest wins;
+// an older app version drops it; the next new-version sync puts it back.)
 // - Every record has a stable `uid` and an `updatedAt` (ms).
 // - The newest edit of a record wins.
 // - A tombstone { uid: deletedAt } removes a record unless it was edited after the delete.
@@ -41,6 +43,7 @@ export function normalize(s) {
     balance: s?.balance ?? null,
     balances: { ...(s?.balances ?? {}) },
     cash: s?.cash ?? null,
+    goal: s?.goal ?? null,
   };
 }
 
@@ -66,7 +69,8 @@ function newerBalance(a, b) {
   return (a.updatedAt ?? 0) >= (b.updatedAt ?? 0) ? a : b;
 }
 
-function newerCash(a, b) {
+// Single-record settings (cash, goal): the newest one saved wins.
+function newerSetting(a, b) {
   if (!a) return b ?? null;
   if (!b) return a;
   return (a.updatedAt ?? 0) >= (b.updatedAt ?? 0) ? a : b;
@@ -89,6 +93,7 @@ export function mergeSnapshots(local, remote) {
     balance: newerBalance(l.balance, r.balance),
     balances: Object.fromEntries([...new Set([...Object.keys(l.balances), ...Object.keys(r.balances)])]
       .map((id) => [id, newerBalance(l.balances[id], r.balances[id])])),
-    cash: newerCash(l.cash, r.cash),
+    cash: newerSetting(l.cash, r.cash),
+    goal: newerSetting(l.goal, r.goal),
   });
 }

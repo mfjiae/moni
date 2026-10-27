@@ -334,6 +334,22 @@ export async function setCashBalance(cents, asOf) {
   requestSync();
 }
 
+// Savings goal (batch 3): one goal. The progress starts counting on the day it is set (`startDate`).
+// Removing it saves a { removed: true } marker so the removal syncs; the newest save wins.
+export async function setGoal({ name, targetCents, byDate, startDate }) {
+  if (!Number.isInteger(targetCents) || targetCents <= 0) throw new Error('Enter a target, like 5000.00');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(byDate ?? '')) throw new Error('Pick a date');
+  const start = startDate;
+  if (byDate <= start) throw new Error('Pick a date after today');
+  await db.meta.put({ key: 'goal', name: (name ?? '').trim() || 'Savings goal', targetCents, byDate, startDate: start, updatedAt: Date.now() });
+  requestSync();
+}
+
+export async function clearGoal() {
+  await db.meta.put({ key: 'goal', removed: true, updatedAt: Date.now() });
+  requestSync();
+}
+
 // Your answer to "Was this a cash withdrawal?". yes: file it as Transfers & payments and count it as cash
 // withdrawn (`atm: true`); no: leave it in To sort and never ask again (`atm: false`).
 // remember + keyword: also save a learned rule, so similar rows are filed (yes) or never asked about (no).
@@ -356,4 +372,44 @@ export async function answerAtm(uid, yes, { remember = false, keyword = '' } = {
   }
   requestSync();
   return n;
+}
+
+// ---------- Quick sort (Ken, 27 Oct 2026, batch 3) ----------
+
+// Runs one sorting action and remembers what it changed (the To sort rows it touched and any learned rule it
+// added), so "Undo" can put everything back exactly. Reuses setCategory / saveRule / answerAtm, so syncing and
+// rules behave the same as in the row sheet.
+async function withUndo(action) {
+  const rowsBefore = await db.txns.filter((t) => t.kind === 'review').toArray();
+  const rulesBefore = new Set((await db.userRules.toArray()).map((r) => r.uid));
+  const result = await action();
+  const rules = (await db.userRules.toArray()).filter((r) => !rulesBefore.has(r.uid)).map((r) => r.uid);
+  return { result, undo: { rows: rowsBefore, rules } };
+}
+
+// Quick sort: put one row in a category. remember + keyword also saves "always use this category for KEYWORD"
+// and sorts the other To sort rows it matches. Returns { n: other rows sorted, undo }.
+export async function quickSortCategory(uid, categoryId, { remember = false, keyword = '' } = {}) {
+  const { result, undo } = await withUndo(async () => {
+    await setCategory(uid, categoryId);
+    return remember && keyword.trim() ? saveRule(keyword, categoryId, uid) : 0;
+  });
+  return { n: result, undo };
+}
+
+// Quick sort: the "Cash withdrawal?" question (same as the row sheet's Yes / No).
+export async function quickSortAtm(uid, yes, opts = {}) {
+  const { result, undo } = await withUndo(() => answerAtm(uid, yes, opts));
+  return { n: result, undo };
+}
+
+// Undo the last quick sort: rows it changed go back to To sort, its learned rule is deleted.
+export async function undoQuickSort(undo) {
+  const now = Date.now();
+  for (const before of undo.rows) {
+    const cur = await db.txns.get(before.uid);
+    if (cur && cur.updatedAt !== before.updatedAt) await db.txns.put({ ...before, updatedAt: now });
+  }
+  for (const uid of undo.rules) await deleteRule(uid);
+  requestSync();
 }

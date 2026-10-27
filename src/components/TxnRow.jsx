@@ -36,10 +36,12 @@ export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
     <button type="button" className={`txn${muted ? ' muted-row' : ''}`} onClick={() => onOpen(t.uid)}>
       <div>
         <span className="merchant">{displayName(t)}{showAccount && !isMain(accountOf(t)) && <span className="acct-tag">{accountOf(t)}</span>}</span>
-        <span className="small">
-          {t.kind === 'review' ? <span className="text-review">{cat}</span> : cat}
-          {meta ? ` · ${meta}` : ''}
-          {!cash && t.source === 'manual' && t.typed !== 'pending' ? ' · manual' : ''}
+        <span className="small cat-line">
+          <span className="cat-text">
+            {t.kind === 'review' ? <span className="text-review">{cat}</span> : cat}
+            {meta ? ` · ${meta}` : ''}
+            {!cash && t.source === 'manual' && t.typed !== 'pending' ? ' · manual' : ''}
+          </span>
           {!cash && t.typed === 'pending' && <span className="typed-tag">typed</span>}
           {t.atmAsk && <span className="cash-tag ask">Cash withdrawal?</span>}
           {ctag && <span className={`cash-tag${ctag.cls === 'cash' ? '' : ` ${ctag.cls}`}`}>{ctag.text}</span>}

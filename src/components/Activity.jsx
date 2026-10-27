@@ -12,6 +12,7 @@ import {
 import { ImportButton, TypedSwitch } from './ui.jsx';
 import { CategoryIcon } from './icons.jsx';
 import TxnRow from './TxnRow.jsx';
+import QuickSort from './QuickSort.jsx';
 
 const PAGE = 30;
 const CATS_SHOWN = 8;
@@ -113,13 +114,14 @@ function FilterPanel({ f, set, minText, maxText, setMinText, setMaxText, cats, r
 
 // preset / presetKey: Home's "N to sort" pill opens Activity with "To sort only" on; the Activity shortcut
 // opens it with no filters. A plain tap on the Activity tab keeps whatever filters were on.
-export default function Activity({ txns, today, preset, presetKey, onOpen, onToast }) {
+export default function Activity({ txns, today, usage = {}, preset, presetKey, onOpen, onToast }) {
   const [base, setBase] = useState(() => (preset === 'review' ? { ...EMPTY_FILTER, toSort: true } : EMPTY_FILTER));
   const [minText, setMinText] = useState('');
   const [maxText, setMaxText] = useState('');
   const [limit, setLimit] = useState(PAGE);
   const [sheet, setSheet] = useState(false);
   const [sorting, setSorting] = useState(false);
+  const [quick, setQuick] = useState(false);
 
   useEffect(() => {
     if (presetKey == null) return;
@@ -209,6 +211,13 @@ export default function Activity({ txns, today, preset, presetKey, onOpen, onToa
           </div>
 
           {f.toSort && reviewCount > 0 && (
+            <div className="qs-entry">
+              <span className="small">Sort them one at a time.</span>
+              <button type="button" className="btn primary small-btn" onClick={() => setQuick(true)} aria-haspopup="dialog">Quick sort</button>
+            </div>
+          )}
+
+          {f.toSort && reviewCount > 0 && (
             <div className="row resort-row">
               <span className="small">Rules only run when you import. Changed or added rules? Re-sort.</span>
               <button type="button" className="btn small-btn" disabled={sorting} onClick={resort}>{sorting ? 'Sorting…' : 'Re-sort with latest rules'}</button>
@@ -245,6 +254,8 @@ export default function Activity({ txns, today, preset, presetKey, onOpen, onToa
           )}
         </section>
       </div>
+
+      {quick && <QuickSort txns={txns} usage={usage} onClose={() => setQuick(false)} onOpen={onOpen} />}
 
       {sheet && (
         <div className="overlay" onClick={(e) => { if (e.target === e.currentTarget) setSheet(false); }}>
