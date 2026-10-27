@@ -231,14 +231,24 @@ function Breakdown({ id, title, banks, info, total, onToast }) {
 // Paid with cash, Push 2 (Ken, 26 Oct 2026; prototype "Moni Paid With Cash" v4, "Home: the Cash button and panel"):
 // a Cash button beside Smart Access and Savings. Tapping it opens its breakdown under the card, like the
 // typed-entries panels. The rose dot shows only while a cash purchase is newer than your last import.
+// Ken, 27 Oct 2026, UI locked option A: a slim strip under the divider (same on phone and desktop). Label and a muted
+// sub-line on the left, the amount (about 22px, warm) and a chevron on the right.
 function CashHalf({ cash, open, setOpen }) {
   const isOpen = open === 'cash';
   const neg = cash.left < 0;
+  const n = cash.spent.count;
+  const sub = `${cash.set ? `set ${dayShort(cash.set.asOf)}` : 'not set yet'} · ${n} cash purchase${n === 1 ? '' : 's'}`;
   return (
-    <button type="button" className="bal-half cash-half" aria-expanded={isOpen} aria-controls="bal-cash"
+    <button type="button" className="cash-half cash-strip" aria-expanded={isOpen} aria-controls="bal-cash"
       onClick={() => setOpen(isOpen ? null : 'cash')}>
-      <span className="balance-label">Cash{cash.dot && <i className="bal-dot cash-dot" aria-label="new cash purchase" />}</span>
-      <span className={`balance-value${neg ? ' neg' : ''}`}>{formatCents(cash.left)}</span>
+      <span className="cash-strip-text">
+        <span className="balance-label">Cash{cash.dot && <i className="bal-dot cash-dot" aria-label="new cash purchase" />}</span>
+        <span className="cash-sub">{sub}</span>
+      </span>
+      <span className="cash-strip-end">
+        <span className={`cash-amt${neg ? ' neg' : ''}`}>{formatCents(cash.left)}</span>
+        <span className="cash-chev" aria-hidden="true">›</span>
+      </span>
     </button>
   );
 }
@@ -328,9 +338,8 @@ function BalanceCard({ bal, balance, saverBalances, est, cash, today, onDetail, 
   if (!savers.length) {
     if (!cash) return <div className="balance-card">{main}{mainPanel}</div>;
     return (
-      <div className="balance-card split with-cash n2">
+      <div className="balance-card with-cash">
         {main}
-        <i className="bal-rule" aria-hidden="true" />
         <CashHalf cash={cash} open={open} setOpen={setOpen} />
         {mainPanel}
         {open === 'cash' && <CashPanel cash={cash} onSet={() => setSetting(true)} />}
@@ -345,13 +354,12 @@ function BalanceCard({ bal, balance, saverBalances, est, cash, today, onDetail, 
     confirms: [],
   };
   return (
-    <div className={`balance-card split${cash ? ' with-cash n3' : ''}`}>
+    <div className={`balance-card split${cash ? ' with-cash' : ''}`}>
       {main}
       <i className="bal-rule" aria-hidden="true" />
       <BalanceHalf id="save" cls=" save" label="Savings" cents={total} info={saveInfo} open={open} setOpen={setOpen}
         note={`${savers.map((s) => s.id).join(' + ')} · ${longDay(newest)}`}
         onOpenAccount={() => onDetail('account', { account: savers[0].id })} />
-      {cash && <i className="bal-rule cash-rule" aria-hidden="true" />}
       {cash && <CashHalf cash={cash} open={open} setOpen={setOpen} />}
       {mainPanel}
       {open === 'cash' && cash && <CashPanel cash={cash} onSet={() => setSetting(true)} />}

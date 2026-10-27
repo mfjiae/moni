@@ -989,15 +989,24 @@ button.rent-pill { font: inherit; font-size: 13px; cursor: pointer; }
 /* Paid with cash, Push 2: the Cash button on Home's balance card (prototype v4). Warm like the cash tags; rose
    when below zero. With Savings, Cash gets its own row under the two (three across doesn't fit the card's width,
    even on the 27-inch: the Home left column is about 390px). Without Savings: Smart Access | Cash. */
-.bal-half.cash-half { cursor: pointer; border-radius: 12px; }
-.bal-half.cash-half > * { pointer-events: none; }
-.bal-half.cash-half .balance-label, .home .bal-half.cash-half .balance-value { color: #FFCB9A; }
-.home .bal-half.cash-half .balance-value.neg { color: var(--review); }
-.bal-half.cash-half[aria-expanded="true"] { outline: 2px solid #FFCB9A; outline-offset: 4px; }
-.bal-half.cash-half:focus-visible { outline: 2px solid var(--balance); outline-offset: 4px; }
+/* Ken, 27 Oct 2026, UI locked option A: Cash is a slim strip under a divider, on every width. */
+.cash-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; box-sizing: border-box; margin: 0; padding: 10px 0 0; border: 0; border-top: 1px solid color-mix(in srgb, var(--balance) 25%, transparent); border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.balance-card.split .cash-strip { grid-column: 1 / -1; }
+.balance-card.with-cash:not(.split) .cash-strip { margin-top: 12px; }
+.cash-strip > * { pointer-events: none; }
+.cash-strip-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cash-strip .balance-label { color: var(--other); }
+.cash-sub { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cash-strip-end { display: flex; align-items: center; gap: 8px; flex: none; }
+.cash-amt { font-size: 22px; font-weight: 500; color: #FFCB9A; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cash-amt.neg { color: var(--review); }
+.cash-chev { font-size: 18px; line-height: 1; color: var(--muted); }
+.cash-strip[aria-expanded="true"] .cash-chev { transform: rotate(90deg); }
+.cash-strip:focus-visible { outline: 2px solid var(--balance); outline-offset: 2px; }
+@container (min-width: 440px) {
+  .cash-strip-text { flex-direction: row; align-items: baseline; gap: 10px; }
+}
 .cash-dot { display: inline-block; margin-left: 6px; vertical-align: 1px; }
-.balance-card.split.n3 .cash-rule { display: none; }
-.balance-card.split.n3 .cash-half { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--balance) 25%, transparent); border-radius: 0; }
 .bp-tag.cash { background: #3A2A1E; color: #FFCB9A; }
 .cash-neg { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: #3A1F2E; color: var(--review); font-size: 13px; }
 .cash-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
