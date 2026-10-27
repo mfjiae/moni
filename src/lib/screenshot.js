@@ -14,7 +14,7 @@
 // typed entry that is still pending, so the balance is "bank CSV balance + rows seen since". It is NOT a
 // typed entry: no "typed" tag, not in "Typed only". When the bank CSV later has the same amount within
 // MATCH_DAYS, moni always asks "is it the same one?" (Ken: "Ask me each time"), see importer.js / typed.js.
-import { categorize } from './rules.js';
+import { categorize, merchantKey, isPersonTransfer } from './rules.js';
 import { addDays, parseDMY } from './dates.js';
 import { MATCH_DAYS } from './typed.js';
 import { MAIN, accountOf, isMain, transferOther } from './accounts.js';
@@ -306,4 +306,28 @@ export function shotRecord(it, { toSort = false } = {}) {
     refund: false,
     note: '',
   };
+}
+
+// "Remember these for next time?" (batch 4, Ken's pick 1C). After you save, the rows you confirmed with a category
+// that moni's rules would NOT already give are offered as learned rules. Left out (counted in `skipped`):
+// payments to people, text that is too general (merchantKey is empty), transfers, ATM rows, rows left in To sort,
+// and a name that two confirmed rows put in different categories. Same keyword method as "Remember for similar rows".
+export function rememberCandidates(items, { toSort = new Set(), rules } = {}) {
+  const byKey = new Map();
+  const conflict = new Set();
+  let skipped = 0;
+  for (const it of items) {
+    if (toSort.has(it.id) || !it.categoryId || it.transfer || it.atm || it.kind === 'saving' || it.kind === 'internal' || it.kind === 'review') continue;
+    // A payment to a person: PayID / transfer wording, or CommBank's own "Transfers & payments" label.
+    const person = isPersonTransfer(it.name) || /PAYID|\bTRANSFER (TO|FROM)\b/i.test(it.name) || /^transfers?\b/i.test(it.bankLabel ?? '');
+    const key = person ? '' : merchantKey(it.name);
+    if (!key) { skipped += 1; continue; }
+    if (categorize(it.name, it.amountCents, rules).categoryId === it.categoryId) continue; // rules already do it
+    const cur = byKey.get(key);
+    if (!cur) byKey.set(key, { key, categoryId: it.categoryId, names: [it.name], count: 1 });
+    else if (cur.categoryId !== it.categoryId) conflict.add(key);
+    else { cur.count += 1; if (!cur.names.includes(it.name)) cur.names.push(it.name); }
+  }
+  for (const k of conflict) byKey.delete(k);
+  return { candidates: [...byKey.values()], skipped: skipped + conflict.size };
 }

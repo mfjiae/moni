@@ -20,6 +20,29 @@ export function useWide() {
   return wide;
 }
 
+// Online / offline (batch 4): false only when the browser says there is no connection.
+export function useOnline() {
+  const [online, setOnline] = useState(() => !(typeof navigator !== 'undefined' && navigator.onLine === false));
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  return online;
+}
+
+// Offline notice, option B1 (Ken, 27 Oct 2026): a red warning pill; nothing shows while online.
+export function OfflinePill() {
+  return (
+    <span className="off-pill" role="status" aria-label="Offline. Changes save on this device and sync when you are back online.">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3zM12 10v5M12 18v.5" /></svg>
+      <span className="off-text">Offline</span>
+    </span>
+  );
+}
+
 const pct = (x) => `${(Math.min(Math.max(x, 0), 1) * 100).toFixed(1)}%`;
 
 // status: ok | near | over (budgets) or a money color: in | out | save | invest

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatCents, parseCents } from '../lib/money.js';
 import { monthKey, monthName, longDay, ordinal, daysInMonth } from '../lib/dates.js';
 import { kindForCategory } from '../lib/categories.js';
@@ -8,7 +8,10 @@ import { currentBalance } from '../lib/importer.js';
 import { SAVERS } from '../lib/accounts.js';
 import { displayName } from './TxnRow.jsx';
 import { resolveMatch, setCashBalance } from '../lib/store.js';
-import { Bar, ImportButton, MonthDropdown, Sheet } from './ui.jsx';
+import { settingsJump } from './Settings.jsx';
+import { startBackupClock } from '../lib/store.js';
+import { backupDue, backupAgo } from '../lib/backup.js';
+import { Bar, ImportButton, MonthDropdown, Sheet, useOnline, OfflinePill } from './ui.jsx';
 import { cashFlowCaption } from '../lib/budgets.js';
 import { Icon } from './icons.jsx';
 import { Donut } from './charts.jsx';
@@ -382,8 +385,14 @@ function BalanceCard({ bal, balance, saverBalances, est, cash, today, onDetail, 
   );
 }
 
-export default function Home({ txns, bills = [], today, month, setMonth, firstMonth, balance, saverBalances, est, cash = null, sync, onNavigate, onDetail, onToast }) {
+export default function Home({ txns, bills = [], today, month, setMonth, firstMonth, balance, saverBalances, est, cash = null, sync, backupMeta = null, onNavigate, onDetail, onToast }) {
   const current = monthKey(today);
+  const online = useOnline();
+  // Backup reminder (batch 4): the 30-day clock starts the first time this device has data.
+  const hasData = txns.length > 0;
+  const needsClock = hasData && backupMeta !== undefined && !backupMeta?.at && !backupMeta?.since;
+  useEffect(() => { if (needsClock) startBackupClock(); }, [needsClock]);
+  const dueBackup = backupDue(backupMeta, hasData, Date.now());
   const summary = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const reviewCount = useMemo(() => txns.filter((t) => t.kind === 'review').length, [txns]);
   const bal = useMemo(() => currentBalance(balance, txns), [balance, txns]);
@@ -421,7 +430,10 @@ export default function Home({ txns, bills = [], today, month, setMonth, firstMo
   return (
     <main className="screen home">
       <header className="header home-head">
-        <MonthDropdown month={month} setMonth={setMonth} current={current} first={firstMonth} />
+        <div className="head-month">
+          <MonthDropdown month={month} setMonth={setMonth} current={current} first={firstMonth} />
+          {!online && <OfflinePill />}
+        </div>
         {rent && <RentPill rent={rent} onOpen={() => onNavigate('bills')} />}
         {reviewCount > 0 && (
           <button type="button" className="sort-pill" onClick={() => onNavigate('activity', 'review')}
@@ -436,6 +448,12 @@ export default function Home({ txns, bills = [], today, month, setMonth, firstMo
         <button type="button" className="banner action" onClick={() => onNavigate('settings')}>
           <span className="text-over">Sync stopped: {sync.lastError.message}</span>
           <span className="link-text">Fix</span>
+        </button>
+      )}
+      {dueBackup && (
+        <button type="button" className="bk-remind" onClick={() => { settingsJump.to = 'backup'; onNavigate('settings'); }}>
+          <span>{backupMeta?.at ? `Last backup was ${backupAgo(backupMeta.at)}.` : 'You haven’t saved a backup yet.'}</span>
+          <span className="link-text">Back up</span>
         </button>
       )}
       {!sync?.token && (

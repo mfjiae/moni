@@ -6,7 +6,8 @@ import { DEFAULT_RULES, makeUserRule, ruleMatches, isBroadKeyword } from './rule
 import { prepareImport, nextBalance } from './importer.js';
 import { kindForCategory, customCategoryId } from './categories.js';
 import { resortPlan, usableUserRules } from './resort.js';
-import { requestSync } from './sync.js';
+import { requestSync, readLocal, writeLocal } from './sync.js';
+import { buildBackup, backupFileName, planRestore } from './backup.js';
 import { MAIN, balanceKey, guessAccount, looksLike, transferRow } from './accounts.js';
 import { planChange, planChanges } from './budgets.js';
 import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.js';
@@ -471,5 +472,53 @@ export async function deleteName(uid) {
     await db.names.delete(uid);
     await db.tombstones.put({ key: uid, deletedAt: Date.now() });
   });
+  requestSync();
+}
+
+// ---------- Backup and restore (batch 4) ----------
+// The `backup` meta row stays on this device (never synced): { at, since, remind }.
+
+// Makes the backup file and hands it to the browser as a download. Returns the counts' source snapshot.
+export async function saveBackupFile() {
+  const snap = await readLocal();
+  const text = JSON.stringify(buildBackup(snap), null, 1);
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = backupFileName();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  const cur = await db.meta.get('backup');
+  await db.meta.put({ ...cur, key: 'backup', at: Date.now() });
+  return snap;
+}
+
+export async function setBackupRemind(on) {
+  const cur = await db.meta.get('backup');
+  await db.meta.put({ ...cur, key: 'backup', remind: !!on });
+}
+
+// Starts the 30-day reminder clock the first time this device has data and has never been backed up.
+export async function startBackupClock() {
+  const cur = await db.meta.get('backup');
+  if (!cur?.at && !cur?.since) await db.meta.put({ ...cur, key: 'backup', since: Date.now() });
+}
+
+// mode 'merge' (safe) or 'replace'. `file` = the snapshot from parseBackup.
+export async function restoreBackup(file, mode) {
+  const local = await readLocal();
+  const { result } = planRestore(local, file, mode, Date.now());
+  if (mode === 'replace') {
+    const cur = await db.meta.get('backup');
+    await db.transaction('rw', db.txns, db.userRules, db.categories, db.budgetPlans, db.etfs, db.bills, db.names, db.tombstones, db.meta, async () => {
+      await Promise.all([db.txns, db.userRules, db.categories, db.budgetPlans, db.etfs, db.bills, db.names, db.tombstones].map((t) => t.clear()));
+      const keys = await db.meta.toCollection().primaryKeys();
+      await db.meta.bulkDelete(keys.filter((k) => k === 'balance' || k === 'cash' || k === 'goal' || String(k).startsWith('balance:')));
+    });
+    if (cur) await db.meta.put(cur);
+  }
+  await writeLocal(result);
   requestSync();
 }

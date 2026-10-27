@@ -90,6 +90,7 @@ export default function App() {
   }, []);
   const est = useMemo(() => (allTxns ? estimateBalances(allTxns, balance ?? null, saverBalances ?? {}) : null), [allTxns, balance, saverBalances]);
   const sync = useLiveQuery(() => db.meta.get('sync'), []);
+  const backupMeta = useLiveQuery(() => db.meta.get('backup'), []);
   const cats = useLiveQuery(() => db.categories.toArray(), []);
   const plans = useLiveQuery(() => db.budgetPlans.toArray(), []);
   const etfRecords = useLiveQuery(() => db.etfs.toArray(), []);
@@ -165,7 +166,7 @@ export default function App() {
   return (
     <div className="app">
       {tab === 'home' && !page && (
-        <Home txns={txns} bills={bills} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} est={est} cash={cash} sync={sync}
+        <Home txns={txns} bills={bills} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} est={est} cash={cash} sync={sync} backupMeta={backupMeta}
           onNavigate={go} onDetail={openDetail} onOpen={setOpenId} onToast={setToast} />
       )}
       {(tab === 'home' || tab === 'cashflow' || tab === 'bills') && page && (

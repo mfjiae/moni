@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db.js';
-import { connect, disconnect, syncNow, DEFAULT_REPO } from '../lib/sync.js';
-import { clearDevice, updateCategory, addCategory, deleteRule, deleteName, clearName, renameSimilar, renameRow } from '../lib/store.js';
+import { connect, disconnect, syncNow, readLocal, DEFAULT_REPO } from '../lib/sync.js';
+import { clearDevice, updateCategory, addCategory, deleteRule, deleteName, clearName, renameSimilar, renameRow, saveBackupFile, setBackupRemind, restoreBackup } from '../lib/store.js';
+import { parseBackup, backupCounts, backupAgo } from '../lib/backup.js';
 import { nameList, MAX_NAME } from '../lib/names.js';
 import { longDay } from '../lib/dates.js';
 import { allCategories, categoryName, LOCKED, TYPE_LABEL } from '../lib/categories.js';
 import { isBroadKeyword } from '../lib/rules.js';
-import { Chevron, useWide } from './ui.jsx';
+import { Chevron, useWide, Sheet } from './ui.jsx';
+
+// Lets Home's backup reminder open Settings straight on the Backup section.
+export const settingsJump = { to: null };
 
 const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 
@@ -261,6 +265,100 @@ function NamesCard({ names, txns, onToast }) {
   );
 }
 
+// Settings → Backup (batch 4, Ken's pick "2B" with the restore sheet, 27 Oct 2026).
+const COUNT_ROWS = [['txns', 'transactions'], ['rules', 'learned rules'], ['names', 'names'], ['bills', 'bills'], ['budgets', 'budgets'], ['accounts', 'accounts']];
+
+function RestoreSheet({ file, local, onClose, onToast }) {
+  const [mode, setMode] = useState('merge');
+  const [sure, setSure] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fc = backupCounts(file.snapshot);
+  async function go() {
+    if (mode === 'replace' && !sure) { setSure(true); return; }
+    setBusy(true);
+    try {
+      await restoreBackup(file.snapshot, mode);
+      onToast(mode === 'merge' ? 'Backup merged' : 'Backup restored');
+      onClose();
+    } catch (e) {
+      onToast(e.message || 'Could not restore');
+      setBusy(false);
+    }
+  }
+  return (
+    <Sheet title="Restore from this backup?" onClose={onClose} handle>
+      <div className="sheet-body bk-sheet">
+        <p className="hint">{file.name} · saved {file.savedAt ? new Date(file.savedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'at an unknown time'}</p>
+        <table className="bk-table">
+          <thead><tr><th /><th>In the file</th><th>On this device</th></tr></thead>
+          <tbody>{COUNT_ROWS.map(([k, label]) => <tr key={k}><td>{label}</td><td>{fc[k].toLocaleString('en-AU')}</td><td>{(local?.[k] ?? 0).toLocaleString('en-AU')}</td></tr>)}</tbody>
+        </table>
+        <div className="bk-opts" role="radiogroup" aria-label="How to restore">
+          <button type="button" role="radio" aria-checked={mode === 'merge'} className={`bk-opt${mode === 'merge' ? ' sel' : ''}`} onClick={() => { setMode('merge'); setSure(false); }}>
+            <span className="bk-rd" aria-hidden="true" />
+            <span><span className="bk-k">Merge <span className="bk-rec">Safe</span></span><span className="small">Adds anything missing here. For each record the newest edit wins. Nothing is deleted.</span></span>
+          </button>
+          <button type="button" role="radio" aria-checked={mode === 'replace'} className={`bk-opt${mode === 'replace' ? ' sel' : ''}`} onClick={() => setMode('replace')}>
+            <span className="bk-rd" aria-hidden="true" />
+            <span><span className="bk-k">Replace everything on this device</span><span className="small">Wipes this device first. Entries made since the backup are lost, and your other devices follow on the next sync.</span></span>
+          </button>
+        </div>
+        <button type="button" className={`btn primary${sure ? ' danger-fill' : ''}`} disabled={busy} onClick={go}>
+          {busy ? 'Restoring…' : mode === 'merge' ? 'Merge backup' : sure ? 'Tap again to replace everything' : 'Replace with backup'}
+        </button>
+        <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+      </div>
+    </Sheet>
+  );
+}
+
+function BackupCard({ onToast }) {
+  const meta = useLiveQuery(() => db.meta.get('backup'), []);
+  const local = useLiveQuery(() => readLocal().then(backupCounts), []);
+  const pick = useRef(null);
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const remind = meta?.remind !== false;
+  const stale = meta?.at != null && Date.now() - meta.at > 30 * 86400000;
+
+  async function save() {
+    setBusy(true);
+    try { await saveBackupFile(); onToast('Backup saved to your downloads'); } catch (e) { onToast(e.message || 'Could not save the backup'); }
+    setBusy(false);
+  }
+  async function onPick(e) {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try { setFile({ ...parseBackup(await f.text()), name: f.name }); } catch (err) { onToast(err.message); }
+  }
+  return (
+    <>
+      <section className="card" aria-label="Backup">
+        <span className="card-title">Backup</span>
+        <p className="hint">What a backup would hold right now:</p>
+        <div className="bk-counts">
+          {COUNT_ROWS.map(([k, label]) => <div key={k} className="bk-c"><b>{local ? local[k].toLocaleString('en-AU') : '–'}</b><span>{label}</span></div>)}
+        </div>
+        <div className={`bk-last${meta?.at == null || stale ? ' late' : ''}`}>Last backup: {meta?.at == null ? 'never' : `${new Date(meta.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })} · ${backupAgo(meta.at)}`}</div>
+        <button type="button" className="btn primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save a backup'}</button>
+        <div className="cash-row">
+          <span className="cash-row-text"><span>Remind me monthly</span><span className="small">A line on Home if the last backup is over 30 days old</span></span>
+          <button type="button" role="switch" aria-checked={remind} aria-label="Remind me monthly" className="cash-sw" onClick={() => setBackupRemind(!remind)} />
+        </div>
+        <p className="hint bk-warn">The file holds your real transactions. Keep it somewhere private, never in the moni code repo.</p>
+      </section>
+      <section className="card" aria-label="Restore">
+        <span className="card-title">Restore</span>
+        <p className="hint">Pick a backup file. You’ll see what’s in it before anything changes.</p>
+        <input ref={pick} type="file" accept=".json,application/json" hidden onChange={onPick} />
+        <button type="button" className="btn ghost" onClick={() => pick.current?.click()}>Restore from a backup…</button>
+      </section>
+      {file && <RestoreSheet file={file} local={local} onClose={() => setFile(null)} onToast={onToast} />}
+    </>
+  );
+}
+
 export default function Settings({ sync, txns, onToast }) {
   const [repo, setRepo] = useState(DEFAULT_REPO);
   const [token, setToken] = useState('');
@@ -269,9 +367,10 @@ export default function Settings({ sync, txns, onToast }) {
   const [confirmClear, setConfirmClear] = useState(false);
   const [replaceToken, setReplaceToken] = useState(false);
   const wide = useWide();
-  const [picked, setPicked] = useState(null);       // phone: null = the list; desktop: always one open
+  const [picked, setPicked] = useState(() => { const j = settingsJump.to; settingsJump.to = null; return j; });       // phone: null = the list; desktop: always one open
   const rules = useLiveQuery(() => db.userRules.orderBy('order').reverse().toArray(), []);
   const names = useLiveQuery(() => db.names.toArray(), []);
+  const backupMeta = useLiveQuery(() => db.meta.get('backup'), []);
   const nameCount = names ? nameList(names, txns ?? []).length : 0;
 
   async function onConnect(e) {
@@ -309,6 +408,7 @@ export default function Settings({ sync, txns, onToast }) {
   const catCount = allCategories().filter((c) => !c.hidden).length;
   const NAV = [
     ['sync', 'Sync', connected ? `Synced ${ago(sync.lastSyncAt)}` : 'Off on this device'],
+    ['backup', 'Backup', backupMeta?.at ? `Saved ${backupAgo(backupMeta.at)}` : 'Never saved'],
     ['device', 'This device', 'Remove data from here'],
     ['categories', 'Categories', `${catCount} shown`],
     ['rules', 'Learned rules', rules ? (rules.length ? `${rules.length} saved` : 'None yet') : ''],
@@ -371,6 +471,7 @@ export default function Settings({ sync, txns, onToast }) {
         )}
       </section>
     ),
+    backup: <BackupCard onToast={onToast} />,
     device: (
       <section className="card" aria-label="This device">
         <span className="card-title">This device</span>

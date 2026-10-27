@@ -1143,3 +1143,43 @@ h3.cash-q { margin: 0; }
   .ss-card { width: 560px; }
   .ss-foot { background: linear-gradient(to bottom, transparent, var(--surface) 14px); }
 }
+
+/* Backup and restore (batch 4, Ken's pick 2B + restore sheet, 27 Oct 2026) */
+.bk-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bk-c { background: var(--surface-raised); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
+.bk-c b { font-size: 18px; font-weight: 600; }
+.bk-c span { font-size: 12px; color: var(--muted); }
+.bk-last { font-size: 13px; color: var(--muted); }
+.bk-last.late { color: var(--review); }
+.bk-warn { background: #3A2A1E; color: #FFCB9A; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.bk-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.bk-table th { font-weight: 500; color: var(--muted); font-size: 12px; text-align: right; padding: 0 0 6px; }
+.bk-table th:first-child, .bk-table td:first-child { text-align: left; }
+.bk-table td { padding: 7px 0; border-top: 1px solid var(--border); text-align: right; }
+.bk-opts { display: flex; flex-direction: column; gap: 8px; }
+.bk-opt { display: flex; gap: 12px; align-items: flex-start; text-align: left; font: inherit; color: var(--text); background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; padding: 12px; cursor: pointer; }
+.bk-opt > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.bk-opt.sel { border-color: var(--accent); }
+.bk-opt .small { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.bk-rd { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex: none; margin-top: 1px; }
+.bk-opt.sel .bk-rd { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+.bk-k { font-size: 14.5px; font-weight: 500; }
+.bk-rec { font-size: 11.5px; font-weight: 600; color: var(--bg); background: var(--accent); border-radius: 99px; padding: 1px 8px; margin-left: 6px; }
+.btn.primary.danger-fill { background: var(--over); border-color: var(--over); }
+.bk-remind { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; background: #3A2A1E; color: #FFCB9A; border: 0; border-radius: 12px; padding: 10px 12px; }
+
+/* Offline notice, option B1 (batch 4): a red pill in a RESERVED slot, so the sort pill never moves. */
+.off-slot { display: inline-flex; justify-content: flex-end; min-width: 0; }
+.off-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 99px; font-size: 13px; font-weight: 600; white-space: nowrap; color: #FFB4B4; background: color-mix(in srgb, var(--over) 22%, var(--bg)); border: 1px solid var(--over); }
+.head-month { grid-area: month; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.home-head .head-month .month-pill { grid-area: auto; }
+@media (max-width: 520px) { .off-pill .off-text { display: none; } .off-pill { padding: 6px 9px; } }
+
+/* "Remember these for next time?" sheet after a screenshot import (batch 4, Ken's pick 1C) */
+.rm-list { display: flex; flex-direction: column; gap: 8px; }
+.rm-rule { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: var(--text); background: var(--surface-raised); border: 1px solid var(--border); border-radius: 12px; padding: 12px; cursor: pointer; }
+.rm-rule.on { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.rm-cb { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border); flex: none; display: flex; align-items: center; justify-content: center; color: var(--bg); }
+.rm-rule.on .rm-cb { background: var(--accent); border-color: var(--accent); }
+.rm-text { display: flex; flex-direction: column; min-width: 0; }
+.rm-k { font-size: 14.5px; font-weight: 500; overflow-wrap: anywhere; }

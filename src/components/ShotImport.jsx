@@ -8,8 +8,8 @@ import { useEffect, useRef, useState } from 'react';
 import { formatCents, parseCents } from '../lib/money.js';
 import { longDay, todaySydney } from '../lib/dates.js';
 import { categoryName, kindForCategory } from '../lib/categories.js';
-import { parsePastedRows, combineShots, planShot, canConfirm } from '../lib/screenshot.js';
-import { addShotRows, getRules } from '../lib/store.js';
+import { parsePastedRows, combineShots, planShot, canConfirm, rememberCandidates } from '../lib/screenshot.js';
+import { addShotRows, getRules, saveRule } from '../lib/store.js';
 import { db } from '../lib/db.js';
 import { shortName } from '../lib/activity.js';
 import { CategorySelect, Segmented, Sheet } from './ui.jsx';
@@ -38,6 +38,7 @@ export default function ShotImport({ onClose, onDone }) {
   const [editing, setEditing] = useState(null);
   const [ctx, setCtx] = useState(null); // { txns, rules, usage, today }
   const [busy, setBusy] = useState(false);
+  const [after, setAfter] = useState(null); // 1C: { msg, cands, skipped, picked } = the "Remember these?" sheet
   const fileInput = useRef(null);
   const card = useRef(null);
 
@@ -127,13 +128,36 @@ export default function ShotImport({ onClose, onDone }) {
     try {
       const n = await addShotRows(saving, toSort);
       const left = list.length - n;
-      onDone?.(`Added ${n} from your screenshot${left ? ` · ${left} not confirmed, left out` : ''}${dups.length ? ` · ${dups.length} already in moni` : ''}`);
+      const msg = `Added ${n} from your screenshot${left ? ` · ${left} not confirmed, left out` : ''}${dups.length ? ` · ${dups.length} already in moni` : ''}`;
+      const { candidates, skipped } = rememberCandidates(saving, { toSort, rules: ctx?.rules });
+      if (candidates.length) {
+        setAfter({ msg, cands: candidates, skipped, picked: new Set(candidates.map((c) => c.key)) });
+        setBusy(false);
+        return;
+      }
+      onDone?.(msg);
       close();
     } catch (e) {
       setError(`Couldn't save: ${e.message}`);
       setBusy(false);
     }
   }
+
+  // 1C: after saving, offer the new rules. "Not now" (or closing the sheet) remembers nothing.
+  async function finishRemember(remember) {
+    if (!after || busy) return;
+    setBusy(true);
+    let n = 0;
+    if (remember) {
+      for (const c of after.cands) {
+        if (!after.picked.has(c.key)) continue;
+        try { await saveRule(c.key, c.categoryId); n += 1; } catch { /* too general: skipped */ }
+      }
+    }
+    onDone?.(`${after.msg}${n ? ` · remembered ${n} ${plural(n, 'rule', 'rules')}` : ''}`);
+    close();
+  }
+  const togglePick = (key) => setAfter((a) => { const picked = new Set(a.picked); if (picked.has(key)) picked.delete(key); else picked.add(key); return { ...a, picked }; });
 
   const catItem = items.find((x) => x.id === catFor);
   const editItem = items.find((x) => x.id === editing);
@@ -269,6 +293,29 @@ export default function ShotImport({ onClose, onDone }) {
           </>
         )}
 
+        {after && (
+          <Sheet title="Remember these for next time?" onClose={() => finishRemember(false)} handle>
+            <div className="sheet-body">
+              <p className="hint">Saved. When you import again, rows that start with these words get sorted for you.</p>
+              <div className="rm-list">
+                {after.cands.map((c) => {
+                  const on = after.picked.has(c.key);
+                  return (
+                    <button key={c.key} type="button" role="checkbox" aria-checked={on} className={`rm-rule${on ? ' on' : ''}`} onClick={() => togglePick(c.key)}>
+                      <span className="rm-cb" aria-hidden="true">{on && <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>}</span>
+                      <span className="rm-text"><span className="rm-k">{c.key} → {categoryName(c.categoryId)}</span><span className="small">{c.names[0]} · {c.count} {plural(c.count, 'row', 'rows')}</span></span>
+                    </button>
+                  );
+                })}
+              </div>
+              {after.skipped > 0 && <p className="small">Left out: {after.skipped} {plural(after.skipped, 'row', 'rows')} that can’t be remembered (a payment to a person, a name that’s too general, or two categories for one name).</p>}
+              <button type="button" className="btn primary" disabled={busy || !after.picked.size} onClick={() => finishRemember(true)}>
+                {busy ? 'Saving…' : `Remember ${after.picked.size} ${plural(after.picked.size, 'rule', 'rules')}`}
+              </button>
+              <button type="button" className="btn ghost" disabled={busy} onClick={() => finishRemember(false)}>Not now</button>
+            </div>
+          </Sheet>
+        )}
         {catItem && ctx && (
           <Sheet title={`Category for ${catItem.name}`} onClose={() => setCatFor(null)}>
             <div className="sheet-body">
