@@ -12,6 +12,7 @@ import { planChange, planChanges } from './budgets.js';
 import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.js';
 import { manualUid, skipUid, billFromSuggestion } from './bills.js';
 import { planResolve } from './typed.js';
+import { atmRule } from './cash.js';
 
 // User rules first (newest first, too-broad ones skipped), then the built-in ones.
 export async function getRules() {
@@ -193,7 +194,7 @@ async function applyPlan(plan) {
   const now = Date.now();
   await db.transaction('rw', db.txns, async () => {
     for (const c of plan) {
-      await db.txns.update(c.uid, { kind: c.kind, categoryId: c.categoryId, bill: !!c.bill, updatedAt: now });
+      await db.txns.update(c.uid, { kind: c.kind, categoryId: c.categoryId, bill: !!c.bill, ...(c.atm ? { atm: true } : {}), updatedAt: now });
     }
   });
   requestSync();
@@ -321,4 +322,38 @@ export async function confirmBill(suggestion, every) {
 export async function dismissBill(key) {
   await db.bills.put({ uid: skipUid(key), key, dismissed: true, updatedAt: Date.now() });
   requestSync();
+}
+
+// ---------- Paid with cash, Push 2 ----------
+
+// "Set cash balance": the cash you have right now, as of today (Home > Cash). Synced (snapshot field `cash`).
+export async function setCashBalance(cents, asOf) {
+  if (!Number.isInteger(cents) || cents < 0) throw new Error('Enter an amount, like 50.00');
+  const now = Date.now();
+  await db.meta.put({ key: 'cash', cents, asOf, setAt: now, updatedAt: now });
+  requestSync();
+}
+
+// Your answer to "Was this a cash withdrawal?". yes: file it as Transfers & payments and count it as cash
+// withdrawn (`atm: true`); no: leave it in To sort and never ask again (`atm: false`).
+// remember + keyword: also save a learned rule, so similar rows are filed (yes) or never asked about (no).
+// Returns how many other rows a remembered "yes" filed.
+export async function answerAtm(uid, yes, { remember = false, keyword = '' } = {}) {
+  const now = Date.now();
+  await db.txns.update(uid, yes ? { atm: true, kind: 'internal', categoryId: 'internal', updatedAt: now } : { atm: false, updatedAt: now });
+  let n = 0;
+  if (remember && keyword.trim()) {
+    if (isBroadKeyword(keyword)) throw new Error(`"${keyword}" would match too many transactions.`);
+    const rule = atmRule(keyword, yes);
+    await db.userRules.add({ ...rule, uid: newUid(), order: now, updatedAt: now });
+    if (yes) {
+      const matches = await db.txns
+        .filter((t) => t.uid !== uid && t.source === 'csv' && t.kind === 'review' && t.atm == null && ruleMatches(rule, t.description, t.amountCents))
+        .toArray();
+      await Promise.all(matches.map((t) => db.txns.update(t.uid, { atm: true, kind: 'internal', categoryId: 'internal', updatedAt: now })));
+      n = matches.length;
+    }
+  }
+  requestSync();
+  return n;
 }

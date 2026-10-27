@@ -135,7 +135,7 @@ function RulesCard({ rules, onToast }) {
           return (
             <div className="set-row" key={r.uid}>
               <span className="name">
-                <span className="strong">{kw}</span> → {categoryName(r.categoryId)}
+                <span className="strong">{kw}</span> → {r.notAtm ? 'not a cash withdrawal (never asked)' : r.atm ? `${categoryName(r.categoryId)}, ATM cash` : categoryName(r.categoryId)}
                 {broad && <span className="tag warn">too broad, ignored</span>}
               </span>
               <div className="actions">

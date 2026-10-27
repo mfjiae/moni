@@ -166,7 +166,7 @@ export function categorize(description, amountCents, rules = DEFAULT_RULES) {
   for (let i = 0; i < rules.length; i++) {
     const r = rules[i];
     if (ruleMatches(r, desc, refund ? -amountCents : amountCents)) {
-      return { kind: r.kind, categoryId: r.categoryId ?? null, bill: !!r.bill, refund, ruleIndex: i };
+      return { kind: r.kind, categoryId: r.categoryId ?? null, bill: !!r.bill, refund, ruleIndex: i, ...(r.atm ? { atm: true } : {}) };
     }
   }
   return { kind: 'review', categoryId: null, bill: false, refund, ruleIndex: -1 };

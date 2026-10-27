@@ -6,7 +6,7 @@ import { splitOf, buildSplit } from '../lib/investing.js';
 import { longDay } from '../lib/dates.js';
 import { isPersonTransfer, merchantKey, isBroadKeyword } from '../lib/rules.js';
 import { isCashDeposit, isCash, depositChoice, DEPOSIT_CHOICES } from '../lib/cash.js';
-import { setCategory, saveRule, deleteTxn, setEtfSplit, addEtf } from '../lib/store.js';
+import { answerAtm, setCategory, saveRule, deleteTxn, setEtfSplit, addEtf } from '../lib/store.js';
 
 const toCents = (text) => { try { const c = parseCents(text); return c > 0 ? c : NaN; } catch { return NaN; } };
 
@@ -79,6 +79,16 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
   const canCash = txn.source === 'manual' && !txn.transfer && txn.amountCents < 0;
   const [cash, setCash] = useState(isCash(txn));
   const deposit = isCashDeposit(txn);
+  // Push 2 (Ken, 27 Oct 2026): a round, unsorted money-out row may be a missed ATM withdrawal (App marks it `atmAsk`).
+  const atmKey = merchantKey(txn.description);
+  const [remember, setRemember] = useState(false);
+  async function answer(yes) {
+    try {
+      const n = await answerAtm(txn.uid, yes, { remember: remember && !!atmKey, keyword: atmKey });
+      onToast(yes ? `Filed as an ATM withdrawal${n ? `. Also filed ${n} more like it` : ''}` : 'Kept in To sort');
+      onClose();
+    } catch (e) { onToast(e.message); }
+  }
   const [rows, setRows] = useState(() => {
     const s = splitOf(txn);
     if (s) return s.length === 1 ? [{ ticker: s[0].ticker, text: '' }] : s.map((p) => ({ ticker: p.ticker, text: (p.cents / 100).toFixed(2) }));
@@ -131,10 +141,29 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
               options={[['gift', 'Cash someone gave me'], ['own', 'My own cash']]} />
             <div className="cash-eff">
               <div><span>Smart Access</span><span className="text-in">{formatCents(txn.amountCents, { sign: true })}</span></div>
+              <div><span>Cash balance</span><span className={depositChoice(categoryId) === 'own' ? 'text-out' : ''}>{depositChoice(categoryId) === 'own' ? formatCents(-txn.amountCents, { sign: true }) : 'no change'}</span></div>
               <div><span>Category</span><span>{depositChoice(categoryId) === 'own' ? 'Transfers & payments' : 'Family support'}</span></div>
               <div><span>Counts as money in</span><span>{depositChoice(categoryId) === 'own' ? 'no, own cash' : 'yes'}</span></div>
             </div>
-            <p className="hint">“My own cash” covers cash you withdrew earlier and cash you already had. Online deposits from other people never ask this question.</p>
+            <p className="hint">“My own cash” covers cash you withdrew earlier and cash you already had but never told moni about: set it in your cash balance first, then deposit it here. Online deposits from other people never ask this question.</p>
+          </div>
+        )}
+
+        {txn.atmAsk && (
+          <div className="atm-ask">
+            <span className="cash-q">Was this a cash withdrawal?</span>
+            <div className="atm-opts">
+              <button type="button" className="btn primary" onClick={() => answer(true)}>Yes, ATM cash</button>
+              <button type="button" className="btn ghost" onClick={() => answer(false)}>No, sort it myself</button>
+            </div>
+            <div className="atm-remember">
+              <span className="cash-row-text">
+                <span>Remember for similar rows</span>
+                <span className="small">{atmKey ? `Rows with “${atmKey}”` : 'The bank text is too general to remember.'}</span>
+              </span>
+              <button type="button" role="switch" aria-checked={remember && !!atmKey} aria-label="Remember for similar rows" className="cash-sw"
+                disabled={!atmKey} onClick={() => setRemember(!remember)} />
+            </div>
           </div>
         )}
 
@@ -143,7 +172,7 @@ export default function TxnSheet({ txn, usage, etfs = [], lastEtf = null, onClos
         )}
 
         <CategorySelect value={categoryId} onChange={setCategoryId} amountCents={txn.amountCents} usage={usage}
-          onToast={onToast} startOpen={txn.kind === 'review'} />
+          onToast={onToast} startOpen={txn.kind === 'review' && !txn.atmAsk} />
 
         {canCash && <CashRow on={cash} onChange={setCash} />}
 

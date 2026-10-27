@@ -15,6 +15,7 @@ import { RULES_V1 } from './rules-v1.js';
 // Learned rules, newest first, minus any that would catch too much.
 export function usableUserRules(userRules = []) {
   return [...userRules]
+    .filter((r) => !r.notAtm) // a remembered "not a cash withdrawal" never sorts anything (cash.js)
     .filter((r) => !isBroadKeyword(Array.isArray(r.match?.contains) ? r.match.contains[0] : r.match?.contains))
     .sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
 }
@@ -23,7 +24,7 @@ export function resortPlan(txns, { userRules = [], mode = 'review', oldRules = R
   const user = usableUserRules(userRules);
   const now = [...user, ...newRules];
   // What actually ran at import time, including any too-broad learned rule (so its mistakes get fixed)
-  const allUser = [...userRules].sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
+  const allUser = [...userRules].filter((r) => !r.notAtm).sort((a, b) => (b.order ?? 0) - (a.order ?? 0));
   const before = [...allUser, ...oldRules];
   const changes = [];
 
@@ -42,7 +43,7 @@ export function resortPlan(txns, { userRules = [], mode = 'review', oldRules = R
       apply = byRule || oldIncome;
     }
     if (apply && (next.kind !== t.kind || next.categoryId !== t.categoryId || !!next.bill !== !!t.bill)) {
-      changes.push({ uid: t.uid, kind: next.kind, categoryId: next.categoryId, bill: next.bill, from: t.categoryId ?? 'review' });
+      changes.push({ uid: t.uid, kind: next.kind, categoryId: next.categoryId, bill: next.bill, from: t.categoryId ?? 'review', ...(next.atm ? { atm: true } : {}) });
     }
   }
   return changes;

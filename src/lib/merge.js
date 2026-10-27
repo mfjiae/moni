@@ -9,6 +9,8 @@
 // the next sync from a new version puts them back.)
 // (etfs = your ETF list, added in M4; same rule as budgets. ETF tags live on the transactions themselves.)
 // (bills = your bills and dismissed bill suggestions, added in M5; same rule as budgets.)
+// (cash = the cash balance you set: { cents, asOf, setAt, updatedAt }, added with Paid with cash Push 2;
+// the newest one you saved wins. An older app version drops it; the next new-version sync puts it back.)
 // - Every record has a stable `uid` and an `updatedAt` (ms).
 // - The newest edit of a record wins.
 // - A tombstone { uid: deletedAt } removes a record unless it was edited after the delete.
@@ -38,6 +40,7 @@ export function normalize(s) {
     tombstones: { ...(s?.tombstones ?? {}) },
     balance: s?.balance ?? null,
     balances: { ...(s?.balances ?? {}) },
+    cash: s?.cash ?? null,
   };
 }
 
@@ -63,6 +66,12 @@ function newerBalance(a, b) {
   return (a.updatedAt ?? 0) >= (b.updatedAt ?? 0) ? a : b;
 }
 
+function newerCash(a, b) {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return (a.updatedAt ?? 0) >= (b.updatedAt ?? 0) ? a : b;
+}
+
 export function mergeSnapshots(local, remote) {
   const l = normalize(local);
   if (!remote) return l;
@@ -80,5 +89,6 @@ export function mergeSnapshots(local, remote) {
     balance: newerBalance(l.balance, r.balance),
     balances: Object.fromEntries([...new Set([...Object.keys(l.balances), ...Object.keys(r.balances)])]
       .map((id) => [id, newerBalance(l.balances[id], r.balances[id])])),
+    cash: newerCash(l.cash, r.cash),
   });
 }

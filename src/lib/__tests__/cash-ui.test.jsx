@@ -57,7 +57,8 @@ describe('transaction sheet', () => {
     expect(out).toContain('Whose cash was this?');
     expect(out).toMatch(/aria-selected="true" class="on">Cash someone gave me/);
     expect(out).toContain('Counts as money in');
-    expect(out).not.toContain('Cash balance');
+    expect(out).toContain('Cash balance'); // Push 2: the row is back
+    expect(out).toContain('no change');
   });
   it('a marked own-cash deposit shows My own cash picked', () => {
     expect(sheet({ ...deposit, kind: 'internal', categoryId: 'internal' })).toMatch(/aria-selected="true" class="on">My own cash/);

@@ -17,6 +17,7 @@ import Bills from './components/Bills.jsx';
 import { syncNow } from './lib/sync.js';
 import { countedView, estimateBalances, SAVERS, balanceKey } from './lib/accounts.js';
 import { markTyped } from './lib/typed.js';
+import { cashBalance, cashDot, atmQuestion, atmSkipRules } from './lib/cash.js';
 import { etfList, lastPick } from './lib/investing.js';
 
 const Icon = {
@@ -62,7 +63,22 @@ export default function App() {
   const allTxns = useLiveQuery(() => db.txns.toArray(), []);
   const balance = useLiveQuery(() => db.meta.get('balance'), []);
   // Typed entries get `typed: 'pending' | 'manual'` for the list tags (UI bundle 2, typed.js).
-  const txns = useMemo(() => (allTxns ? markTyped(countedView(allTxns), balance?.asOf) : undefined), [allTxns, balance]);
+  const baseTxns = useMemo(() => (allTxns ? markTyped(countedView(allTxns), balance?.asOf) : undefined), [allTxns, balance]);
+  // Paid with cash, Push 2 (cash.js): the Cash balance, and rows marked with their cash effect (`cashFx`, cents)
+  // and with "Cash withdrawal?" (`atmAsk`) while that question is open.
+  const cashSetting = useLiveQuery(() => db.meta.get('cash'), []);
+  const userRules = useLiveQuery(() => db.userRules.toArray(), []);
+  const cash = useMemo(() => {
+    if (!baseTxns) return null;
+    const c = cashBalance(baseTxns, cashSetting ?? null);
+    return { ...c, dot: cashDot(baseTxns, cashSetting ?? null, balance?.asOf) };
+  }, [baseTxns, cashSetting, balance]);
+  const skipAtm = useMemo(() => atmSkipRules(userRules ?? []), [userRules]);
+  const txns = useMemo(() => (baseTxns && cash ? baseTxns.map((t) => {
+    const fx = cash.effects.get(t.uid);
+    const ask = atmQuestion(t, skipAtm);
+    return fx || ask ? { ...t, ...(fx ? { cashFx: fx } : {}), ...(ask ? { atmAsk: true } : {}) } : t;
+  }) : undefined), [baseTxns, cash, skipAtm]);
   const saverBalances = useLiveQuery(async () => {
     const list = await Promise.all(SAVERS.map((a) => db.meta.get(balanceKey(a.id))));
     return Object.fromEntries(SAVERS.map((a, i) => [a.id, list[i] ?? null]));
@@ -144,7 +160,7 @@ export default function App() {
   return (
     <div className="app">
       {tab === 'home' && !page && (
-        <Home txns={txns} bills={bills} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} est={est} sync={sync}
+        <Home txns={txns} bills={bills} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} balance={balance} saverBalances={saverBalances} est={est} cash={cash} sync={sync}
           onNavigate={go} onDetail={openDetail} onOpen={setOpenId} onToast={setToast} />
       )}
       {(tab === 'home' || tab === 'cashflow' || tab === 'bills') && page && (
@@ -162,7 +178,7 @@ export default function App() {
       {tab === 'activity' && (
         <Activity txns={txns} today={today} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
       )}
-      {tab === 'add' && <AddTxn today={today} usage={usage} est={est} onDone={() => go('home')} onToast={setToast} />}
+      {tab === 'add' && <AddTxn today={today} usage={usage} est={est} cash={cash} onDone={() => go('home')} onToast={setToast} />}
       {tab === 'budgets' && (
         <Budgets txns={txns} plans={plans} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} onToast={setToast} />
       )}

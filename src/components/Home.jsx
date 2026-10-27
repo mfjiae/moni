@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { formatCents } from '../lib/money.js';
+import { formatCents, parseCents } from '../lib/money.js';
 import { monthKey, monthName, longDay, ordinal, daysInMonth } from '../lib/dates.js';
 import { kindForCategory } from '../lib/categories.js';
 import { summarizeMonth, categoryRows, monthCompare, upcomingRent } from '../lib/summary.js';
@@ -7,8 +7,8 @@ import { rentFromBills } from '../lib/bills.js';
 import { currentBalance } from '../lib/importer.js';
 import { SAVERS } from '../lib/accounts.js';
 import { shortName } from '../lib/activity.js';
-import { resolveMatch } from '../lib/store.js';
-import { Bar, ImportButton, MonthDropdown } from './ui.jsx';
+import { resolveMatch, setCashBalance } from '../lib/store.js';
+import { Bar, ImportButton, MonthDropdown, Sheet } from './ui.jsx';
 import { cashFlowCaption } from '../lib/budgets.js';
 import { Icon } from './icons.jsx';
 import { Donut } from './charts.jsx';
@@ -228,8 +228,90 @@ function Breakdown({ id, title, banks, info, total, onToast }) {
   );
 }
 
-function BalanceCard({ bal, balance, saverBalances, est, onDetail, onToast }) {
+// Paid with cash, Push 2 (Ken, 26 Oct 2026; prototype "Moni Paid With Cash" v4, "Home: the Cash button and panel"):
+// a Cash button beside Smart Access and Savings. Tapping it opens its breakdown under the card, like the
+// typed-entries panels. The rose dot shows only while a cash purchase is newer than your last import.
+function CashHalf({ cash, open, setOpen }) {
+  const isOpen = open === 'cash';
+  const neg = cash.left < 0;
+  return (
+    <button type="button" className="bal-half cash-half" aria-expanded={isOpen} aria-controls="bal-cash"
+      onClick={() => setOpen(isOpen ? null : 'cash')}>
+      <span className="balance-label">Cash{cash.dot && <i className="bal-dot cash-dot" aria-label="new cash purchase" />}</span>
+      <span className={`balance-value${neg ? ' neg' : ''}`}>{formatCents(cash.left)}</span>
+    </button>
+  );
+}
+
+function CashPanel({ cash, onSet }) {
+  const neg = cash.left < 0;
+  return (
+    <div className="bal-panel cash-panel" id="bal-cash">
+      <div className="bp-row">
+        <span>Cash set by you{cash.set ? ` · ${dayShort(cash.set.asOf)}` : ' · not set yet'}</span>
+        <span className="bp-amt">{formatCents(cash.set?.cents ?? 0)}</span>
+      </div>
+      <div className="bp-row">
+        <span>ATM withdrawals ({cash.withdrawals.count}) <span className="bp-tag cash">auto</span></span>
+        <span className="bp-amt text-in">{formatCents(cash.withdrawals.cents, { sign: true })}</span>
+      </div>
+      {cash.own.count > 0 && (
+        <div className="bp-row">
+          <span>Own cash put back in the bank ({cash.own.count})</span>
+          <span className="bp-amt text-out">{formatCents(-cash.own.cents, { sign: true })}</span>
+        </div>
+      )}
+      <div className="bp-row">
+        <span>Cash spent ({cash.spent.count})</span>
+        <span className="bp-amt text-out">{formatCents(-cash.spent.cents, { sign: true })}</span>
+      </div>
+      <div className="bp-row bp-total"><span>Cash left</span><span className={`bp-amt${neg ? ' text-out' : ''}`}>{formatCents(cash.left)}</span></div>
+      {neg && <p className="cash-neg">Your cash is below zero, so a withdrawal or an old cash purchase is missing. Set your cash balance to fix it.</p>}
+      <div className="cash-acts"><button type="button" className="cash-pill" onClick={onSet}>Set cash balance</button></div>
+    </div>
+  );
+}
+
+// Sheet: "Set cash balance" (prototype v4). Saves the amount as of today; moni counts from then on.
+export function SetCashSheet({ cash, today, onClose, onToast }) {
+  const [text, setText] = useState(() => (Math.max(cash.left, 0) / 100).toFixed(2));
+  const [error, setError] = useState('');
+  let cents = null;
+  try { const c = parseCents(text); if (c >= 0) cents = c; } catch { cents = null; }
+  const diff = cents == null ? null : cents - cash.left;
+  async function save() {
+    if (cents == null) { setError('Enter an amount, like 50.00'); return; }
+    try { await setCashBalance(cents, today); onToast?.('Cash balance saved'); onClose(); } catch (e) { setError(e.message); }
+  }
+  return (
+    <Sheet title="Set cash balance" onClose={onClose}>
+      <div className="sheet-body">
+        <h3 className="cash-q">How much cash do you have right now?</h3>
+        <label className="field">
+          <span className="small">Cash in hand (AUD)</span>
+          <input className="input amount-input" inputMode="decimal" value={text} aria-label="Cash in hand"
+            onChange={(e) => { setText(e.target.value); setError(''); }} />
+        </label>
+        <div className="field">
+          <span className="small">As of</span>
+          <span className="input cash-asof">Today, {longDay(today)}</span>
+        </div>
+        <div className="cash-eff">
+          <div><span>Cash left today (calculated)</span><span>{formatCents(cash.left)}</span></div>
+          <div><span>Your count</span><span>{cents == null ? '\u2014' : formatCents(cents)}</span></div>
+          <div><span>Adjustment</span><span>{diff == null ? 'enter an amount' : diff === 0 ? 'none' : formatCents(diff, { sign: true })}</span></div>
+        </div>
+        <p className="hint">Moni counts from this date forward. Withdrawals and cash spending before it stay in Spending and Activity, but no longer change the cash balance. Use this the first time, and again whenever you get or lose cash outside moni.</p>
+        {error && <p className="error" role="alert">{error}</p>}
+        <button type="button" className="btn primary" onClick={save}>Save cash balance</button>
+      </div>
+    </Sheet>
+  );
+}
+
+function BalanceCard({ bal, balance, saverBalances, est, cash, today, onDetail, onToast }) {
   const [open, setOpen] = useState(null);
+  const [setting, setSetting] = useState(false);
   // est (M4.1): bank balance + what moni knows happened since (typed entries, the other account's CSV).
   const mainCents = est?.main?.cents ?? bal;
   const mainInfo = est?.main ?? null;
@@ -243,7 +325,19 @@ function BalanceCard({ bal, balance, saverBalances, est, onDetail, onToast }) {
     <Breakdown id="main" title="Smart Access balance" info={mainInfo} total={mainCents} onToast={onToast}
       banks={[{ label: 'CSV', asOf: mainInfo.asOf, cents: mainInfo.bank }]} />
   );
-  if (!savers.length) return <div className="balance-card">{main}{mainPanel}</div>;
+  if (!savers.length) {
+    if (!cash) return <div className="balance-card">{main}{mainPanel}</div>;
+    return (
+      <div className="balance-card split with-cash n2">
+        {main}
+        <i className="bal-rule" aria-hidden="true" />
+        <CashHalf cash={cash} open={open} setOpen={setOpen} />
+        {mainPanel}
+        {open === 'cash' && <CashPanel cash={cash} onSet={() => setSetting(true)} />}
+        {setting && <SetCashSheet cash={cash} today={today} onClose={() => setSetting(false)} onToast={onToast} />}
+      </div>
+    );
+  }
   const total = savers.reduce((a, s) => a + s.b.cents, 0);
   const newest = savers.reduce((a, s) => (s.b.asOf > a ? s.b.asOf : a), savers[0].b.asOf);
   const saveInfo = {
@@ -251,13 +345,17 @@ function BalanceCard({ bal, balance, saverBalances, est, onDetail, onToast }) {
     confirms: [],
   };
   return (
-    <div className="balance-card split">
+    <div className={`balance-card split${cash ? ' with-cash n3' : ''}`}>
       {main}
       <i className="bal-rule" aria-hidden="true" />
       <BalanceHalf id="save" cls=" save" label="Savings" cents={total} info={saveInfo} open={open} setOpen={setOpen}
         note={`${savers.map((s) => s.id).join(' + ')} · ${longDay(newest)}`}
         onOpenAccount={() => onDetail('account', { account: savers[0].id })} />
+      {cash && <i className="bal-rule cash-rule" aria-hidden="true" />}
+      {cash && <CashHalf cash={cash} open={open} setOpen={setOpen} />}
       {mainPanel}
+      {open === 'cash' && cash && <CashPanel cash={cash} onSet={() => setSetting(true)} />}
+      {setting && cash && <SetCashSheet cash={cash} today={today} onClose={() => setSetting(false)} onToast={onToast} />}
       {open === 'save' && (
         <Breakdown id="save" title="Savings balance" info={saveInfo} total={total} onToast={onToast}
           banks={savers.map((s) => ({ label: s.id, asOf: s.b.asOf, cents: s.b.bank ?? s.b.cents }))} />
@@ -266,7 +364,7 @@ function BalanceCard({ bal, balance, saverBalances, est, onDetail, onToast }) {
   );
 }
 
-export default function Home({ txns, bills = [], today, month, setMonth, firstMonth, balance, saverBalances, est, sync, onNavigate, onDetail, onToast }) {
+export default function Home({ txns, bills = [], today, month, setMonth, firstMonth, balance, saverBalances, est, cash = null, sync, onNavigate, onDetail, onToast }) {
   const current = monthKey(today);
   const summary = useMemo(() => summarizeMonth(txns, month), [txns, month]);
   const reviewCount = useMemo(() => txns.filter((t) => t.kind === 'review').length, [txns]);
@@ -331,7 +429,7 @@ export default function Home({ txns, bills = [], today, month, setMonth, firstMo
 
       <div className="home-grid">
         <div className="col">
-          {bal != null && <BalanceCard bal={bal} balance={balance} saverBalances={saverBalances} est={est} onDetail={onDetail} onToast={onToast} />}
+          {bal != null && <BalanceCard bal={bal} balance={balance} saverBalances={saverBalances} est={est} cash={cash} today={today} onDetail={onDetail} onToast={onToast} />}
           <Shortcuts onNavigate={onNavigate} onDetail={onDetail} />
           <SpentSoFar month={month} current={current} today={today} spent={summary.spent} income={summary.income} compare={compare}
             onClick={() => onDetail('spending')} />

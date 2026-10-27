@@ -28,7 +28,7 @@ function AccountPick({ label, value, onChange, est }) {
   );
 }
 
-export default function AddTxn({ today, usage, est, onDone, onToast }) {
+export default function AddTxn({ today, usage, est, cash: cashInfo = null, onDone, onToast }) {
   const [direction, setDirection] = useState('out');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -42,6 +42,11 @@ export default function AddTxn({ today, usage, est, onDone, onToast }) {
   const transfer = direction === 'transfer';
 
   const sign = direction === 'out' ? -1 : 1;
+  // "cash left $X after this" (Push 2): what the Cash balance will be once this purchase is added. A purchase
+  // dated before the day you set your cash doesn't change it.
+  let typedCents = 0;
+  try { const c = parseCents(amount); if (c > 0) typedCents = c; } catch { typedCents = 0; }
+  const cashLeftAfter = cashInfo ? cashInfo.left - (!cashInfo.set || date >= cashInfo.set.asOf ? typedCents : 0) : null;
 
   async function save(e) {
     e.preventDefault();
@@ -96,7 +101,7 @@ export default function AddTxn({ today, usage, est, onDone, onToast }) {
             onChange={(e) => { setAmount(e.target.value); setError(''); }} />
         </label>
 
-        {direction === 'out' && <CashRow on={cash} onChange={setCash} />}
+        {direction === 'out' && <CashRow on={cash} onChange={setCash} left={cashLeftAfter} />}
 
         {!transfer && <label className="field">
           <span className="small">Description</span>

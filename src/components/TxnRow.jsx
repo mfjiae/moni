@@ -28,6 +28,8 @@ export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
   const muted = t.kind === 'saving' || t.kind === 'internal';
   // Paid with cash: a cash purchase shows only its warm "cash" tag (no "typed" / "manual"); ATM withdrawals,
   // cash deposits and online family deposits get their own tag (prototype "Moni Paid With Cash" v4).
+  // Push 2: rows counted in the Cash balance show their cash effect under the amount (`cashFx`, set in App), and
+  // rows that may be a missed ATM withdrawal get a rose "Cash withdrawal?" tag (`atmAsk`).
   const cash = isCash(t);
   const ctag = cashTag(t);
   return (
@@ -39,11 +41,17 @@ export default function TxnRow({ t, meta, tags, onOpen, showAccount = true }) {
           {meta ? ` · ${meta}` : ''}
           {!cash && t.source === 'manual' && t.typed !== 'pending' ? ' · manual' : ''}
           {!cash && t.typed === 'pending' && <span className="typed-tag">typed</span>}
+          {t.atmAsk && <span className="cash-tag ask">Cash withdrawal?</span>}
           {ctag && <span className={`cash-tag${ctag.cls === 'cash' ? '' : ` ${ctag.cls}`}`}>{ctag.text}</span>}
           {tags?.map((g) => <span key={g.text} className={`etf-tag${g.cls ? ` ${g.cls}` : ''}`}>{g.text}</span>)}
         </span>
       </div>
-      <span className={`amount${amountClass(t)}`}>{formatCents(t.amountCents, { sign: true })}</span>
+      {t.cashFx ? (
+        <span className="amt-col">
+          <span className={`amount${amountClass(t)}`}>{formatCents(t.amountCents, { sign: true })}</span>
+          <span className="cash-fx">cash {formatCents(t.cashFx, { sign: true })}</span>
+        </span>
+      ) : <span className={`amount${amountClass(t)}`}>{formatCents(t.amountCents, { sign: true })}</span>}
     </button>
   );
 }

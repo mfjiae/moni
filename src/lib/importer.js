@@ -53,6 +53,7 @@ export function prepareImport(rows, { existingKeys = new Set(), manualTxns = [],
       refund: c.refund,
       bill: c.bill,
       note: '',
+      ...(c.atm ? { atm: true } : {}),
     };
 
     // A typed transfer (M4.1) only matches the bank's own transfer row to the same saver; other typed

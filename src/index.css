@@ -986,3 +986,31 @@ button.rent-pill { font: inherit; font-size: 13px; cursor: pointer; }
 .cash-eff { display: flex; flex-direction: column; gap: 4px; font-size: 13px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-variant-numeric: tabular-nums; }
 .cash-eff div { display: flex; justify-content: space-between; gap: 10px; }
 .cash-eff span:first-child { color: var(--other); }
+/* Paid with cash, Push 2: the Cash button on Home's balance card (prototype v4). Warm like the cash tags; rose
+   when below zero. With Savings, Cash gets its own row under the two (three across doesn't fit the card's width,
+   even on the 27-inch: the Home left column is about 390px). Without Savings: Smart Access | Cash. */
+.bal-half.cash-half { cursor: pointer; border-radius: 12px; }
+.bal-half.cash-half > * { pointer-events: none; }
+.bal-half.cash-half .balance-label, .home .bal-half.cash-half .balance-value { color: #FFCB9A; }
+.home .bal-half.cash-half .balance-value.neg { color: var(--review); }
+.bal-half.cash-half[aria-expanded="true"] { outline: 2px solid #FFCB9A; outline-offset: 4px; }
+.bal-half.cash-half:focus-visible { outline: 2px solid var(--balance); outline-offset: 4px; }
+.cash-dot { display: inline-block; margin-left: 6px; vertical-align: 1px; }
+.balance-card.split.n3 .cash-rule { display: none; }
+.balance-card.split.n3 .cash-half { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--balance) 25%, transparent); border-radius: 0; }
+.bp-tag.cash { background: #3A2A1E; color: #FFCB9A; }
+.cash-neg { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: #3A1F2E; color: var(--review); font-size: 13px; }
+.cash-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.cash-pill { font: inherit; font-size: 13px; font-weight: 500; padding: 8px 14px; border-radius: 99px; cursor: pointer; border: 1px solid #FFCB9A; color: #FFCB9A; background: #3A2A1E; }
+.cash-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cash-asof { display: block; color: var(--muted); }
+h3.cash-q { margin: 0; }
+/* Cash effect under a row's amount (Activity and other lists) */
+.amt-col { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
+.cash-fx { font-size: 11.5px; color: #FFCB9A; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cash-tag.ask { background: #3A1F2E; color: var(--review); }
+/* "Was this a cash withdrawal?" on a flagged row's sheet */
+.atm-ask { display: flex; flex-direction: column; gap: 10px; }
+.atm-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+.atm-opts .btn { flex: 1 1 140px; }
+.atm-remember { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

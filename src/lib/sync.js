@@ -11,7 +11,7 @@ export const DEFAULT_REPO = 'mfjiae/moni-data';
 export const getSyncConfig = () => db.meta.get('sync');
 
 async function readLocal() {
-  const [txns, rules, categories, budgets, etfs, bills, tombs, balance, ...saverBalances] = await Promise.all([
+  const [txns, rules, categories, budgets, etfs, bills, tombs, balance, cashMeta, ...saverBalances] = await Promise.all([
     db.txns.toArray(),
     db.userRules.toArray(),
     db.categories.toArray(),
@@ -20,6 +20,7 @@ async function readLocal() {
     db.bills.toArray(),
     db.tombstones.toArray(),
     db.meta.get('balance'),
+    db.meta.get('cash'),
     ...SAVERS.map((a) => db.meta.get(balanceKey(a.id))),
   ]);
   const balances = {};
@@ -36,6 +37,7 @@ async function readLocal() {
     tombstones: Object.fromEntries(tombs.map((t) => [t.key, t.deletedAt])),
     balance: balance ?? null,
     balances,
+    cash: cashMeta ? (({ key: _k, ...c }) => c)(cashMeta) : null,
   });
 }
 
@@ -62,6 +64,10 @@ async function writeLocal(merged) {
       if (!cur || stableStringify(cur) !== stableStringify(merged.balance)) {
         await db.meta.put({ ...merged.balance, key: 'balance' });
       }
+    }
+    if (merged.cash) {
+      const cur = await db.meta.get('cash');
+      if (!cur || stableStringify(cur) !== stableStringify({ ...merged.cash, key: 'cash' })) await db.meta.put({ ...merged.cash, key: 'cash' });
     }
     for (const [id, b] of Object.entries(merged.balances ?? {})) {
       if (!b) continue;
