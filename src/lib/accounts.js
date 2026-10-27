@@ -196,7 +196,7 @@ export function estimateBalances(allTxns, balance, savers = {}) {
   const est = (b) => (b ? { cents: b.cents, bank: b.cents, asOf: b.asOf, extra: 0, typed: 0, other: 0, items: [], settled: { count: 0, cents: 0 }, confirms: [] } : null);
   const main = est(balance);
   const out = Object.fromEntries(SAVERS.map((a) => [a.id, est(savers?.[a.id])]));
-  const item = (t, cents, from) => ({ uid: t.uid, description: t.description, date: posted(t), cents, from });
+  const item = (t, cents, from) => ({ uid: t.uid, description: t.description, nickname: t.nickname, kind: t.kind, date: posted(t), cents, from });
   const pendingFrom = main ? addDays(main.asOf, -MATCH_DAYS) : null;
   const settledFrom = main ? addDays(main.asOf, -30) : null;
   for (const t of allTxns) {

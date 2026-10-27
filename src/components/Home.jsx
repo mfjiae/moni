@@ -6,7 +6,7 @@ import { summarizeMonth, categoryRows, monthCompare, upcomingRent } from '../lib
 import { rentFromBills } from '../lib/bills.js';
 import { currentBalance } from '../lib/importer.js';
 import { SAVERS } from '../lib/accounts.js';
-import { shortName } from '../lib/activity.js';
+import { displayName } from './TxnRow.jsx';
 import { resolveMatch, setCashBalance } from '../lib/store.js';
 import { Bar, ImportButton, MonthDropdown, Sheet } from './ui.jsx';
 import { cashFlowCaption } from '../lib/budgets.js';
@@ -185,13 +185,13 @@ function Breakdown({ id, title, banks, info, total, onToast }) {
       ))}
       {info.items.map((x) => (
         <div className="bp-row" key={x.uid}>
-          <span className="bp-name">{shortName(x.description)} <span className="bp-sub">{dayShort(x.date)}</span>
+          <span className="bp-name">{displayName(x)} <span className="bp-sub">{dayShort(x.date)}</span>
             <span className={`bp-tag${x.from === 'typed' ? '' : ' other'}`}>{x.from === 'typed' ? 'typed' : 'other account\u2019s CSV'}</span></span>
           <span className="bp-amt">{formatCents(x.cents, { sign: true })}</span>
         </div>
       ))}
       {(info.confirms ?? []).map((q) => {
-        const bankName = shortName(q.row.description);
+        const bankName = displayName(q.row);
         return (
           <div className="bp-ask" key={q.row.uid}>
             <div className="bp-row">

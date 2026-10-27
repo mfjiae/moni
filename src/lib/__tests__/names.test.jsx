@@ -1,7 +1,7 @@
 // Clean names / nicknames (27 Oct 2026). Fake data only.
 import { describe, it, expect, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { renameKey, setNicknames, nicknameFor, nameRecordFor, suggestNames, countSimilar, titleCase, cleanName, nameChange, nameUid, nameList } from '../names.js';
+import { renameKey, setNicknames, nicknameFor, nameRecordFor, suggestNames, countSimilar, titleCase, cleanName, nameChange, nameUid, nameList, billDisplayName } from '../names.js';
 import { matchesSearch } from '../activity.js';
 import { mergeSnapshots, normalize } from '../merge.js';
 import { categorize } from '../rules.js';
@@ -194,5 +194,25 @@ describe('Settings → Names list', () => {
   });
   it('is empty when nothing is renamed', () => {
     expect(nameList([], [mart])).toEqual([]);
+  });
+});
+
+describe('names on bills', () => {
+  afterEach(() => setNicknames([]));
+  const auto = { uid: 'b1', name: 'Fake Telco', key: 'FAKE TELCO', cents: 2680, every: 'monthly' };
+  it('shows your name for a bill found from the bank', () => {
+    setNicknames([rec('FAKE TELCO', 'Phone')]);
+    expect(billDisplayName(auto)).toBe('Phone');
+  });
+  it('keeps the bill name when you typed it yourself, or when it has no key', () => {
+    setNicknames([rec('FAKE TELCO', 'Phone')]);
+    expect(billDisplayName({ ...auto, name: 'My phone plan' })).toBe('My phone plan');
+    expect(billDisplayName({ uid: 'b2', name: 'Gym', cents: 1000, every: 'monthly' })).toBe('Gym');
+  });
+  it('leaves Tuition and Rent alone and falls back to the bill name', () => {
+    setNicknames([rec('FAKE TELCO', 'Phone')]);
+    expect(billDisplayName({ uid: 'b3', name: 'Tuition', key: 'cat:tuition' })).toBe('Tuition');
+    setNicknames([]);
+    expect(billDisplayName(auto)).toBe('Fake Telco');
   });
 });

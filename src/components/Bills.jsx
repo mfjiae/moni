@@ -5,6 +5,7 @@ import { Sheet, CategorySelect } from './ui.jsx';
 import { formatCents, parseCents } from '../lib/money.js';
 import { longDay, daysBetween, monthShort, monthKey } from '../lib/dates.js';
 import { billsView, detectBills, EVERY, stepDate } from '../lib/bills.js';
+import { billDisplayName } from '../lib/names.js';
 import { saveBill, deleteBill, confirmBill, dismissBill } from '../lib/store.js';
 
 // Shortest rhythm first (Ken, 26 Oct 2026): All, (Weekly when there is one), Fortnightly, Monthly, Half-yearly.
@@ -36,12 +37,12 @@ function TimelineRow({ item, today, onEdit, onDetail, last }) {
     <div className="tl">
       <span className="tl-rail" aria-hidden="true"><i className={`tl-dot ${dot}${soon ? ' soon' : ''}`} />{!last && <b />}</span>
       <div className="tl-body">
-        <button type="button" className="tl-main" onClick={() => onEdit(bill)} aria-label={`${bill.name}, ${formatCents(item.cents)}, ${status === 'later' ? laterText(item, today) : whenText(item, today)}. Edit bill`}>
+        <button type="button" className="tl-main" onClick={() => onEdit(bill)} aria-label={`${billDisplayName(bill)}, ${formatCents(item.cents)}, ${status === 'later' ? laterText(item, today) : whenText(item, today)}. Edit bill`}>
           <span className={`small tl-when${soon ? ' soon' : ''}${status === 'late' ? ' text-review' : ''}`}>
             {status === 'later' ? laterText(item, today) : whenText(item, today)}
           </span>
           <span className="tl-line">
-            <span className="tl-name">{bill.name}</span>
+            <span className="tl-name">{billDisplayName(bill)}</span>
             {status !== 'paid' && <span className="bill-chip">{EVERY[bill.every].label}</span>}
             <span className={`tl-amt${status === 'paid' ? ' muted' : ''}`}>{formatCents(item.cents)}</span>
           </span>
@@ -80,10 +81,10 @@ function FoundCard({ found, onConfirm, onToast }) {
   return (
     <section className="card found-card" aria-label="Found by moni">
       <div className="card-head"><span className="card-title plain text-review">Looks like a bill</span><span className="found-chip">{found.length} found</span></div>
-      <span className="found-text">{s.name} · {formatCents(s.cents)} {EVERY[s.every].label.toLowerCase()}. Seen {s.seen.length} times in a row.</span>
+      <span className="found-text">{billDisplayName(s)} · {formatCents(s.cents)} {EVERY[s.every].label.toLowerCase()}. Seen {s.seen.length} times in a row.</span>
       <div className="btn-row">
         <button type="button" className="btn primary" onClick={() => onConfirm(s)}>Add as bill</button>
-        <button type="button" className="btn" onClick={async () => { await dismissBill(s.key); onToast(`moni won't suggest ${s.name} again`); }}>Not a bill</button>
+        <button type="button" className="btn" onClick={async () => { await dismissBill(s.key); onToast(`moni won't suggest ${billDisplayName(s)} again`); }}>Not a bill</button>
       </div>
     </section>
   );
@@ -219,12 +220,12 @@ export function ConfirmSheet({ s, onToast, onClose }) {
   if (s.every === 'weekly') ids.unshift('weekly');
   async function add() {
     await confirmBill(s, every);
-    onToast(`${s.name} added as a ${EVERY[every].label.toLowerCase()} bill`);
+    onToast(`${billDisplayName(s)} added as a ${EVERY[every].label.toLowerCase()} bill`);
     onClose();
   }
   async function no() {
     await dismissBill(s.key);
-    onToast(`moni won't suggest ${s.name} again`);
+    onToast(`moni won't suggest ${billDisplayName(s)} again`);
     onClose();
   }
   return (
@@ -232,7 +233,7 @@ export function ConfirmSheet({ s, onToast, onClose }) {
       <div className="sheet-body">
         <span className="confirm-lead">moni saw the same payment {s.seen.length} times, about {s.every === 'halfyearly' ? 'six months' : s.every === 'monthly' ? 'a month' : s.every === 'fortnightly' ? 'two weeks' : 'a week'} apart. Check it before it counts as a bill.</span>
         <div className="confirm-box">
-          <div className="row"><strong>{s.name}</strong><strong>{formatCents(s.cents)}</strong></div>
+          <div className="row"><strong>{billDisplayName(s)}</strong><strong>{formatCents(s.cents)}</strong></div>
           <span className="small">Seen: {s.seen.map(shortDate).join(' · ')}</span>
           <span className="small">Guess: {EVERY[s.every].label.toLowerCase()}, next about {shortDate(s.next)}</span>
         </div>

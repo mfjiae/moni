@@ -67,6 +67,15 @@ export function nameList(records, txns) {
   return [...similar, ...single];
 }
 
+// Name to show for a bill (Ken, 27 Oct 2026). Bills found from the bank get the merchant's name; when that name is
+// still the automatic one and you have renamed that bank text, show your name. A name you typed on the bill wins.
+const autoTitle = (key) => String(key).toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+export function billDisplayName(bill, list = records) {
+  if (!bill) return '';
+  if (!bill.key || String(bill.key).startsWith('cat:') || bill.name !== autoTitle(bill.key)) return bill.name;
+  return nicknameFor({ description: bill.key, kind: 'spend' }, list) ?? bill.name;
+}
+
 const SMALL = new Set(['and', 'of', 'the', 'at', 'on', 'for', 'to', 'in']);
 export function titleCase(s) {
   return String(s ?? '').toLowerCase().split(/\s+/).filter(Boolean)
