@@ -334,7 +334,7 @@ select.input { appearance: auto; }
 .check input { width: 20px; height: 20px; accent-color: var(--accent); }
 .error { margin: 0; color: var(--over); font-size: 15px; }
 
-/* Toasts (28 Oct 2026): green = done, amber = heads up, red = deleted / failed. Above the bottom nav on phones, centred in the page on desktop. */
+/* Toasts (28 Oct 2026): green = done, amber = heads up, red = deleted / failed. Above the bottom nav on phones; bottom centre of the whole window on desktop (not the page area beside the sidebar). */
 .toasts { position: fixed; left: 0; right: 0; bottom: calc(74px + 12px + env(safe-area-inset-bottom)); z-index: 30; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 16px; pointer-events: none; }
 .toast { --tc: var(--in); --tb: #10281c; --tl: #1d5a3a; pointer-events: auto; position: relative; overflow: hidden; width: min(440px, 100%); display: flex; align-items: center; gap: 10px; padding: 12px 12px 13px 14px; border-radius: 12px; border: 1px solid var(--tl); background: var(--tb); color: var(--text); box-shadow: 0 8px 28px rgba(0,0,0,0.5); animation: toast-in 0.22s ease-out both; }
 .toast-warn { --tc: #FFC24D; --tb: #2b2210; --tl: #6b5217; }
@@ -352,7 +352,7 @@ select.input { appearance: auto; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
 @keyframes toast-bar { to { transform: scaleX(0); } }
-@media (min-width: 900px) { .toasts { left: 240px; bottom: 24px; } }
+@media (min-width: 900px) { .toasts { bottom: 24px; } }
 @media (prefers-reduced-motion: reduce) { .toast, .toast.out { animation: none; } .toast-bar { display: none; } }
 
 .toggle-row { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--muted); min-height: 32px; margin-top: -6px; }
