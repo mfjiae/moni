@@ -4,7 +4,7 @@ import { db, newUid } from './db.js';
 import { parseNetBankCsv } from './csv.js';
 import { DEFAULT_RULES, makeUserRule, ruleMatches, isBroadKeyword } from './rules.js';
 import { prepareImport, nextBalance } from './importer.js';
-import { kindForCategory, customCategoryId } from './categories.js';
+import { kindForCategory, customCategoryId, allCategories } from './categories.js';
 import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync, readLocal, writeLocal } from './sync.js';
 import { buildBackup, backupFileName, planRestore } from './backup.js';
@@ -145,18 +145,35 @@ export async function setCategory(uid, categoryId, note, extra = {}) {
 
 // Save "always put KEYWORD in CATEGORY" and apply it to matching items still in Review.
 // Returns how many other transactions it sorted.
+// True when you already saved this exact rule (same keyword, same category). Used for the "already added" warning.
+export async function ruleExists(keyword, categoryId) {
+  const k = String(keyword ?? '').toUpperCase().trim();
+  const all = await db.userRules.toArray();
+  return all.some((r) => r.categoryId === categoryId && !r.notAtm && !r.atm && r.match?.contains === k);
+}
+
 export async function saveRule(keyword, categoryId, exceptUid) {
   if (isBroadKeyword(keyword)) throw new Error(`"${keyword}" would match too many transactions. Use the merchant's name.`);
   const now = Date.now();
   const kind = kindForCategory(categoryId);
   const rule = makeUserRule(keyword, categoryId, kind);
-  await db.userRules.add({ ...rule, uid: newUid(), order: now, updatedAt: now });
+  if (!(await ruleExists(keyword, categoryId))) await db.userRules.add({ ...rule, uid: newUid(), order: now, updatedAt: now });
   const matches = await db.txns
     .filter((t) => t.kind === 'review' && t.uid !== exceptUid && ruleMatches(rule, t.description, t.amountCents))
     .toArray();
   await Promise.all(matches.map((t) => db.txns.update(t.uid, { kind, categoryId, updatedAt: now })));
   requestSync();
   return matches.length;
+}
+
+// Undo for deletes (toast "Undo" button): puts the record back with a fresh updatedAt, which beats the tombstone on sync.
+export async function restoreRecord(table, rec) {
+  const now = Date.now();
+  await db.transaction('rw', db[table], db.tombstones, async () => {
+    await db[table].put({ ...rec, updatedAt: now });
+    await db.tombstones.delete(rec.uid);
+  });
+  requestSync();
 }
 
 export async function deleteTxn(uid) {
@@ -195,6 +212,8 @@ export async function addCategory(name, type) {
   const clean = name.trim().replace(/\s+/g, ' ');
   if (!clean) throw new Error('Give the category a name');
   const id = customCategoryId(clean);
+  const dup = (await db.categories.toArray()).concat(allCategories()).some((c) => c.name?.toLowerCase() === clean.toLowerCase() && !c.hidden);
+  if (dup) throw new Error(`You’ve already added ${clean}`);
   await db.categories.put({ id, uid: id, name: clean, type, custom: true, hidden: false, updatedAt: Date.now() });
   requestSync();
   return id;
@@ -315,6 +334,12 @@ export async function saveBill(rec) {
   await db.bills.put({ since: rec.anchor, ...rec, uid, updatedAt: now });
   requestSync();
   return uid;
+}
+
+// True when a bill with the same name, amount and rhythm is already saved (for the "already added" warning).
+export async function billExists(name, cents, every) {
+  const n = String(name ?? '').trim().toLowerCase();
+  return (await db.bills.toArray()).some((b) => !b.dismissed && String(b.name ?? '').trim().toLowerCase() === n && b.cents === cents && b.every === every);
 }
 
 export async function deleteBill(uid) {

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Sheet, CategorySelect, CashRow, Segmented } from './ui.jsx';
 import { formatCents, parseCents } from '../lib/money.js';
-import { kindForCategory } from '../lib/categories.js';
+import { kindForCategory, categoryName } from '../lib/categories.js';
+import { db } from '../lib/db.js';
 import { splitOf, buildSplit } from '../lib/investing.js';
 import { longDay } from '../lib/dates.js';
 import { isPersonTransfer, merchantKey, isBroadKeyword } from '../lib/rules.js';
 import { isCashDeposit, isCash, depositChoice, DEPOSIT_CHOICES } from '../lib/cash.js';
-import { answerAtm, setCategory, saveRule, deleteTxn, setEtfSplit, addEtf, renameSimilar, renameRow, clearName } from '../lib/store.js';
+import { answerAtm, setCategory, saveRule, ruleExists, restoreRecord, deleteTxn, setEtfSplit, addEtf, renameSimilar, renameRow, clearName } from '../lib/store.js';
 import { renameKey, nameRecordFor, nicknameFor, suggestNames, countSimilar, cleanName, nameChange, MAX_NAME } from '../lib/names.js';
 import { shortName } from '../lib/activity.js';
 
@@ -180,19 +181,26 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
     await setCategory(txn.uid, categoryId, note, canCash && cash !== isCash(txn) ? { cash } : {});
     if (investing) await setEtfSplit(txn.uid, split.split);
     else if (txn.etfSplit?.length) await setEtfSplit(txn.uid, []);
-    let msg = nameMsg ? `Saved. ${nameMsg}` : 'Saved';
-    if (canLearn && always && keyword.trim()) {
-      const n = await saveRule(keyword, categoryId, txn.uid);
-      msg = n ? `Saved. Also sorted ${n} more from ${keyword.trim().toUpperCase()}` : `Saved. ${keyword.trim().toUpperCase()} will be sorted automatically`;
+    const learning = canLearn && always && keyword.trim();
+    if (!learning) onToast(nameMsg ? `Saved. ${nameMsg}` : 'Saved');
+    else {
+      const kw = keyword.trim().toUpperCase();
+      const already = await ruleExists(kw, categoryId);
+      const n = await saveRule(kw, categoryId, txn.uid);
+      const sorted = n ? `Also sorted ${n} more` : '';
+      if (nameMsg) onToast(nameMsg);
+      if (already) onToast({ type: 'warn', title: 'You’ve already added this rule', detail: `${kw} → ${categoryName(categoryId)}${sorted ? `. ${sorted}` : ''}` });
+      else onToast({ type: 'ok', title: 'Rule added', detail: `${kw} → ${categoryName(categoryId)}${sorted ? `. ${sorted}` : ''}` });
     }
-    onToast(msg);
     onClose();
   }
 
   async function remove() {
     if (!confirmDelete) { setConfirmDelete(true); return; }
+    const rec = await db.txns.get(txn.uid);
     await deleteTxn(txn.uid);
-    onToast('Deleted');
+    onToast({ type: 'bad', title: 'Transaction deleted', action: rec ? 'Undo' : undefined,
+      onAction: () => restoreRecord('txns', rec).then(() => onToast({ type: 'ok', title: 'Transaction restored' })) });
     onClose();
   }
 

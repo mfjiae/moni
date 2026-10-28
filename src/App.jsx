@@ -20,6 +20,7 @@ import { markTyped } from './lib/typed.js';
 import { cashBalance, cashDot, atmQuestion, atmSkipRules } from './lib/cash.js';
 import { etfList, lastPick } from './lib/investing.js';
 import { setNicknames } from './lib/names.js';
+import { useToasts, ToastStack } from './components/Toasts.jsx';
 
 const Icon = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
@@ -53,7 +54,7 @@ export default function App() {
   const [filter, setFilter] = useState('all');
   const [filterKey, setFilterKey] = useState(0);
   const [openId, setOpenId] = useState(null);
-  const [toast, setToast] = useState(null);
+  const { list: toasts, push: setToast, dismiss: dismissToast } = useToasts();
   const [page, setPage] = useState(null); // detail page: { name, category? }
   const pushed = useRef(false);
   const pageRef = useRef(null);
@@ -145,12 +146,6 @@ export default function App() {
       window.removeEventListener('online', syncNow);
     };
   }, []);
-  useEffect(() => {
-    if (!toast) return undefined;
-    const id = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(id);
-  }, [toast]);
-
   const go = (t, f) => {
     if (f) { setFilter(f); setFilterKey((k) => k + 1); }
     if (page) closeDetail();
@@ -192,7 +187,7 @@ export default function App() {
 
       {open && <TxnSheet key={open.uid} txn={open} txns={txns} usage={usage} etfs={etfs} lastEtf={lastEtf} onClose={() => setOpenId(null)} onToast={setToast} />}
 
-      {toast && <div className="toast" role="status">{toast}</div>}
+      <ToastStack list={toasts} dismiss={dismissToast} />
 
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">

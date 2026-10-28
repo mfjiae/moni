@@ -96,7 +96,10 @@ function BudgetSheet({ edit, free, plans, current, onClose, onToast }) {
     setBusy(true);
     try {
       await setBudget(categoryId, cents, current, past);
-      onToast(cents > 0 ? `${categoryName(categoryId)} budget: ${formatCents(cents)} a month` : `${categoryName(categoryId)} budget removed`);
+      if (cents > 0 && edit && cents === startCents) onToast({ type: 'warn', title: 'No change', detail: `${categoryName(categoryId)} is already ${formatCents(cents)} a month` });
+      else if (cents > 0) onToast({ type: 'ok', title: edit ? 'Budget updated' : 'Budget added', detail: `${categoryName(categoryId)} · ${formatCents(cents)} a month` });
+      else onToast({ type: 'bad', title: 'Budget removed', detail: categoryName(categoryId), action: startCents > 0 ? 'Undo' : undefined,
+        onAction: () => setBudget(categoryId, startCents, current, past).then(() => onToast({ type: 'ok', title: 'Budget restored', detail: `${categoryName(categoryId)} · ${formatCents(startCents)} a month` })) });
       onClose();
     } catch (e) { setErr(e.message); setBusy(false); }
   };

@@ -6,7 +6,7 @@ import { formatCents, parseCents } from '../lib/money.js';
 import { longDay, daysBetween, monthShort, monthKey } from '../lib/dates.js';
 import { billsView, detectBills, EVERY, stepDate } from '../lib/bills.js';
 import { billDisplayName } from '../lib/names.js';
-import { saveBill, deleteBill, confirmBill, dismissBill } from '../lib/store.js';
+import { saveBill, deleteBill, confirmBill, dismissBill, billExists, restoreRecord } from '../lib/store.js';
 
 // Shortest rhythm first (Ken, 26 Oct 2026): All, (Weekly when there is one), Fortnightly, Monthly, Half-yearly.
 const FILTERS = [['all', 'All'], ['fortnightly', 'Fortnightly'], ['monthly', 'Monthly'], ['halfyearly', 'Half-yearly']];
@@ -179,6 +179,10 @@ export function BillSheet({ bill, today, usage, onToast, onClose }) {
     if (!(cents > 0)) return setError('Type the amount, like 26.80');
     if (!due) return setError('Pick the next due date');
     if (!categoryId) return setError('Pick a category');
+    if (isNew && await billExists(name, cents, every)) {
+      onToast({ type: 'warn', title: 'You’ve already added this bill', detail: `${name.trim()} · ${formatCents(cents)}` });
+      return;
+    }
     await saveBill({ ...(isNew ? {} : bill), name: name.trim(), cents, every, anchor: due, categoryId, since: isNew ? due : bill.since });
     onToast(isNew ? `${name.trim()} added` : 'Saved');
     onClose();
@@ -186,7 +190,8 @@ export function BillSheet({ bill, today, usage, onToast, onClose }) {
   async function remove() {
     if (!sure) { setSure(true); return; }
     await deleteBill(bill.uid);
-    onToast(`${bill.name} removed from bills`);
+    onToast({ type: 'bad', title: `${bill.name} removed`, detail: 'Removed from your bills', action: 'Undo',
+      onAction: () => restoreRecord('bills', bill).then(() => onToast({ type: 'ok', title: `${bill.name} restored` })) });
     onClose();
   }
 

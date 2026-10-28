@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db.js';
 import { connect, disconnect, syncNow, readLocal, DEFAULT_REPO } from '../lib/sync.js';
-import { clearDevice, updateCategory, addCategory, deleteRule, deleteName, clearName, renameSimilar, renameRow, saveBackupFile, setBackupRemind, restoreBackup } from '../lib/store.js';
+import { clearDevice, updateCategory, addCategory, restoreRecord, deleteRule, deleteName, clearName, renameSimilar, renameRow, saveBackupFile, setBackupRemind, restoreBackup } from '../lib/store.js';
 import { parseBackup, backupCounts, backupAgo } from '../lib/backup.js';
 import { nameList, MAX_NAME } from '../lib/names.js';
 import { longDay } from '../lib/dates.js';
@@ -51,7 +51,7 @@ function CategoryRow({ c, count, onToast }) {
       <div className="actions">
         <button type="button" className="btn ghost small-btn" onClick={() => setEditing(true)}>Rename</button>
         {!LOCKED.has(c.id) && (
-          <button type="button" className="btn ghost small-btn" onClick={() => updateCategory(c.id, { hidden: !c.hidden })}>
+          <button type="button" className="btn ghost small-btn" onClick={async () => { await updateCategory(c.id, { hidden: !c.hidden }); onToast(c.hidden ? { type: 'ok', title: `${c.name} shown again` } : { type: 'ok', title: `${c.name} hidden`, action: 'Undo', onAction: () => updateCategory(c.id, { hidden: false }) }); }}>
             {c.hidden ? 'Show' : 'Hide'}
           </button>
         )}
@@ -178,7 +178,7 @@ function RulesCard({ rules, names, onToast }) {
                     onSave={async (text) => {
                       const n = await renameSimilar(null, kw, text);
                       setEditing(null);
-                      onToast(`${kw} now shows as ${n}`);
+                      onToast({ type: 'ok', title: 'Name updated', detail: `${kw} → ${n}` });
                     }} />
                 )}
               </span>
@@ -191,7 +191,8 @@ function RulesCard({ rules, names, onToast }) {
                     if (confirm !== r.uid) { setConfirm(r.uid); return; }
                     await deleteRule(r.uid);
                     setConfirm(null);
-                    onToast(`Deleted the ${kw} rule`);
+                    onToast({ type: 'bad', title: 'Rule deleted', detail: `${kw} → ${categoryName(r.categoryId)}`, action: 'Undo',
+                      onAction: () => restoreRecord('userRules', r).then(() => onToast({ type: 'ok', title: 'Rule restored', detail: kw })) });
                   }}>
                   {confirm === r.uid ? 'Tap again' : 'Delete'}
                 </button>
@@ -238,7 +239,7 @@ function NamesCard({ names, txns, onToast }) {
                     onSave={async (text) => {
                       const n = r.kind === 'similar' ? await renameSimilar(null, r.from, text) : (await renameRow(r.rowUid, text), text.trim());
                       setEditing(null);
-                      onToast(`Now shows as ${n}`);
+                      onToast(n === r.name ? { type: 'warn', title: 'No change', detail: `Already shown as ${n}` } : { type: 'ok', title: 'Name updated', detail: `${r.name} → ${n}` });
                     }} />
                 )}
               </span>
@@ -249,10 +250,13 @@ function NamesCard({ names, txns, onToast }) {
                 <button type="button" className="btn ghost danger small-btn" onBlur={() => setConfirm(null)}
                   onClick={async () => {
                     if (confirm !== r.id) { setConfirm(r.id); return; }
+                    const rec = r.kind === 'similar' ? await db.names.get(r.id) : null;
                     if (r.kind === 'similar') await deleteName(r.id);
                     else await clearName(r.rowUid);
                     setConfirm(null);
-                    onToast(`Deleted ${r.name}. Showing the bank name again`);
+                    onToast({ type: 'bad', title: `Name deleted: ${r.name}`, detail: 'Showing the bank name again', action: 'Undo',
+                      onAction: () => (rec ? restoreRecord('names', rec) : renameRow(r.rowUid, r.name))
+                        .then(() => onToast({ type: 'ok', title: 'Name restored', detail: `${r.from} → ${r.name}` })) });
                   }}>
                   {confirm === r.id ? 'Tap again' : 'Delete'}
                 </button>
@@ -344,7 +348,7 @@ function BackupCard({ onToast }) {
         <button type="button" className="btn primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save a backup'}</button>
         <div className="cash-row">
           <span className="cash-row-text"><span>Remind me monthly</span><span className="small">A line on Home if the last backup is over 30 days old</span></span>
-          <button type="button" role="switch" aria-checked={remind} aria-label="Remind me monthly" className="cash-sw" onClick={() => setBackupRemind(!remind)} />
+          <button type="button" role="switch" aria-checked={remind} aria-label="Remind me monthly" className="cash-sw" onClick={async () => { await setBackupRemind(!remind); onToast(remind ? 'Monthly backup reminder off' : 'Monthly backup reminder on'); }} />
         </div>
         <p className="hint bk-warn">The file holds your real transactions. Keep it somewhere private, never in the moni code repo.</p>
       </section>

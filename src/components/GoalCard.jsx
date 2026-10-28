@@ -8,6 +8,7 @@ import { goalView } from '../lib/goals.js';
 import { setGoal, clearGoal } from '../lib/store.js';
 import { SAVERS } from '../lib/accounts.js';
 import { Sheet } from './ui.jsx';
+import { toast } from './Toasts.jsx';
 
 export function useGoal() {
   const g = useLiveQuery(() => db.meta.get('goal'), []);
@@ -27,10 +28,18 @@ function GoalSheet({ goal, today, onClose }) {
     if (by <= today) { setError('Pick a date after today'); return; }
     try {
       await setGoal({ name, targetCents: cents, byDate: by, startDate: goal?.startDate ?? today });
+      toast({ type: 'ok', title: goal ? 'Goal updated' : 'Goal set', detail: `${name.trim() || 'Savings goal'} · ${formatCents(cents)} by ${longDay(by)}` });
       onClose();
     } catch (e) { setError(e.message); }
   }
-  async function remove() { await clearGoal(); onClose(); }
+  async function remove() {
+    const old = goal;
+    await clearGoal();
+    toast({ type: 'bad', title: 'Goal removed', detail: old?.name, action: 'Undo',
+      onAction: () => setGoal({ name: old.name, targetCents: old.targetCents, byDate: old.byDate, startDate: old.startDate })
+        .then(() => toast({ type: 'ok', title: 'Goal restored' })).catch((e) => toast(e.message)) });
+    onClose();
+  }
   return (
     <Sheet title={goal ? 'Edit savings goal' : 'Set a savings goal'} onClose={onClose}>
       <div className="sheet-body">
