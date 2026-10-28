@@ -20,6 +20,7 @@ import { markTyped } from './lib/typed.js';
 import { cashBalance, cashDot, atmQuestion, atmSkipRules } from './lib/cash.js';
 import { etfList, lastPick } from './lib/investing.js';
 import { setNicknames } from './lib/names.js';
+import { parseHash, formatHash } from './lib/route.js';
 import { useToasts, ToastStack } from './components/Toasts.jsx';
 
 const Icon = {
@@ -49,16 +50,22 @@ function NavItem({ id, label, tab, go, badge, className = '' }) {
 
 export default function App() {
   const today = todaySydney();
-  const [tab, setTab] = useState('home');
+  // The page is kept in the URL hash (#/budgets, #/home/spending) so a reload stays on the same page (route.js).
+  const [start] = useState(() => parseHash(window.location.hash));
+  const [tab, setTab] = useState(start.tab);
   const [month, setMonth] = useState(monthKey(today));
   const [filter, setFilter] = useState('all');
   const [filterKey, setFilterKey] = useState(0);
   const [openId, setOpenId] = useState(null);
   const { list: toasts, push: setToast, dismiss: dismissToast } = useToasts();
-  const [page, setPage] = useState(null); // detail page: { name, category? }
+  const [page, setPage] = useState(start.page); // detail page: { name, category?, account? }
   const pushed = useRef(false);
   const pageRef = useRef(null);
   useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => {
+    const hash = formatHash(tab, page);
+    if (window.location.hash !== hash) window.history.replaceState(window.history.state, '', hash);
+  }, [tab, page]);
 
   // allTxns = every account's rows as stored; txns = what moni counts (Smart Access + saver-only rows,
   // each transfer once; see accounts.js). Every total uses txns; the account pages use allTxns.
