@@ -150,7 +150,9 @@ function BalanceHalf({ id, cls = '', label, cents, note, info, open, setOpen, on
   const items = info?.items ?? [];
   const confirms = info?.confirms ?? [];
   const has = items.length > 0 || confirms.length > 0;
-  const pending = items.some((x) => x.from === 'typed');
+  // Ken, 28 Oct 2026: the dot means "not fully confirmed by the bank yet": anything in the breakdown
+  // (typed, screenshot, or a transfer seen only in the other account's CSV) or a question waiting for him.
+  const pending = has;
   const isOpen = open === id;
   return (
     <div className={`bal-half${cls}`}>

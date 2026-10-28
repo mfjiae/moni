@@ -78,4 +78,19 @@ describe('Home balance after a typed transfer', () => {
     expect((out.match(/class="bal-more"/g) || []).length).toBe(2);
     expect((out.match(/class="bal-dot"/g) || []).length).toBe(2);
   });
+
+  // Ken, 28 Oct 2026: a Savings amount that only the Smart Access CSV knows about is also "not fully confirmed",
+  // so the dot shows (it used to show for typed entries only). Smart Access has nothing waiting, so no dot there.
+  it('shows the dot on Savings for an amount seen only in the other account’s CSV', () => {
+    const balance = { cents: 1000, asOf: '2026-10-28' };
+    const saverBalances = { xx2066: { cents: 307745, asOf: '2026-10-26' }, xx2103: null };
+    const bankRow = { uid: 'csv|b1', source: 'csv', transfer: true, kind: 'saving', categoryId: 'saving', date: '2026-10-28', postedDate: '2026-10-28',
+      amountCents: -74412, description: 'Transfer to xx2066 NetBank' };
+    const est = estimateBalances([bankRow], balance, saverBalances);
+    const out = renderToStaticMarkup(<Home txns={[bankRow]} today="2026-10-28" month="2026-10" setMonth={noop} firstMonth="2026-10"
+      balance={balance} saverBalances={saverBalances} est={est} sync={{ token: 'x' }} onNavigate={noop} onDetail={noop} onToast={noop} />);
+    expect(out).toContain('$3,821.57');
+    expect((out.match(/class="bal-more"/g) || []).length).toBe(1);
+    expect((out.match(/class="bal-dot"/g) || []).length).toBe(1);
+  });
 });
