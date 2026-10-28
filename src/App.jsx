@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, requestPersistentStorage } from './lib/db.js';
 import { todaySydney, monthKey } from './lib/dates.js';
@@ -50,22 +50,38 @@ function NavItem({ id, label, tab, go, badge, className = '' }) {
 
 export default function App() {
   const today = todaySydney();
-  // The page is kept in the URL hash (#/budgets, #/home/spending) so a reload stays on the same page (route.js).
-  const [start] = useState(() => parseHash(window.location.hash));
-  const [tab, setTab] = useState(start.tab);
+  // The address is the single source of truth (like gradi): every click pushes a history entry, the page follows
+  // the address, so the phone's back/forward work everywhere (route.js). `history.state` holds { depth, prev, from }.
+  const readRoute = () => ({ ...parseHash(window.location.hash), from: window.history.state?.from ?? null });
+  const [route, setRoute] = useState(() => ({ ...readRoute(), key: 0 }));
+  const { tab, filter } = route;
+  const page = useMemo(() => (route.page ? { ...route.page, from: route.from ? { name: route.from } : undefined } : null), [route]);
   const [month, setMonth] = useState(monthKey(today));
-  const [filter, setFilter] = useState('all');
-  const [filterKey, setFilterKey] = useState(0);
   const [openId, setOpenId] = useState(null);
   const { list: toasts, push: setToast, dismiss: dismissToast } = useToasts();
-  const [page, setPage] = useState(start.page); // detail page: { name, category?, account? }
-  const pushed = useRef(false);
-  const pageRef = useRef(null);
-  useEffect(() => { pageRef.current = page; }, [page]);
+
+  const navigate = (hash, { from = null, replace = false } = {}) => {
+    const cur = window.history.state ?? {};
+    const same = hash === window.location.hash;
+    const state = { moni: true, depth: replace || same ? (cur.depth ?? 0) : (cur.depth ?? 0) + 1, prev: replace ? (cur.prev ?? null) : window.location.hash, from };
+    if (replace || same) window.history.replaceState(state, '', hash);
+    else window.history.pushState(state, '', hash);
+    setRoute((r) => ({ ...readRoute(), key: r.key + 1 }));
+    window.scrollTo(0, 0);
+  };
+  // Back to a page we know the address of: step back in history if that is where we came from, else go there
+  // (replacing this entry, so back does not return to the page we just closed).
+  const backTo = (hash) => {
+    if (window.history.state?.prev === hash) window.history.back();
+    else navigate(hash, { replace: true });
+  };
   useEffect(() => {
-    const hash = formatHash(tab, page);
+    const onPop = () => { setRoute((r) => ({ ...readRoute(), key: r.key + 1 })); window.scrollTo(0, 0); };
+    window.addEventListener('popstate', onPop);
+    const hash = formatHash(route.tab, route.page, route.filter);
     if (window.location.hash !== hash) window.history.replaceState(window.history.state, '', hash);
-  }, [tab, page]);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // allTxns = every account's rows as stored; txns = what moni counts (Smart Access + saver-only rows,
   // each transfer once; see accounts.js). Every total uses txns; the account pages use allTxns.
@@ -113,28 +129,11 @@ export default function App() {
 
   useEffect(() => { requestPersistentStorage(); }, []);
 
-  // Detail pages: the phone's back gesture closes them instead of leaving the app.
-  useEffect(() => {
-    const onPop = () => {
-      const p = pageRef.current;
-      if (p?.from) {            // came from another detail page: go back to that one, keep one history entry
-        setPage(p.from);
-        window.history.pushState({ moni: 'detail' }, '');
-        return;
-      }
-      pushed.current = false;
-      setPage(null);
-    };
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
-  const openDetail = (name, extra = {}) => {
-    setPage((prev) => ({ name, ...extra, from: prev ? { name: prev.name, category: prev.category } : undefined }));
-    if (!pushed.current) { window.history.pushState({ moni: 'detail' }, ''); pushed.current = true; }
-    window.scrollTo(0, 0);
-  };
+  const openDetail = (name, extra = {}) => navigate(formatHash(tab, { name, ...extra }), { from: page?.name ?? null });
   const closeDetail = () => {
-    if (pushed.current) window.history.back(); else setPage(null);
+    if (!page) return;
+    if (page.from && window.history.state?.from) window.history.back();
+    else backTo(formatHash(tab, null));
   };
 
   // Sync when the app opens, when it comes back to the screen, and when the connection returns.
@@ -153,12 +152,7 @@ export default function App() {
       window.removeEventListener('online', syncNow);
     };
   }, []);
-  const go = (t, f) => {
-    if (f) { setFilter(f); setFilterKey((k) => k + 1); }
-    if (page) closeDetail();
-    setTab(t);
-    window.scrollTo(0, 0);
-  };
+  const go = (t, f, opts) => navigate(formatHash(t, null, f), opts);
 
   if (txns === undefined || !catsReady || plans === undefined || etfRecords === undefined || bills === undefined || !namesReady) return <div className="app"><div className="empty">Loading…</div></div>;
 
@@ -178,15 +172,15 @@ export default function App() {
       )}
       {tab === 'cashflow' && !page && (
         <Detail page={{ name: 'cashflow' }} txns={txns} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth}
-          balance={balance} onBack={() => go('home')} onOpen={setOpenId} onDetail={openDetail} etfs={etfs} rootLabel="Home" />
+          balance={balance} onBack={() => backTo(formatHash('home', null))} onOpen={setOpenId} onDetail={openDetail} etfs={etfs} rootLabel="Home" />
       )}
       {tab === 'bills' && !page && (
         <Bills txns={txns} bills={bills} today={today} usage={usage} onDetail={openDetail} onToast={setToast} />
       )}
       {tab === 'activity' && (
-        <Activity txns={txns} today={today} usage={usage} preset={filter} presetKey={filterKey || null} onOpen={setOpenId} onToast={setToast} />
+        <Activity txns={txns} today={today} usage={usage} preset={filter} presetKey={filter ? route.key : null} onOpen={setOpenId} onToast={setToast} />
       )}
-      {tab === 'add' && <AddTxn today={today} usage={usage} est={est} cash={cash} onDone={() => go('home')} onToast={setToast} />}
+      {tab === 'add' && <AddTxn today={today} usage={usage} est={est} cash={cash} onDone={() => go('home', undefined, { replace: true })} onToast={setToast} />}
       {tab === 'budgets' && (
         <Budgets txns={txns} plans={plans} today={today} month={month} setMonth={setMonth} firstMonth={firstMonth} onToast={setToast} />
       )}
