@@ -1,6 +1,6 @@
 // Database actions used by the screens. Every write stamps updatedAt and asks
 // for a sync, so changes reach your other devices.
-import { db, newUid } from './db.js';
+import { db, newUid, csvUid } from './db.js';
 import { parseNetBankCsv } from './csv.js';
 import { DEFAULT_RULES, makeUserRule, ruleMatches, isBroadKeyword } from './rules.js';
 import { prepareImport, nextBalance } from './importer.js';
@@ -8,7 +8,7 @@ import { kindForCategory, customCategoryId, allCategories } from './categories.j
 import { resortPlan, usableUserRules } from './resort.js';
 import { requestSync, readLocal, writeLocal } from './sync.js';
 import { buildBackup, backupFileName, planRestore } from './backup.js';
-import { MAIN, balanceKey, guessAccount, looksLike, transferRow } from './accounts.js';
+import { MAIN, accountImportKey, balanceKey, guessAccount, looksLike, transferRow } from './accounts.js';
 import { planChange, planChanges } from './budgets.js';
 import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.js';
 import { manualUid, skipUid, billFromSuggestion } from './bills.js';
@@ -39,7 +39,15 @@ export async function previewCsv(text) {
   };
 }
 
-export async function importCsvText(text, account = MAIN) {
+// How many rows in this file you deleted from moni earlier (a deleted bank row stays deleted on import unless you
+// choose to bring it back). Used by the import sheet.
+export async function countDeletedInCsv(text, account = MAIN) {
+  const { rows } = parseNetBankCsv(text);
+  const gone = new Set((await db.tombstones.toArray()).map((t) => t.key));
+  return rows.filter((r) => gone.has(csvUid(accountImportKey(account, r.importKey)))).length;
+}
+
+export async function importCsvText(text, account = MAIN, { restoreDeleted = false } = {}) {
   const { rows, errors } = parseNetBankCsv(text);
   if (!rows.length) return { rows: 0, added: 0, duplicates: 0, merged: 0, review: 0, errors };
 
@@ -47,14 +55,19 @@ export async function importCsvText(text, account = MAIN) {
   const rules = await getRules();
   const existingKeys = new Set(await db.txns.orderBy('importKey').keys());
   // Bank rows you deleted on purpose stay deleted on re-import.
+  const deletedKeys = new Set();
   for (const t of await db.tombstones.toArray()) {
-    if (t.key.startsWith('csv|')) existingKeys.add(t.key.slice(4));
+    if (!t.key.startsWith('csv|')) continue;
+    deletedKeys.add(t.key);
+    if (!restoreDeleted) existingKeys.add(t.key.slice(4));
   }
   const manualTxns = await db.txns.filter((t) => t.source === 'manual').toArray();
   const plan = prepareImport(rows, { existingKeys, manualTxns, rules, now, account });
 
+  const restoredUids = restoreDeleted ? plan.toAdd.map((t) => t.uid).filter((u) => deletedKeys.has(u)) : [];
   await db.transaction('rw', db.txns, db.meta, db.tombstones, async () => {
     if (plan.toAdd.length) await db.txns.bulkPut(plan.toAdd);
+    if (restoredUids.length) await db.tombstones.bulkDelete(restoredUids);
     if (plan.mergedManualIds.length) {
       await db.txns.bulkDelete(plan.mergedManualIds);
       await db.tombstones.bulkPut(plan.mergedManualIds.map((key) => ({ key, deletedAt: now })));
@@ -68,6 +81,7 @@ export async function importCsvText(text, account = MAIN) {
     rows: rows.length,
     added: plan.toAdd.length,
     duplicates: plan.duplicates,
+    restored: restoredUids.length,
     merged: plan.mergedManualIds.length,
     confirms: plan.confirms,
     review: plan.reviewCount,

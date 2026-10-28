@@ -1,7 +1,7 @@
 // Small shared pieces.
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { pickerGroups, getCategory, categoryName } from '../lib/categories.js';
-import { importCsvText, previewCsv, addCategory } from '../lib/store.js';
+import { importCsvText, previewCsv, countDeletedInCsv, addCategory } from '../lib/store.js';
 import { ACCOUNTS, pickWarning } from '../lib/accounts.js';
 import { monthLabel, shiftMonth, monthShort } from '../lib/dates.js';
 import { formatCents } from '../lib/money.js';
@@ -236,7 +236,16 @@ export function ImportButton({ onDone, className = 'btn' }) {
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState(false);
   const [shot, setShot] = useState(false);
-  const [pending, setPending] = useState(null); // { text, preview, account }
+  const [pending, setPending] = useState(null); // { text, preview, account, restore }
+  const [deleted, setDeleted] = useState(0);     // rows in the file you deleted from moni earlier
+  const pendingText = pending?.text;
+  const pendingAccount = pending?.account;
+  useEffect(() => {
+    let alive = true;
+    if (!pendingText) return undefined;
+    countDeletedInCsv(pendingText, pendingAccount).then((n) => { if (alive) setDeleted(n); }).catch(() => {});
+    return () => { alive = false; };
+  }, [pendingText, pendingAccount]);
 
   async function handle(e) {
     const file = e.target.files?.[0];
@@ -249,19 +258,20 @@ export function ImportButton({ onDone, className = 'btn' }) {
         onDone('That file had no transactions moni could read. Is it a NetBank CSV export?');
         return;
       }
-      setPending({ text, preview, account: preview.guess });
+      setPending({ text, preview, account: preview.guess, restore: false });
     } catch (err) {
       onDone(`Couldn't read that file: ${err.message}`);
     }
   }
 
   async function confirm() {
-    const { text, account } = pending;
+    const { text, account, restore } = pending;
     setPending(null);
     setBusy(true);
     try {
-      const r = await importCsvText(text, account);
+      const r = await importCsvText(text, account, { restoreDeleted: restore });
       const parts = [`Added ${r.added}`];
+      if (r.restored) parts.push(`${r.restored} brought back`);
       if (r.duplicates) parts.push(`${r.duplicates} already here`);
       if (r.merged) parts.push(`${r.merged} matched your manual entries`);
       if (r.confirms) parts.push(`${r.confirms} to confirm on Home`);
@@ -320,6 +330,16 @@ export function ImportButton({ onDone, className = 'btn' }) {
             ))}
           </div>
           {warning && <p className="import-warn" role="alert">{warning}</p>}
+          {deleted > 0 && (
+            <div className="cash-row">
+              <span className="cash-row-text">
+                <span>Bring back deleted rows</span>
+                <span className="small">{deleted} {deleted === 1 ? 'row' : 'rows'} in this file you deleted earlier. Off = they stay deleted.</span>
+              </span>
+              <button type="button" role="switch" aria-checked={!!pending.restore} aria-label="Bring back deleted rows" className="cash-sw"
+                onClick={() => setPending({ ...pending, restore: !pending.restore })} />
+            </div>
+          )}
           <button type="button" className="btn primary" onClick={confirm}>
             {warning ? 'Import anyway' : `Import ${p.rows.length} rows`}
           </button>
