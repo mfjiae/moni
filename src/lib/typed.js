@@ -21,6 +21,29 @@ export const isTyped = (t) => t.source === 'manual';
 // Typed by hand, not read from a screenshot (screenshot.js): the "typed" tag and the Typed only filters.
 export const isHandTyped = (t) => t.source === 'manual' && !t.shot;
 
+// Edit a typed entry's description, date and amount (Ken, 4 Nov 2026). Only entries typed by hand: bank rows,
+// screenshot rows and typed transfers keep their text, date and amount.
+export const canEditTyped = (t) => isHandTyped(t) && !t.transfer;
+export const MAX_DESC = 60;
+
+// What an edit changes on the row, or an Error with a plain message for the form. Nothing here touches the
+// category: the sheet saves that separately, as it always has. Keeps `date` and `postedDate` equal (a typed row
+// has no bank date); a new description drops an old nickname (otherwise the list would keep showing the nickname);
+// a row switched to Money in can't be a cash purchase.
+export function typedEditChanges(t, { description, date, amountCents }, today) {
+  if (!canEditTyped(t)) throw new Error('Only entries you typed can be edited');
+  const d = String(description ?? '').trim().replace(/\s+/g, ' ');
+  if (!d) throw new Error('Add a description, like the shop name');
+  if (d.length > MAX_DESC) throw new Error(`Keep the description under ${MAX_DESC} characters`);
+  if (!Number.isInteger(amountCents) || amountCents === 0) throw new Error('Enter an amount, like 12.50');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date ?? ''))) throw new Error('Pick a date');
+  if (today && date > today) throw new Error('The date can’t be in the future');
+  const changes = { description: d, rawDescription: d, date, postedDate: date, amountCents };
+  if (typeof t.nickname === 'string' && d !== t.description) changes.nickname = undefined;
+  if (amountCents > 0 && t.cash) changes.cash = false;
+  return changes;
+}
+
 export function typedStatus(t, asOf) {
   if (!isTyped(t)) return null;
   if (!asOf) return 'pending';

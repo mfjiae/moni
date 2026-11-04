@@ -12,7 +12,8 @@ import { MAIN, accountImportKey, balanceKey, guessAccount, looksLike, transferRo
 import { planChange, planChanges } from './budgets.js';
 import { cleanTicker, etfUid, planRenameEtf, planRemoveEtf } from './investing.js';
 import { manualUid, skipUid, billFromSuggestion } from './bills.js';
-import { planResolve } from './typed.js';
+import { planResolve, typedEditChanges } from './typed.js';
+import { todaySydney } from './dates.js';
 import { atmRule } from './cash.js';
 import { cleanName, nameUid } from './names.js';
 import { shotRecord } from './screenshot.js';
@@ -146,6 +147,19 @@ export async function addTransfer({ date, time, from, to, cents, note }) {
     refund: false,
     note: note ?? '',
   });
+  requestSync();
+}
+
+// Edit an entry you typed (Ken, 4 Nov 2026): description, date, amount and, in the same write, the category,
+// note and cash switch the sheet also saves. Throws a plain-words Error when something is wrong (nothing is saved).
+export async function editTyped(uid, { description, date, amountCents }, { categoryId, note, cash } = {}) {
+  const row = await db.txns.get(uid);
+  if (!row) throw new Error('That entry is gone');
+  const changes = typedEditChanges(row, { description, date, amountCents }, todaySydney());
+  if (categoryId) { changes.categoryId = categoryId; changes.kind = kindForCategory(categoryId); }
+  if (note !== undefined) changes.note = note;
+  if (typeof cash === 'boolean' && amountCents < 0) changes.cash = cash;
+  await db.txns.update(uid, { ...changes, updatedAt: Date.now() });
   requestSync();
 }
 

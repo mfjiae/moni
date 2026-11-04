@@ -4,12 +4,13 @@ import { formatCents, parseCents } from '../lib/money.js';
 import { kindForCategory, categoryName } from '../lib/categories.js';
 import { db } from '../lib/db.js';
 import { splitOf, buildSplit } from '../lib/investing.js';
-import { longDay } from '../lib/dates.js';
+import { longDay, todaySydney } from '../lib/dates.js';
 import { isPersonTransfer, merchantKey, isBroadKeyword } from '../lib/rules.js';
 import { isCashDeposit, isCash, depositChoice, DEPOSIT_CHOICES } from '../lib/cash.js';
-import { answerAtm, setCategory, saveRule, ruleExists, restoreRecord, deleteTxn, setEtfSplit, addEtf, renameSimilar, renameRow, clearName } from '../lib/store.js';
+import { answerAtm, setCategory, editTyped, saveRule, ruleExists, restoreRecord, deleteTxn, setEtfSplit, addEtf, renameSimilar, renameRow, clearName } from '../lib/store.js';
 import { renameKey, nameRecordFor, nicknameFor, suggestNames, countSimilar, cleanName, nameChange, MAX_NAME } from '../lib/names.js';
 import { shortName } from '../lib/activity.js';
+import { canEditTyped, MAX_DESC } from '../lib/typed.js';
 
 // "Shown as" (clean names, Ken 27 Oct 2026, option B): suggestion chips, "Type your own…", the bank text that never
 // changes, and "Rename similar rows" (on by default). Display only: moni keeps matching and sorting on the bank text.
@@ -130,7 +131,19 @@ function EtfSplit({ rows, setRows, etfs, amountCents, onToast }) {
 }
 
 export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = null, onClose, onToast }) {
-  const canName = txn.kind !== 'saving' && !txn.mirrored;
+  // An entry you typed can be edited here: description, date, amount, Money out / in (Ken, 4 Nov 2026).
+  // Its description is the name, so the "Shown as" chips (for bank text) don't apply.
+  const editing = canEditTyped(txn);
+  const today = todaySydney();
+  const canName = txn.kind !== 'saving' && !txn.mirrored && !editing;
+  const [dir, setDir] = useState(txn.amountCents < 0 ? -1 : 1);
+  const [amountText, setAmountText] = useState(() => (Math.abs(txn.amountCents) / 100).toFixed(2));
+  const [desc, setDesc] = useState(txn.description ?? '');
+  const [date, setDate] = useState(txn.date);
+  const [editError, setEditError] = useState('');
+  const typedCents = toCents(amountText);
+  // The amount the rest of the sheet (category list, cash switch, ETF split) works with while you edit.
+  const amountNow = editing ? (Number.isFinite(typedCents) ? dir * typedCents : txn.amountCents) : txn.amountCents;
   const [nameState, setNameState] = useState(() => ({
     pick: nicknameFor(txn), typing: false, text: '',
     similar: !!renameKey(txn) && typeof txn.nickname !== 'string',
@@ -145,7 +158,7 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
   const [always, setAlways] = useState(canLearn && txn.kind === 'review' && !!keyword);
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Paid with cash: a typed purchase can be switched to cash (or back) here; a bank cash deposit asks whose cash it was.
-  const canCash = txn.source === 'manual' && !txn.shot && !txn.transfer && txn.amountCents < 0;
+  const canCash = txn.source === 'manual' && !txn.shot && !txn.transfer && amountNow < 0;
   const [cash, setCash] = useState(isCash(txn));
   const deposit = isCashDeposit(txn);
   // Push 2 (Ken, 27 Oct 2026): a round, unsorted money-out row may be a missed ATM withdrawal (App marks it `atmAsk`).
@@ -165,13 +178,24 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
     return pick ? [{ ticker: pick, text: '' }] : [];
   });
   const investing = categoryId && kindForCategory(categoryId) === 'investing';
-  const split = useMemo(() => buildSplit(rows.map((r) => ({ ticker: r.ticker, cents: toCents(r.text) })), txn.amountCents), [rows, txn.amountCents]);
+  const split = useMemo(() => buildSplit(rows.map((r) => ({ ticker: r.ticker, cents: toCents(r.text) })), amountNow), [rows, amountNow]);
 
   const broad = canLearn && always && isBroadKeyword(keyword);
 
   async function save() {
     if (broad || (categoryId && investing && !split.ok)) return;
     if (!categoryId && !nameDirty) return;
+    if (editing) {
+      try {
+        await editTyped(txn.uid, { description: desc, date, amountCents: Number.isFinite(typedCents) ? dir * typedCents : NaN },
+          { categoryId, note, cash: canCash ? cash : false });
+      } catch (e) { setEditError(e.message); return; }
+      if (investing) await setEtfSplit(txn.uid, split.split);
+      else if (txn.etfSplit?.length) await setEtfSplit(txn.uid, []);
+      onToast('Saved');
+      onClose();
+      return;
+    }
     let named = null;
     if (nameDirty) {
       try { named = await applyName(txn, nameState); } catch (e) { setNameError(e.message); return; }
@@ -207,18 +231,42 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
   return (
     <Sheet title={txn.kind === 'review' ? 'Pick a category' : 'Transaction'} onClose={onClose}>
       <div className="sheet-body">
-        <div className="detail">
-          <span className={`detail-amount${txn.amountCents > 0 ? ' text-in' : ''}`}>{formatCents(txn.amountCents, { sign: true })}</span>
-          <span className="merchant-full">{canName ? ((nameState.typing ? nameState.text.trim() : nameState.pick) || shortName(txn.description)) : txn.description}</span>
-          <span className="small">
-            {longDay(txn.date)}
-            {txn.postedDate && txn.postedDate !== txn.date ? ` · bank posted ${longDay(txn.postedDate)}` : ''}
-            {txn.time ? ` · ${txn.time}` : ''}
-          </span>
-        </div>
+        {editing ? (
+          <div className="edit-typed">
+            <Segmented label="Direction" value={dir < 0 ? 'out' : 'in'}
+              onChange={(v) => { setDir(v === 'out' ? -1 : 1); setCategoryId(null); setCash(false); setEditError(''); }}
+              options={[['out', 'Money out'], ['in', 'Money in']]} />
+            <label className="field">
+              <span className="small">Amount (AUD)</span>
+              <input className="input amount-input" inputMode="decimal" placeholder="0.00" value={amountText}
+                onChange={(e) => { setAmountText(e.target.value); setEditError(''); }} />
+            </label>
+            <label className="field">
+              <span className="small">Description</span>
+              <input className="input" placeholder="e.g. Coffee, Cash at markets" maxLength={MAX_DESC} value={desc}
+                onChange={(e) => { setDesc(e.target.value); setEditError(''); }} />
+            </label>
+            <label className="field">
+              <span className="small">Date</span>
+              <input className="input" type="date" value={date} max={today}
+                onChange={(e) => { setDate(e.target.value || txn.date); setEditError(''); }} />
+            </label>
+          </div>
+        ) : (
+          <div className="detail">
+            <span className={`detail-amount${txn.amountCents > 0 ? ' text-in' : ''}`}>{formatCents(txn.amountCents, { sign: true })}</span>
+            <span className="merchant-full">{canName ? ((nameState.typing ? nameState.text.trim() : nameState.pick) || shortName(txn.description)) : txn.description}</span>
+            <span className="small">
+              {longDay(txn.date)}
+              {txn.postedDate && txn.postedDate !== txn.date ? ` · bank posted ${longDay(txn.postedDate)}` : ''}
+              {txn.time ? ` · ${txn.time}` : ''}
+            </span>
+          </div>
+        )}
 
         {canName && <NameEditor txn={txn} txns={txns} state={nameState} setState={(s) => { setNameState(s); setNameError(''); }} />}
         {nameError && <p className="error" role="alert">{nameError}</p>}
+        {editError && <p className="error" role="alert">{editError}</p>}
 
         {deposit && (
           <div className="cash-deposit">
@@ -257,12 +305,12 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
           <p className="hint">Money in: choose Income, or the category it pays you back for (it reduces that category's spending).</p>
         )}
 
-        <CategorySelect value={categoryId} onChange={setCategoryId} amountCents={txn.amountCents} usage={usage}
+        <CategorySelect value={categoryId} onChange={setCategoryId} amountCents={amountNow} usage={usage}
           onToast={onToast} startOpen={txn.kind === 'review' && !txn.atmAsk} />
 
         {canCash && <CashRow on={cash} onChange={setCash} />}
 
-        {investing && <EtfSplit rows={rows} setRows={setRows} etfs={etfs} amountCents={txn.amountCents} onToast={onToast} />}
+        {investing && <EtfSplit rows={rows} setRows={setRows} etfs={etfs} amountCents={amountNow} onToast={onToast} />}
 
         {canLearn && (
           <div className="learn">
@@ -282,6 +330,7 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
         </label>
 
         <button type="button" className="btn primary" disabled={(!categoryId && !nameDirty) || broad || (!!categoryId && investing && !split.ok)} onClick={save}>Save</button>
+        {editing && <p className="hint">Changing the date or amount also changes what moni matches to the bank row when your CSV arrives.</p>}
         <button type="button" className="btn ghost danger" onClick={remove}>
           {confirmDelete ? 'Tap again to delete' : 'Delete transaction'}
         </button>
