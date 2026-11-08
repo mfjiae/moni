@@ -11,6 +11,7 @@ import { answerAtm, setCategory, editTyped, saveRule, ruleExists, restoreRecord,
 import { renameKey, nameRecordFor, nicknameFor, suggestNames, countSimilar, cleanName, nameChange, MAX_NAME } from '../lib/names.js';
 import { shortName } from '../lib/activity.js';
 import { canEditTyped, MAX_DESC } from '../lib/typed.js';
+import { isTransferIn } from '../lib/accounts.js';
 
 // "Shown as" (clean names, Ken 27 Oct 2026, option B): suggestion chips, "Type your own…", the bank text that never
 // changes, and "Rename similar rows" (on by default). Display only: moni keeps matching and sorting on the bank text.
@@ -254,7 +255,7 @@ export default function TxnSheet({ txn, txns = [], usage, etfs = [], lastEtf = n
           </div>
         ) : (
           <div className="detail">
-            <span className={`detail-amount${txn.amountCents > 0 ? ' text-in' : ''}`}>{formatCents(txn.amountCents, { sign: true })}</span>
+            <span className={`detail-amount${isTransferIn(txn) ? ' text-xfer' : txn.amountCents > 0 ? ' text-in' : ''}`}>{formatCents(txn.amountCents, { sign: true })}</span>
             <span className="merchant-full">{canName ? ((nameState.typing ? nameState.text.trim() : nameState.pick) || shortName(txn.description)) : txn.description}</span>
             <span className="small">
               {longDay(txn.date)}

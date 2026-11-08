@@ -11,6 +11,7 @@
 
   /* Money colors ("C vivid", locked 14 Oct 2026) */
   --in: #2BFF88;        /* income, money in */
+  --in-xfer: #78B392;   /* money moved into Smart Access (transfers), muted sage; Ken, 8 Nov 2026 */
   --out: #FF7452;       /* spent */
   --save: #3DAEFF;      /* saved */
   --invest: #BF7BFF;   /* invested */
@@ -82,6 +83,7 @@ a { color: var(--accent); text-decoration: none; }
 .text-near, .text-review { color: var(--review); }
 .text-over { color: var(--over); }
 .text-good, .text-in { color: var(--in); }
+.text-xfer { color: var(--in-xfer); }
 .text-out { color: var(--out); }
 .text-save { color: var(--save); }
 .text-invest { color: var(--invest); }
@@ -100,6 +102,7 @@ a { color: var(--accent); text-decoration: none; }
 .txn { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; min-height: 60px; }
 .txn:hover .merchant { color: #fff; }
 .muted-row .merchant, .muted-row .amount { color: var(--muted); }
+.muted-row .amount.text-xfer { color: var(--in-xfer); }
 .list .day-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 0 6px; }
 .day-date { display: inline-flex; align-items: center; gap: 10px; min-width: 0; font-size: 17.5px; font-weight: 600; color: var(--text); }
 .day-rel { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--surface-raised); border-radius: 10px; padding: 2px 9px; white-space: nowrap; }

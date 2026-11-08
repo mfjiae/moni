@@ -264,7 +264,7 @@ export default function ShotImport({ onClose, onDone }) {
                         )}
                       </span>
                     </span>
-                    <span className={`ss-amt${it.amountCents > 0 && it.kind !== 'saving' ? ' text-in' : it.kind === 'saving' ? ' muted' : ' text-out'}`}>
+                    <span className={`ss-amt${it.amountCents > 0 && it.kind !== 'saving' ? ' text-in' : it.kind === 'saving' ? (it.amountCents > 0 ? ' text-xfer' : ' muted') : ' text-out'}`}>
                       {it.amountCents == null ? '?' : formatCents(it.amountCents, { sign: true })}
                     </span>
                     <button type="button" className={`ss-tick${on ? ' on' : ''}`} aria-pressed={on}

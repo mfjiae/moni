@@ -28,6 +28,13 @@ export const getAccount = (id) => ACCOUNTS.find((a) => a.id === id) ?? ACCOUNTS[
 export const accountOf = (t) => t.account ?? MAIN;
 export const isMain = (id) => (id ?? MAIN) === MAIN;
 
+// Money added to Smart Access by a transfer (from a savings account or anywhere else that isn't income):
+// shown in a muted sage green, not the bright income green (Ken, 8 Nov 2026). Display only.
+// Saver-side rows (a saver's own page) stay plain: that money is moving between accounts, not into Smart Access.
+// `mirrored` rows are saver-CSV transfers already turned round to read like the Smart Access row.
+export const isTransferIn = (t) =>
+  (t.kind === 'saving' || t.kind === 'internal') && t.amountCents > 0 && (isMain(t.account) || t.mirrored === true);
+
 // Where each account's bank balance lives in `meta`. Smart Access keeps the old key.
 export const balanceKey = (id) => (isMain(id) ? 'balance' : `balance:${id}`);
 

@@ -1,7 +1,7 @@
 import { formatCents } from '../lib/money.js';
 import { categoryName } from '../lib/categories.js';
 import { shortName } from '../lib/activity.js';
-import { accountOf, isMain } from '../lib/accounts.js';
+import { accountOf, isMain, isTransferIn } from '../lib/accounts.js';
 import { cashTag, isCash } from '../lib/cash.js';
 import { nicknameFor } from '../lib/names.js';
 
@@ -17,6 +17,7 @@ export function displayName(t) {
 }
 
 export const amountClass = (t) => {
+  if (isTransferIn(t)) return ' text-xfer';
   if (t.kind === 'saving' || t.kind === 'internal') return '';
   if (t.kind === 'income') return ' text-in';
   if (t.kind === 'investing') return ' text-invest';
